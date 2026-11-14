@@ -1,0 +1,3136 @@
+"use client"
+
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { supabase } from "@/lib/supabase"
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  FileText,
+  LayoutGrid,
+  CalendarCheck,
+  Utensils,
+  ChefHat,
+  Users,
+  Boxes,
+  UserCheck,
+  Landmark,
+  BarChart3,
+  Settings,
+  Headphones,
+  Bell,
+  Moon,
+  Sun,
+  ChevronDown,
+  PanelLeft,
+  QrCode,
+  Plus,
+  X,
+  Store,
+  Check,
+  Search,
+  Minus,
+  Receipt,
+  DollarSign,
+  TrendingUp,
+  Building2,
+  ShieldCheck,
+  CreditCard,
+  Activity,
+  CheckCircle2,
+  Bike,
+  Truck,
+  Megaphone,
+  Sliders,
+  Clock,
+  LogOut,
+} from "lucide-react"
+
+// 3 Distinct User Types & 3 POS Staff Roles
+type UserType = "restaurant-admin" | "pos-staff" | "super-admin"
+type PosRole = "orders" | "reception" | "kitchen"
+
+interface TableItem {
+  id: number
+  name: string
+  seats: number
+  status: "available" | "occupied" | "reserved" | "cleaning" | "out_of_service"
+  orderCode?: string
+  isOpen: boolean
+}
+
+interface CartItem {
+  id: string
+  name: string
+  price: number
+  quantity: number
+}
+
+function RestaurantAdminContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // 1. Current Active User Type & POS Sub-role
+  const [userType, setUserType] = useState<UserType>("restaurant-admin")
+  const [posRole, setPosRole] = useState<PosRole>("orders")
+  const [activeTab, setActiveTab] = useState("tables")
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+
+  // 2. Dark / Night Mode State
+  const [isDarkMode, setIsDarkMode] = useState(true)
+
+  // 3. User Sign Out Handler
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch {}
+    document.cookie = "restaurant_id=; path=/; max-age=0"
+    document.cookie = "outlet_id=; path=/; max-age=0"
+    document.cookie = "user_role=; path=/; max-age=0"
+    document.cookie = "pos_role=; path=/; max-age=0"
+    window.location.href = "/restaurant-admin/login"
+  }
+
+  useEffect(() => {
+    // Check saved theme or system preference
+    const savedTheme = localStorage.getItem("orderrestro_theme")
+    if (savedTheme === "light") {
+      setIsDarkMode(false)
+      document.documentElement.classList.remove("dark")
+    } else {
+      setIsDarkMode(true)
+      document.documentElement.classList.add("dark")
+    }
+
+    const roleParam = searchParams.get("role")
+    const posRoleParam = searchParams.get("posRole")
+    const tabParam = searchParams.get("tab")
+
+    let determinedRole: UserType = "restaurant-admin"
+    let determinedPosRole: PosRole = "orders"
+
+    // Parse role from query parameters
+    if (roleParam === "super-admin") {
+      determinedRole = "super-admin"
+    } else if (roleParam === "restaurant-admin") {
+      determinedRole = "restaurant-admin"
+    } else if (roleParam === "pos-orders" || roleParam === "orders") {
+      determinedRole = "pos-staff"
+      determinedPosRole = "orders"
+    } else if (roleParam === "pos-reception" || roleParam === "reception") {
+      determinedRole = "pos-staff"
+      determinedPosRole = "reception"
+    } else if (roleParam === "pos-kitchen" || roleParam === "kitchen") {
+      determinedRole = "pos-staff"
+      determinedPosRole = "kitchen"
+    } else if (roleParam === "pos-staff") {
+      determinedRole = "pos-staff"
+      if (posRoleParam === "kitchen" || posRoleParam === "reception" || posRoleParam === "orders") {
+        determinedPosRole = posRoleParam
+      }
+    } else {
+      // Parse role from cookies
+      const roleCookie = document.cookie.replace(
+        /(?:(?:^|.*)\s*user_role\s*=\s*([^;]*).*$)|^.*$/,
+        "$1"
+      )
+      const posCookie = document.cookie.replace(
+        /(?:(?:^|.*)\s*pos_role\s*=\s*([^;]*).*$)|^.*$/,
+        "$1"
+      )
+
+      if (roleCookie === "super-admin") {
+        determinedRole = "super-admin"
+      } else if (roleCookie === "restaurant-admin") {
+        determinedRole = "restaurant-admin"
+      } else if (roleCookie === "pos-kitchen" || (roleCookie === "pos-staff" && posCookie === "kitchen")) {
+        determinedRole = "pos-staff"
+        determinedPosRole = "kitchen"
+      } else if (roleCookie === "pos-reception" || (roleCookie === "pos-staff" && posCookie === "reception")) {
+        determinedRole = "pos-staff"
+        determinedPosRole = "reception"
+      } else if (roleCookie === "pos-orders" || (roleCookie === "pos-staff" && posCookie === "orders")) {
+        determinedRole = "pos-staff"
+        determinedPosRole = "orders"
+      } else {
+        determinedRole = "restaurant-admin"
+      }
+    }
+
+    setUserType(determinedRole)
+    setPosRole(determinedPosRole)
+
+    if (tabParam) {
+      setActiveTab(tabParam)
+    } else {
+      // Default tab based on role
+      if (determinedRole === "super-admin") {
+        setActiveTab("tenants")
+      } else if (determinedRole === "pos-staff") {
+        if (determinedPosRole === "kitchen") setActiveTab("kds")
+        else if (determinedPosRole === "reception") setActiveTab("tables")
+        else setActiveTab("pos")
+      } else {
+        setActiveTab("tables")
+      }
+    }
+  }, [searchParams])
+
+  // Safety guard: ensure active tab matches allowed menus for the current role
+  useEffect(() => {
+    if (userType === "pos-staff") {
+      if (posRole === "orders" && !["pos", "orders"].includes(activeTab)) {
+        setActiveTab("pos")
+      } else if (posRole === "reception" && !["tables", "reservations", "customers"].includes(activeTab)) {
+        setActiveTab("tables")
+      } else if (posRole === "kitchen" && !["kds"].includes(activeTab)) {
+        setActiveTab("kds")
+      }
+    } else if (userType === "super-admin" && !["tenants", "subscriptions", "analytics", "audit", "platform-settings"].includes(activeTab)) {
+      setActiveTab("tenants")
+    }
+  }, [userType, posRole])
+
+  // Toggle Night Mode function
+  const toggleTheme = () => {
+    setIsDarkMode((prev) => {
+      const nextMode = !prev
+      if (nextMode) {
+        document.documentElement.classList.add("dark")
+        localStorage.setItem("orderrestro_theme", "dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+        localStorage.setItem("orderrestro_theme", "light")
+      }
+      return nextMode
+    })
+  }
+
+  // Switch User Type Handler
+  const handleUserTypeChange = (newType: UserType) => {
+    setUserType(newType)
+    if (newType === "restaurant-admin") {
+      document.cookie = `user_role=restaurant-admin; path=/; max-age=86400`
+      setActiveTab("tables")
+    } else if (newType === "pos-staff") {
+      document.cookie = `user_role=pos-${posRole}; path=/; max-age=86400`
+      document.cookie = `pos_role=${posRole}; path=/; max-age=86400`
+      if (posRole === "orders") setActiveTab("pos")
+      else if (posRole === "reception") setActiveTab("tables")
+      else if (posRole === "kitchen") setActiveTab("kds")
+    } else if (newType === "super-admin") {
+      document.cookie = `user_role=super-admin; path=/; max-age=86400`
+      setActiveTab("tenants")
+    }
+  }
+
+  // Switch POS Staff Sub-role Handler (Orders, Reception, Kitchen)
+  const handlePosRoleChange = (newPosRole: PosRole) => {
+    setPosRole(newPosRole)
+    document.cookie = `user_role=pos-${newPosRole}; path=/; max-age=86400`
+    document.cookie = `pos_role=${newPosRole}; path=/; max-age=86400`
+    if (newPosRole === "orders") {
+      setActiveTab("pos")
+    } else if (newPosRole === "reception") {
+      setActiveTab("tables")
+    } else if (newPosRole === "kitchen") {
+      setActiveTab("kds")
+    }
+  }
+
+  // --- TABLES STATE ---
+  const [tables, setTables] = useState<TableItem[]>([
+    { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
+    { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
+    { id: 3, name: "Table 3", seats: 6, status: "available", isOpen: false },
+    { id: 4, name: "Table 4", seats: 4, status: "available", isOpen: false },
+    { id: 6, name: "Table 6", seats: 6, status: "available", isOpen: false },
+    { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
+    { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
+  ])
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(1)
+  const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
+  const [showWaitlistModal, setShowWaitlistModal] = useState(false)
+  const [waitlist, setWaitlist] = useState<Array<{ name: string; guests: number; time: string }>>([])
+  const [waitlistName, setWaitlistName] = useState("")
+  const [waitlistGuests, setWaitlistGuests] = useState(2)
+
+  const setTableStatus = (status: TableItem["status"]) => {
+    if (selectedTableId === null) return
+    setTables((prev) =>
+      prev.map((t) => (t.id === selectedTableId ? { ...t, status } : t))
+    )
+    setSelectedTableId(null)
+  }
+
+  const toggleTableCode = (tableId: number) => {
+    setTables((prev) =>
+      prev.map((t) => {
+        if (t.id === tableId) {
+          const nextState = !t.isOpen
+          return {
+            ...t,
+            isOpen: nextState,
+            orderCode: nextState ? `ORD-${Math.floor(100 + Math.random() * 900)}` : undefined,
+            status: nextState ? "occupied" : t.status === "occupied" ? "available" : t.status,
+          }
+        }
+        return t
+      })
+    )
+  }
+
+  // --- POS STATE ---
+  const [posCategory, setPosCategory] = useState("all")
+  const [posSearch, setPosSearch] = useState("")
+  const [posOrderType, setPosOrderType] = useState<"dine-in" | "takeaway" | "delivery">("dine-in")
+  const [cart, setCart] = useState<CartItem[]>([
+    { id: "m1", name: "Classic Wagyu Burger", price: 16.50, quantity: 2 },
+    { id: "m4", name: "Crispy Truffle Fries", price: 8.00, quantity: 1 },
+    { id: "m7", name: "Craft IPA Beer", price: 7.50, quantity: 2 },
+  ])
+  const [orderSentToast, setOrderSentToast] = useState(false)
+
+  const menuCatalog = [
+    { id: "m1", name: "Classic Wagyu Burger", price: 16.50, category: "mains", icon: "🍔", tag: "Popular" },
+    { id: "m2", name: "Truffle Mushroom Pasta", price: 18.00, category: "mains", icon: "🍝", tag: "Chef Special" },
+    { id: "m3", name: "Margherita Artisan Pizza", price: 14.50, category: "mains", icon: "🍕", tag: "" },
+    { id: "m4", name: "Crispy Truffle Fries", price: 8.00, category: "sides", icon: "🍟", tag: "Crispy" },
+    { id: "m5", name: "Caesar Salad Bowl", price: 9.50, category: "sides", icon: "🥗", tag: "Fresh" },
+    { id: "m6", name: "Grilled Chicken Wings", price: 11.00, category: "sides", icon: "🍗", tag: "Spicy" },
+    { id: "m7", name: "Craft IPA Beer", price: 7.50, category: "drinks", icon: "🍺", tag: "Cold" },
+    { id: "m8", name: "Iced Caramel Macchiato", price: 5.50, category: "drinks", icon: "☕", tag: "" },
+    { id: "m9", name: "Sparkling Berry Fizz", price: 4.50, category: "drinks", icon: "🍹", tag: "" },
+    { id: "m10", name: "Molten Lava Cake", price: 8.50, category: "desserts", icon: "🍰", tag: "Warm" },
+    { id: "m11", name: "Artisan Tiramisu", price: 7.50, category: "desserts", icon: "🧁", tag: "" },
+    { id: "m12", name: "Gelato Trio", price: 6.00, category: "desserts", icon: "🍨", tag: "" },
+  ]
+
+  const addToCart = (item: typeof menuCatalog[0]) => {
+    setCart((prev) => {
+      const exists = prev.find((i) => i.id === item.id)
+      if (exists) {
+        return prev.map((i) =>
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+        )
+      }
+      return [...prev, { id: item.id, name: item.name, price: item.price, quantity: 1 }]
+    })
+  }
+
+  const updateCartQty = (id: string, delta: number) => {
+    setCart((prev) =>
+      prev
+        .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
+        .filter((i) => i.quantity > 0)
+    )
+  }
+
+  const subtotal = cart.reduce((acc, i) => acc + i.price * i.quantity, 0)
+  const tax = subtotal * 0.08
+  const total = subtotal + tax
+
+  // --- ORDERS STATE ---
+  const [ordersFilter, setOrdersFilter] = useState("all")
+  const ordersList = [
+    { id: "#1046", type: "DINE IN", table: "Table 10", items: "2x Wagyu Burger, 1x IPA Beer", amount: "$38.00", status: "PREPARING", time: "3m ago", channel: "dine-in" },
+    { id: "#1045", type: "DINE IN", table: "Table 06", items: "1x Truffle Pasta, 1x Caesar Salad, 2x Pinot", amount: "$64.20", status: "READY", time: "12m ago", channel: "dine-in" },
+    { id: "#1044", type: "TAKEAWAY", table: "Counter", items: "3x Margherita Pizza, 2x Sparkling Water", amount: "$54.50", status: "PAID", time: "18m ago", channel: "takeaway" },
+    { id: "#1043", type: "DINE IN", table: "Table 03", items: "2x Ribeye Steak, 1x Grilled Salmon", amount: "$92.00", status: "SERVED", time: "35m ago", channel: "dine-in" },
+    { id: "#1042", type: "DELIVERY", table: "UberEats", items: "1x Crispy Chicken Bowl, 1x Mango Boba", amount: "$48.50", status: "PAID", time: "42m ago", channel: "delivery" },
+  ]
+
+  // --- KDS TICKETS STATE (Kitchen/Bar Queue) ---
+  const [kdsTickets, setKdsTickets] = useState<
+    Array<{
+      id: string
+      table: string
+      time: string
+      station: "kitchen" | "bar"
+      items: string[]
+      stage: "new" | "preparing" | "ready"
+    }>
+  >([
+    { id: "T-104", table: "Table 04", time: "4m", station: "kitchen", items: ["2x Wagyu Burger (Medium)", "1x Truffle Fries"], stage: "new" },
+    { id: "T-105", table: "Table 02", time: "11m", station: "kitchen", items: ["1x Truffle Pasta", "1x Margherita Pizza"], stage: "preparing" },
+    { id: "T-106", table: "Table 08", time: "18m", station: "bar", items: ["2x Craft IPA Beer", "1x Sparkling Berry Fizz"], stage: "ready" },
+    { id: "T-107", table: "Table 01", time: "2m", station: "bar", items: ["2x Iced Caramel Macchiato", "1x Berry Fizz"], stage: "new" },
+    { id: "T-108", table: "Table 03", time: "8m", station: "kitchen", items: ["1x Ribeye Steak (Medium)", "1x Caesar Salad"], stage: "preparing" },
+  ])
+
+  const advanceKdsTicket = (id: string) => {
+    setKdsTickets((prev) =>
+      prev
+        .map((t) => {
+          if (t.id === id) {
+            if (t.stage === "new") return { ...t, stage: "preparing" as const }
+            if (t.stage === "preparing") return { ...t, stage: "ready" as const }
+            return t
+          }
+          return t
+        })
+        .filter((t) => t.id !== id || t.stage !== "ready")
+    )
+  }
+
+  // --- RESERVATIONS STATE (For Reception & Admin) ---
+  const [reservations, setReservations] = useState([
+    {
+      id: "RES-101",
+      guestName: "Alexander Wright",
+      phone: "+1 (555) 234-8891",
+      guests: 4,
+      time: "19:00 Today",
+      table: "Table 3",
+      status: "Confirmed",
+      notes: "Window booth preferred, celebrating anniversary"
+    },
+    {
+      id: "RES-102",
+      guestName: "Sophia Martinez",
+      phone: "+1 (555) 412-9903",
+      guests: 2,
+      time: "19:30 Today",
+      table: "Table 1",
+      status: "Arrived",
+      notes: "First time dining, VIP guest"
+    },
+    {
+      id: "RES-103",
+      guestName: "Marcus Sterling",
+      phone: "+1 (555) 872-3310",
+      guests: 6,
+      time: "20:15 Today",
+      table: "Table 6",
+      status: "Confirmed",
+      notes: "Corporate dinner, pre-ordered wine"
+    },
+    {
+      id: "RES-104",
+      guestName: "Emma Watson",
+      phone: "+1 (555) 601-7744",
+      guests: 2,
+      time: "21:00 Today",
+      table: "Table 2",
+      status: "Waitlist",
+      notes: "Requested quiet corner"
+    }
+  ])
+  const [showAddResModal, setShowAddResModal] = useState(false)
+  const [newResGuest, setNewResGuest] = useState("")
+  const [newResPhone, setNewResPhone] = useState("")
+  const [newResSeats, setNewResSeats] = useState(2)
+  const [newResTime, setNewResTime] = useState("19:30")
+  const [newResTable, setNewResTable] = useState("Table 1")
+
+  // --- CUSTOMER DIRECTORY STATE (For Reception & Admin) ---
+  const [customersSearch, setCustomersSearch] = useState("")
+  const [customersList] = useState([
+    {
+      id: "CUST-01",
+      name: "Alexander Wright",
+      phone: "+1 (555) 234-8891",
+      email: "a.wright@corp.com",
+      visits: 14,
+      totalSpend: "$1,420.50",
+      loyalty: "VIP Platinum",
+      lastVisit: "Yesterday",
+      prefTable: "Table 3 (Booth)",
+      allergies: "None"
+    },
+    {
+      id: "CUST-02",
+      name: "Sophia Martinez",
+      phone: "+1 (555) 412-9903",
+      email: "sophia.m@design.org",
+      visits: 4,
+      totalSpend: "$298.00",
+      loyalty: "Silver",
+      lastVisit: "3 days ago",
+      prefTable: "Table 1",
+      allergies: "Gluten Sensitive"
+    },
+    {
+      id: "CUST-03",
+      name: "Marcus Sterling",
+      phone: "+1 (555) 872-3310",
+      email: "m.sterling@capital.com",
+      visits: 22,
+      totalSpend: "$3,180.00",
+      loyalty: "VIP Gold",
+      lastVisit: "Oct 28",
+      prefTable: "Table 6 (Executive)",
+      allergies: "Shellfish Allergy"
+    },
+    {
+      id: "CUST-04",
+      name: "David Chen",
+      phone: "+1 (555) 901-2244",
+      email: "dchen@tech.io",
+      visits: 8,
+      totalSpend: "$760.00",
+      loyalty: "Gold",
+      lastVisit: "Nov 02",
+      prefTable: "Table 4",
+      allergies: "None"
+    },
+    {
+      id: "CUST-05",
+      name: "Olivia Brown",
+      phone: "+1 (555) 345-6671",
+      email: "olivia.b@studio.net",
+      visits: 5,
+      totalSpend: "$390.00",
+      loyalty: "Silver",
+      lastVisit: "Last week",
+      prefTable: "Table 7",
+      allergies: "Nut Allergy"
+    }
+  ])
+
+  // --- KDS STATIONS FILTER ---
+  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">("all")
+
+  // --- MENUS PER USER TYPE & POS SUB-ROLES ---
+  const adminMenuItems = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "pos", label: "Point of Sale", icon: ShoppingCart },
+    { id: "orders", label: "Orders", icon: FileText, badge: true },
+    { id: "tables", label: "Tables", icon: LayoutGrid },
+    { id: "reservations", label: "Reservations", icon: CalendarCheck },
+    { id: "menu", label: "Menu", icon: Utensils },
+    { id: "kds", label: "Kitchen Display", icon: ChefHat },
+    { id: "customers", label: "Customers", icon: Users },
+    { id: "inventory", label: "Inventory", icon: Boxes, badge: true },
+    { id: "my-deliveries", label: "My deliveries", icon: Bike },
+    { id: "delivery", label: "Delivery", icon: Truck },
+    { id: "team", label: "Team", icon: UserCheck },
+    { id: "accounting", label: "Accounting", icon: Landmark },
+    { id: "reports", label: "Reports", icon: BarChart3 },
+    { id: "marketing", label: "Marketing", icon: Megaphone },
+    { id: "operations", label: "Operations", icon: Sliders },
+    { id: "attendance", label: "Attendance", icon: Clock },
+    { id: "settings", label: "Settings", icon: Settings },
+  ]
+
+  // POS Staff 3 Role-Based Menus (Orders, Reception, Kitchen)
+  const posOrdersMenuItems = [
+    { id: "pos", label: "Point Of Sale", icon: ShoppingCart },
+    { id: "orders", label: "Orders Feed", icon: FileText, badge: true },
+  ]
+
+  const posReceptionMenuItems = [
+    { id: "tables", label: "Table & Floor", icon: LayoutGrid },
+    { id: "reservations", label: "Reservation & Waitlist", icon: CalendarCheck },
+    { id: "customers", label: "Customer Lookup", icon: Users },
+  ]
+
+  const posKitchenMenuItems = [
+    { id: "kds", label: "Kitchen/Bar Queue", icon: ChefHat, badge: true },
+  ]
+
+  const superAdminMenuItems = [
+    { id: "tenants", label: "Tenant Restaurants", icon: Building2 },
+    { id: "subscriptions", label: "Subscription Plans", icon: CreditCard },
+    { id: "analytics", label: "Platform Analytics", icon: BarChart3 },
+    { id: "audit", label: "Security & Logs", icon: ShieldCheck },
+    { id: "platform-settings", label: "Platform Settings", icon: Settings },
+  ]
+
+  const activeNavigationItems =
+    userType === "super-admin"
+      ? superAdminMenuItems
+      : userType === "pos-staff"
+      ? posRole === "orders"
+        ? posOrdersMenuItems
+        : posRole === "reception"
+        ? posReceptionMenuItems
+        : posKitchenMenuItems
+      : adminMenuItems
+
+  return (
+    <div
+      className={`min-h-screen flex flex-col font-sans select-none antialiased transition-colors duration-200 ${
+        isDarkMode ? "bg-[#0e0f12] text-slate-100" : "bg-slate-100 text-slate-900"
+      }`}
+    >
+      {/* Top Production Status Bar */}
+      <div
+        className={`px-4 py-1.5 text-xs font-medium flex items-center justify-between border-b shrink-0 ${
+          isDarkMode
+            ? "bg-[#141620] border-[#202330] text-slate-300"
+            : "bg-slate-100 border-slate-200 text-slate-700"
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-semibold text-white">Nodedr Bistro</span>
+          <span className="text-slate-500">•</span>
+          <span className="text-slate-400">Downtown Main Outlet</span>
+        </div>
+        <div className="flex items-center gap-3 text-xs">
+          <span
+            className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+              userType === "super-admin"
+                ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                : userType === "restaurant-admin"
+                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+            }`}
+          >
+            {userType === "super-admin"
+              ? "Super Admin Mode"
+              : userType === "restaurant-admin"
+              ? "Restaurant Management Mode"
+              : `POS Station: ${posRole.toUpperCase()}`}
+          </span>
+          <button
+            onClick={handleSignOut}
+            className="text-slate-400 hover:text-red-400 flex items-center gap-1 transition text-xs cursor-pointer ml-1"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Sign Out</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden">
+        {/* 2. Left Sidebar Navigation */}
+        <aside
+          className={`${
+            sidebarOpen ? "w-[240px]" : "w-0 -translate-x-full md:w-[68px] md:translate-x-0"
+          } ${
+            isDarkMode
+              ? "bg-[#111217] border-[#1e2029]"
+              : "bg-white border-slate-200 shadow-xs"
+          } border-r flex flex-col shrink-0 transition-all duration-200 overflow-hidden z-30`}
+        >
+          {/* Logo & Brand Header */}
+          <div
+            className={`p-4 flex items-center gap-3 border-b ${
+              isDarkMode ? "border-[#1e2029]/60" : "border-slate-100"
+            }`}
+          >
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                isDarkMode
+                  ? "bg-[#1e202b] border-[#2e3240]"
+                  : "bg-purple-50 border-purple-200"
+              }`}
+            >
+              {userType === "super-admin" ? (
+                <ShieldCheck className="w-4 h-4 text-red-400" />
+              ) : (
+                <Utensils className="w-4 h-4 text-purple-600" />
+              )}
+            </div>
+            {sidebarOpen && (
+              <span
+                className={`font-bold text-sm tracking-tight truncate ${
+                  isDarkMode ? "text-white" : "text-slate-900"
+                }`}
+              >
+                {userType === "super-admin"
+                  ? "OrderRestro Platform"
+                  : "Nodedr Bistro (Demo)"}
+              </span>
+            )}
+          </div>
+
+          {/* Branch / Workspace selector */}
+          {sidebarOpen && (
+            <div className="px-3 pt-3 pb-1">
+              <button
+                className={`w-full flex items-center justify-between text-xs font-medium px-3 py-2 rounded-xl transition border ${
+                  isDarkMode
+                    ? "bg-[#171922] hover:bg-[#1d202b] border-[#232634] text-slate-200"
+                    : "bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Store className="w-3.5 h-3.5 text-slate-400" />
+                  <span className="truncate">
+                    {userType === "super-admin" ? "All Tenants (Global)" : "Main Branch"}
+                  </span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              </button>
+
+              {userType === "pos-staff" && (
+                <div className="mt-1.5 flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="truncate">
+                      {posRole === "orders"
+                        ? "Orders Station"
+                        : posRole === "reception"
+                        ? "Reception & Floor"
+                        : "Kitchen/Bar Queue"}
+                    </span>
+                  </div>
+                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 shrink-0">
+                    {posRole}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Navigation Links (Filtered strictly by User Type & POS Sub-role) */}
+          <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-0.5 scrollbar-thin scrollbar-thumb-slate-800">
+            {activeNavigationItems.map((item) => {
+              const Icon = item.icon
+              const isActive = activeTab === item.id
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                    isActive
+                      ? isDarkMode
+                        ? "bg-[#2d224d] text-[#c4b5fd] font-semibold shadow-xs"
+                        : "bg-purple-100 text-purple-900 font-semibold shadow-xs border border-purple-200"
+                      : isDarkMode
+                      ? "text-slate-400 hover:text-slate-200 hover:bg-[#181a22]"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-3 truncate">
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        isActive
+                          ? isDarkMode
+                            ? "text-[#a78bfa]"
+                            : "text-purple-700"
+                          : "text-slate-400"
+                      }`}
+                    />
+                    {sidebarOpen && <span className="truncate">{item.label}</span>}
+                  </div>
+                  {sidebarOpen && "badge" in item && item.badge && (
+                    <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0 shadow-xs shadow-amber-500/50" />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+
+          {/* Support & Sign Out Footer */}
+          {sidebarOpen && (
+            <div
+              className={`p-3 border-t space-y-1.5 ${
+                isDarkMode ? "border-[#1e2029]" : "border-slate-100"
+              }`}
+            >
+              <button
+                onClick={() => alert("Enterprise Support: support@restropos.com")}
+                className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition ${
+                  isDarkMode
+                    ? "border-[#222533] text-slate-400 hover:text-white hover:bg-[#191b24]"
+                    : "border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Contact support</span>
+              </button>
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold transition cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          )}
+        </aside>
+
+        {/* Main Content Workspace */}
+        <div
+          className={`flex-1 flex flex-col overflow-hidden transition-colors duration-200 ${
+            isDarkMode ? "bg-[#0e0f12]" : "bg-slate-50"
+          }`}
+        >
+          {/* Top Bar */}
+          <header
+            className={`h-14 border-b px-6 flex items-center justify-between shrink-0 gap-4 z-20 ${
+              isDarkMode
+                ? "bg-[#0e0f12] border-[#1c1e27]"
+                : "bg-white border-slate-200 shadow-xs"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                  isDarkMode
+                    ? "text-slate-400 hover:text-white hover:bg-[#1a1c24]"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                }`}
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+              <h2
+                className={`font-semibold text-sm hidden md:block ${
+                  isDarkMode ? "text-slate-200" : "text-slate-800"
+                }`}
+              >
+                {userType === "super-admin"
+                  ? "Platform Administration"
+                  : userType === "pos-staff"
+                  ? posRole === "orders"
+                    ? "Nodedr Bistro · Orders Station"
+                    : posRole === "reception"
+                    ? "Nodedr Bistro · Reception & Floor"
+                    : "Nodedr Bistro · Kitchen/Bar Queue"
+                  : "Nodedr Bistro (Demo)"}
+              </h2>
+            </div>
+
+            {/* Authenticated Role & Station Badge */}
+            <div className="flex items-center gap-2">
+              {userType === "restaurant-admin" && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/40 border border-purple-800/40 text-purple-300 text-xs font-semibold">
+                  <Utensils className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Restaurant Admin</span>
+                  <span className="text-[10px] text-purple-400/80 font-normal hidden sm:inline">• Full Management</span>
+                </div>
+              )}
+              {userType === "super-admin" && (
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-red-950/40 border border-red-800/40 text-red-300 text-xs font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
+                  <span>Super Admin Platform</span>
+                  <span className="text-[10px] text-red-400/80 font-normal hidden sm:inline">• Multi-Tenant</span>
+                </div>
+              )}
+              {userType === "pos-staff" && (
+                <div
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border ${
+                    posRole === "orders"
+                      ? "bg-blue-950/40 border-blue-800/40 text-blue-300"
+                      : posRole === "reception"
+                      ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-300"
+                      : "bg-amber-950/40 border-amber-800/40 text-amber-300"
+                  }`}
+                >
+                  {posRole === "orders" ? (
+                    <>
+                      <ShoppingCart className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Orders Station</span>
+                      <span className="text-[10px] opacity-75 font-normal hidden sm:inline">• Counter POS</span>
+                    </>
+                  ) : posRole === "reception" ? (
+                    <>
+                      <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Reception Desk</span>
+                      <span className="text-[10px] opacity-75 font-normal hidden sm:inline">• Floor & Waitlist</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChefHat className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Kitchen Display Queue</span>
+                      <span className="text-[10px] opacity-75 font-normal hidden sm:inline">• Bar & Cooking</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right Controls */}
+            <div className="flex items-center gap-3">
+              <button
+                className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium ${
+                  isDarkMode
+                    ? "border-[#252836] bg-[#161821] text-slate-300"
+                    : "border-slate-200 bg-slate-50 text-slate-700"
+                }`}
+              >
+                <span className="text-slate-400">文A</span>
+                <span>EN</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </button>
+
+              <div className="relative">
+                <button
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                    isDarkMode
+                      ? "text-slate-300 hover:text-white hover:bg-[#1a1c24]"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  }`}
+                >
+                  <Bell className="w-4 h-4" />
+                </button>
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#8b5cf6] text-white text-[10px] font-bold flex items-center justify-center">
+                  4
+                </span>
+              </div>
+
+              {/* Night Mode Toggle Button (Interactive Moon / Sun) */}
+              <button
+                onClick={toggleTheme}
+                aria-label={isDarkMode ? "Switch to Day Mode" : "Switch to Night Mode"}
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer border ${
+                  isDarkMode
+                    ? "text-amber-400 hover:text-amber-300 hover:bg-[#1a1c24] border-[#252836] bg-[#161821]"
+                    : "text-slate-700 hover:text-slate-900 hover:bg-slate-200 border-slate-200 bg-white"
+                }`}
+                title={isDarkMode ? "Switch to Day/Light Mode" : "Switch to Night/Dark Mode"}
+              >
+                {isDarkMode ? (
+                  <Sun className="w-4 h-4 text-amber-400 animate-in fade-in zoom-in-75 duration-200" />
+                ) : (
+                  <Moon className="w-4 h-4 text-slate-700 animate-in fade-in zoom-in-75 duration-200" />
+                )}
+              </button>
+
+              {/* Profile Avatar & Interactive Sign Out Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className={`flex items-center gap-2 pl-2 border-l cursor-pointer transition ${
+                    isDarkMode ? "border-[#20232e]" : "border-slate-200"
+                  }`}
+                >
+                  <div
+                    className={`w-7 h-7 rounded-full text-white font-bold text-xs flex items-center justify-center shadow-xs ${
+                      userType === "super-admin"
+                        ? "bg-red-600"
+                        : userType === "pos-staff"
+                        ? posRole === "orders"
+                          ? "bg-blue-600"
+                          : posRole === "reception"
+                          ? "bg-emerald-600"
+                          : "bg-amber-600"
+                        : "bg-[#8b5cf6]"
+                    }`}
+                  >
+                    {userType === "super-admin"
+                      ? "SA"
+                      : userType === "pos-staff"
+                      ? posRole === "orders"
+                        ? "ORD"
+                        : posRole === "reception"
+                        ? "REC"
+                        : "KIT"
+                      : "RA"}
+                  </div>
+                  <div className="text-left hidden lg:block">
+                    <div
+                      className={`text-xs font-semibold leading-none ${
+                        isDarkMode ? "text-slate-200" : "text-slate-800"
+                      }`}
+                    >
+                      {userType === "super-admin"
+                        ? "Super Admin"
+                        : userType === "pos-staff"
+                        ? posRole === "orders"
+                          ? "Orders Cashier"
+                          : posRole === "reception"
+                          ? "Reception Host"
+                          : "Kitchen Chef"
+                        : "Restaurant Admin"}
+                    </div>
+                    <div className="text-[10px] text-slate-400 capitalize">
+                      {userType === "super-admin"
+                        ? "Platform Owner"
+                        : userType === "pos-staff"
+                        ? `${posRole} Station`
+                        : "Downtown Outlet"}
+                    </div>
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden lg:block" />
+                </button>
+
+                {/* Profile Popup Menu */}
+                {showProfileMenu && (
+                  <div
+                    className={`absolute right-0 mt-2 w-56 rounded-2xl shadow-2xl p-2 z-50 border text-xs animate-in fade-in zoom-in-95 duration-150 ${
+                      isDarkMode
+                        ? "bg-[#181a26] border-[#2b2e40] text-slate-200"
+                        : "bg-white border-slate-200 text-slate-800 shadow-xl"
+                    }`}
+                  >
+                    <div className="p-2 border-b border-inherit space-y-0.5">
+                      <p className="font-bold text-xs text-white">
+                        {userType === "super-admin"
+                          ? "Super Admin Account"
+                          : userType === "pos-staff"
+                          ? `POS ${posRole.toUpperCase()} Terminal`
+                          : "Restaurant Manager"}
+                      </p>
+                      <p className="text-[11px] text-slate-400 truncate">Nodedr Bistro • Main Outlet</p>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-semibold transition text-left cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out of Session</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </header>
+
+          {/* Main Module Content */}
+          <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+            {activeTab === "tables" ? (
+              /* --- TABLES VIEW --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h1
+                      className={`text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Tables
+                    </h1>
+                    <p
+                      className={`text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Live floor status — tap a table to update it
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => alert("Edit Floor Plan")}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition ${
+                      isDarkMode
+                        ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-slate-300"
+                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs"
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5" />
+                    Edit floor plan
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                  {/* Left: Floor Map Container */}
+                  <div className="lg:col-span-2 space-y-4">
+                    <div
+                      className={`rounded-2xl p-6 sm:p-8 min-h-[420px] relative border ${
+                        isDarkMode
+                          ? "bg-[#14161f] border-[#202330]"
+                          : "bg-white border-slate-200 shadow-xs"
+                      }`}
+                    >
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+                        {tables.map((table) => {
+                          const isAvailable = table.status === "available"
+                          const isOccupied = table.status === "occupied"
+                          const isReserved = table.status === "reserved"
+                          const isSelected = selectedTableId === table.id
+
+                          return (
+                            <div key={table.id} className="relative">
+                              <button
+                                onClick={() =>
+                                  setSelectedTableId(isSelected ? null : table.id)
+                                }
+                                className={`w-full h-24 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all relative border ${
+                                  isAvailable
+                                    ? isDarkMode
+                                      ? "bg-[#0b2920] border-[#10b981]/50 text-emerald-300 hover:border-emerald-400 shadow-lg shadow-emerald-950/20"
+                                      : "bg-emerald-50 border-emerald-300 text-emerald-800 hover:border-emerald-400 shadow-xs"
+                                    : isOccupied
+                                    ? isDarkMode
+                                      ? "bg-[#142340] border-[#3b82f6]/50 text-blue-300 hover:border-blue-400 shadow-lg shadow-blue-950/20"
+                                      : "bg-blue-50 border-blue-300 text-blue-800 hover:border-blue-400 shadow-xs"
+                                    : isReserved
+                                    ? isDarkMode
+                                      ? "bg-[#332014] border-[#f59e0b]/50 text-amber-300 hover:border-amber-400 shadow-lg shadow-amber-950/20"
+                                      : "bg-amber-50 border-amber-300 text-amber-800 hover:border-amber-400 shadow-xs"
+                                    : isDarkMode
+                                    ? "bg-[#20222b] border-[#4b5563]/50 text-slate-400"
+                                    : "bg-slate-100 border-slate-300 text-slate-600"
+                                } ${isSelected ? "ring-2 ring-purple-500 scale-102" : ""}`}
+                              >
+                                <div className="w-6 h-6 flex items-center justify-center relative">
+                                  <div className="absolute -top-0.5 w-2 h-0.5 bg-current rounded-xs opacity-70" />
+                                  <div className="absolute -bottom-0.5 w-2 h-0.5 bg-current rounded-xs opacity-70" />
+                                  <div className="absolute -left-0.5 h-2 w-0.5 bg-current rounded-xs opacity-70" />
+                                  <div className="absolute -right-0.5 h-2 w-0.5 bg-current rounded-xs opacity-70" />
+                                  <div className="w-3.5 h-3.5 border-1.5 border-current rounded-xs bg-current/15 flex items-center justify-center">
+                                    <div className="w-1 h-1 bg-current rounded-full" />
+                                  </div>
+                                </div>
+                                <span
+                                  className={`font-semibold text-xs ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {table.name}
+                                </span>
+                                <div className="flex items-center gap-1 text-[11px] opacity-80">
+                                  <Users className="w-3 h-3" />
+                                  <span>{table.seats}</span>
+                                </div>
+                              </button>
+
+                              {/* Dropdown Menu when Table 1 / Selected Table is tapped */}
+                              {isSelected && (
+                                <div
+                                  className={`absolute top-full left-0 mt-2 w-48 rounded-xl shadow-2xl py-1.5 z-40 text-xs border ${
+                                    isDarkMode
+                                      ? "bg-[#181a24] border-[#2b2f40]"
+                                      : "bg-white border-slate-200 text-slate-800 shadow-lg"
+                                  }`}
+                                >
+                                  <div
+                                    className={`px-3 py-1.5 font-medium border-b text-[11px] ${
+                                      isDarkMode
+                                        ? "text-slate-400 border-[#242735]"
+                                        : "text-slate-500 border-slate-100"
+                                    }`}
+                                  >
+                                    {table.status.replace("_", " ")} · {table.seats} guests
+                                  </div>
+
+                                  <div className="py-1">
+                                    <button
+                                      onClick={() => setTableStatus("available")}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition ${
+                                        isDarkMode
+                                          ? "text-slate-200 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <span>Available</span>
+                                      {table.status === "available" && (
+                                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => setTableStatus("occupied")}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition ${
+                                        isDarkMode
+                                          ? "text-slate-200 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <span>Occupied</span>
+                                      {table.status === "occupied" && (
+                                        <Check className="w-3.5 h-3.5 text-blue-500" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => setTableStatus("reserved")}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition ${
+                                        isDarkMode
+                                          ? "text-slate-200 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <span>Reserved</span>
+                                      {table.status === "reserved" && (
+                                        <Check className="w-3.5 h-3.5 text-amber-500" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => setTableStatus("cleaning")}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition ${
+                                        isDarkMode
+                                          ? "text-slate-200 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <span>Cleaning</span>
+                                      {table.status === "cleaning" && (
+                                        <Check className="w-3.5 h-3.5 text-slate-500" />
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => setTableStatus("out_of_service")}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center justify-between transition ${
+                                        isDarkMode
+                                          ? "text-slate-200 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <span>Out of service</span>
+                                      {table.status === "out_of_service" && (
+                                        <Check className="w-3.5 h-3.5 text-slate-500" />
+                                      )}
+                                    </button>
+                                  </div>
+
+                                  <div
+                                    className={`border-t pt-1 ${
+                                      isDarkMode ? "border-[#242735]" : "border-slate-100"
+                                    }`}
+                                  >
+                                    <button
+                                      onClick={() => {
+                                        setShowQrModal(table)
+                                        setSelectedTableId(null)
+                                      }}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center gap-2 ${
+                                        isDarkMode
+                                          ? "text-slate-300 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <QrCode className="w-3.5 h-3.5 text-purple-600" />
+                                      <span>View QR code</span>
+                                    </button>
+                                    <button
+                                      onClick={() => setActiveTab("pos")}
+                                      className={`w-full text-left px-3 py-1.5 flex items-center gap-2 ${
+                                        isDarkMode
+                                          ? "text-slate-300 hover:bg-[#222533]"
+                                          : "text-slate-700 hover:bg-slate-50"
+                                      }`}
+                                    >
+                                      <Plus className="w-3.5 h-3.5 text-emerald-500" />
+                                      <span>+ New order</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Table Legend */}
+                    <div
+                      className={`flex flex-wrap items-center gap-6 text-xs px-2 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-600"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+                        <span>Available</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6]" />
+                        <span>Occupied</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#f59e0b]" />
+                        <span>Reserved</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#6b7280]" />
+                        <span>Cleaning / out of service</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Waitlist & Guest ordering codes */}
+                  <div className="space-y-6">
+                    {/* Waitlist Card */}
+                    <div
+                      className={`rounded-2xl p-5 space-y-3 border ${
+                        isDarkMode
+                          ? "bg-[#14161f] border-[#202330]"
+                          : "bg-white border-slate-200 shadow-xs"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <h3
+                          className={`font-bold text-sm ${
+                            isDarkMode ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          Waitlist
+                        </h3>
+                        <button
+                          onClick={() => setShowWaitlistModal(true)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
+                            isDarkMode
+                              ? "border-[#292c3a] bg-[#1a1c26] hover:bg-[#222534] text-slate-200"
+                              : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          Add to waitlist
+                        </button>
+                      </div>
+
+                      {waitlist.length === 0 ? (
+                        <p
+                          className={`text-xs py-3 ${
+                            isDarkMode ? "text-slate-500" : "text-slate-400"
+                          }`}
+                        >
+                          No one waiting.
+                        </p>
+                      ) : (
+                        <div className="space-y-2 pt-1">
+                          {waitlist.map((w, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                                isDarkMode
+                                  ? "bg-[#1b1d28] border-[#262938]"
+                                  : "bg-slate-50 border-slate-200"
+                              }`}
+                            >
+                              <div>
+                                <span
+                                  className={`font-semibold ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {w.name}
+                                </span>
+                                <div
+                                  className={`text-[11px] ${
+                                    isDarkMode ? "text-slate-400" : "text-slate-500"
+                                  }`}
+                                >
+                                  {w.guests} guests • {w.time}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  setWaitlist((prev) => prev.filter((_, i) => i !== idx))
+                                }
+                                className="text-slate-400 hover:text-red-500 text-xs p-1"
+                              >
+                                Seat
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Guest Ordering Codes Card */}
+                    <div
+                      className={`rounded-2xl p-5 space-y-4 border ${
+                        isDarkMode
+                          ? "bg-[#14161f] border-[#202330]"
+                          : "bg-white border-slate-200 shadow-xs"
+                      }`}
+                    >
+                      <h3
+                        className={`font-bold text-sm ${
+                          isDarkMode ? "text-white" : "text-slate-900"
+                        }`}
+                      >
+                        Guest ordering codes
+                      </h3>
+                      <p
+                        className={`text-xs leading-relaxed ${
+                          isDarkMode ? "text-slate-400" : "text-slate-600"
+                        }`}
+                      >
+                        Guests can look at the menu from the table QR or NFC card, but they can only order after you open the table and give them its code. Paying the bill closes it.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
+                        {[
+                          { id: 4, name: "Table 4" },
+                          { id: 5, name: "Table 5" },
+                          { id: 6, name: "Table 6" },
+                          { id: 7, name: "Table 7" },
+                          { id: 8, name: "Table 8" },
+                          { id: 1, name: "Table 1" },
+                          { id: 2, name: "Table 2" },
+                          { id: 3, name: "Table 3" },
+                        ].map((t) => {
+                          const tableObj = tables.find((item) => item.id === t.id)
+                          const isOpen = tableObj?.isOpen || false
+                          const code = tableObj?.orderCode
+
+                          return (
+                            <div
+                              key={t.id}
+                              className={`rounded-xl p-2.5 flex items-center justify-between gap-1.5 border ${
+                                isDarkMode
+                                  ? "bg-[#181a26] border-[#242738]"
+                                  : "bg-slate-50 border-slate-200"
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <div
+                                  className={`font-semibold text-xs truncate ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {t.name}
+                                </div>
+                                <span
+                                  className={`text-[10px] ${
+                                    isDarkMode ? "text-slate-500" : "text-slate-400"
+                                  }`}
+                                >
+                                  {isOpen ? code : "Closed"}
+                                </span>
+                              </div>
+
+                              <button
+                                onClick={() => toggleTableCode(t.id)}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${
+                                  isOpen
+                                    ? isDarkMode
+                                      ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                    : "bg-[#9333ea] hover:bg-[#8b5cf6] text-white shadow-xs"
+                                }`}
+                              >
+                                {isOpen ? "Close" : "Open"}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "pos" ? (
+              /* --- POINT OF SALE TERMINAL --- */
+              <div className="space-y-4 max-w-[1440px] mx-auto">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1
+                      className={`text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Point of Sale
+                    </h1>
+                    <p
+                      className={`text-sm mt-0.5 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Counter Terminal #01 — Downtown Main Outlet
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-xl border ${
+                      isDarkMode
+                        ? "text-emerald-400 bg-emerald-950/60 border-emerald-800"
+                        : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Register Active
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                  {/* Menu Catalog */}
+                  <div
+                    className={`lg:col-span-2 space-y-4 rounded-2xl p-5 border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          placeholder="Search items, beverages..."
+                          value={posSearch}
+                          onChange={(e) => setPosSearch(e.target.value)}
+                          className={`w-full rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-purple-500 border ${
+                            isDarkMode
+                              ? "bg-[#1b1d28] border-[#262938] text-white"
+                              : "bg-slate-50 border-slate-200 text-slate-900"
+                          }`}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                        {[
+                          { id: "all", label: "All Items" },
+                          { id: "mains", label: "Mains & Pizza" },
+                          { id: "sides", label: "Sides" },
+                          { id: "drinks", label: "Drinks" },
+                          { id: "desserts", label: "Desserts" },
+                        ].map((cat) => (
+                          <button
+                            key={cat.id}
+                            onClick={() => setPosCategory(cat.id)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
+                              posCategory === cat.id
+                                ? "bg-[#8b5cf6] text-white"
+                                : isDarkMode
+                                ? "bg-[#1b1d28] text-slate-400 hover:text-white"
+                                : "bg-slate-100 text-slate-600 hover:text-slate-900"
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-2">
+                      {menuCatalog
+                        .filter(
+                          (item) =>
+                            (posCategory === "all" || item.category === posCategory) &&
+                            item.name.toLowerCase().includes(posSearch.toLowerCase())
+                        )
+                        .map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => addToCart(item)}
+                            className={`p-3.5 rounded-xl transition-all text-left flex flex-col justify-between group h-32 border ${
+                              isDarkMode
+                                ? "bg-[#1a1c26] border-[#262938] hover:border-purple-500 hover:shadow-lg"
+                                : "bg-slate-50 border-slate-200 hover:border-purple-500 hover:shadow-md"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <span className="text-2xl">{item.icon}</span>
+                                {item.tag && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 font-bold border border-purple-300 dark:border-purple-800">
+                                    {item.tag}
+                                  </span>
+                                )}
+                              </div>
+                              <h4
+                                className={`font-semibold text-xs mt-2 truncate ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {item.name}
+                              </h4>
+                            </div>
+                            <div
+                              className={`flex justify-between items-center pt-2 border-t ${
+                                isDarkMode ? "border-[#232635]" : "border-slate-200"
+                              }`}
+                            >
+                              <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                                ${item.price.toFixed(2)}
+                              </span>
+                              <span className="w-5 h-5 rounded-md bg-purple-600 text-white flex items-center justify-center text-xs">
+                                +
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+
+                  {/* Right: Live Cart Bill */}
+                  <div
+                    className={`rounded-2xl p-5 space-y-4 border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center justify-between pb-2 border-b ${
+                        isDarkMode ? "border-[#212432]" : "border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Receipt className="w-4 h-4 text-purple-600" />
+                        <h3
+                          className={`font-bold text-sm ${
+                            isDarkMode ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          Live Ticket #1047
+                        </h3>
+                      </div>
+                      <button
+                        onClick={() => setCart([])}
+                        className="text-xs text-red-500 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <div
+                      className={`grid grid-cols-3 gap-1 p-1 rounded-xl text-xs font-semibold ${
+                        isDarkMode ? "bg-[#1b1d28]" : "bg-slate-100"
+                      }`}
+                    >
+                      {(["dine-in", "takeaway", "delivery"] as const).map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => setPosOrderType(type)}
+                          className={`py-1 rounded-lg capitalize transition ${
+                            posOrderType === type
+                              ? "bg-[#8b5cf6] text-white"
+                              : "text-slate-500 hover:text-slate-900"
+                          }`}
+                        >
+                          {type.replace("-", " ")}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {cart.length === 0 ? (
+                        <p
+                          className={`text-xs text-center py-6 ${
+                            isDarkMode ? "text-slate-500" : "text-slate-400"
+                          }`}
+                        >
+                          Ticket is empty.
+                        </p>
+                      ) : (
+                        cart.map((i) => (
+                          <div
+                            key={i.id}
+                            className={`p-2 rounded-xl flex items-center justify-between text-xs border ${
+                              isDarkMode
+                                ? "bg-[#1a1c26] border-[#242735]"
+                                : "bg-slate-50 border-slate-200"
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div
+                                className={`font-semibold truncate ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {i.name}
+                              </div>
+                              <span className="text-purple-600 dark:text-purple-400 font-bold">
+                                ${(i.price * i.quantity).toFixed(2)}
+                              </span>
+                            </div>
+
+                            <div
+                              className={`flex items-center gap-1.5 p-1 rounded-lg shrink-0 ${
+                                isDarkMode ? "bg-[#222533]" : "bg-white border border-slate-200"
+                              }`}
+                            >
+                              <button
+                                onClick={() => updateCartQty(i.id, -1)}
+                                className={`w-5 h-5 rounded flex items-center justify-center ${
+                                  isDarkMode
+                                    ? "bg-[#181a24] text-white hover:bg-slate-700"
+                                    : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                                }`}
+                              >
+                                -
+                              </button>
+                              <span
+                                className={`w-5 text-center font-bold text-xs ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {i.quantity}
+                              </span>
+                              <button
+                                onClick={() => updateCartQty(i.id, 1)}
+                                className={`w-5 h-5 rounded flex items-center justify-center ${
+                                  isDarkMode
+                                    ? "bg-[#181a24] text-white hover:bg-slate-700"
+                                    : "bg-slate-100 text-slate-800 hover:bg-slate-200"
+                                }`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <div
+                      className={`pt-3 border-t space-y-1.5 text-xs ${
+                        isDarkMode
+                          ? "border-[#212432] text-slate-400"
+                          : "border-slate-200 text-slate-600"
+                      }`}
+                    >
+                      <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span
+                          className={`font-medium ${
+                            isDarkMode ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          ${subtotal.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tax (8%)</span>
+                        <span
+                          className={`font-medium ${
+                            isDarkMode ? "text-white" : "text-slate-900"
+                          }`}
+                        >
+                          ${tax.toFixed(2)}
+                        </span>
+                      </div>
+                      <div
+                        className={`flex justify-between text-base font-extrabold pt-2 border-t ${
+                          isDarkMode
+                            ? "border-[#212432] text-white"
+                            : "border-slate-200 text-slate-900"
+                        }`}
+                      >
+                        <span>Total Due</span>
+                        <span className="text-purple-600 dark:text-[#a78bfa]">
+                          ${total.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {orderSentToast && (
+                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 dark:bg-emerald-950/80 dark:border-emerald-500/40 dark:text-emerald-300 text-xs flex items-center gap-2">
+                        <Check className="w-4 h-4 text-emerald-500" />
+                        Ticket dispatched to Kitchen Display!
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-1">
+                      <button
+                        onClick={() => {
+                          setOrderSentToast(true)
+                          setTimeout(() => setOrderSentToast(false), 2500)
+                        }}
+                        disabled={cart.length === 0}
+                        className={`py-2.5 rounded-xl text-xs font-semibold border transition disabled:opacity-50 ${
+                          isDarkMode
+                            ? "bg-[#202330] hover:bg-[#282c3c] text-slate-300 border-[#2d3142]"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                        }`}
+                      >
+                        Send to Kitchen
+                      </button>
+                      <button
+                        onClick={() => {
+                          setOrderSentToast(true)
+                          setTimeout(() => {
+                            setOrderSentToast(false)
+                            setCart([])
+                          }, 1500)
+                        }}
+                        disabled={cart.length === 0}
+                        className="py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
+                      >
+                        Checkout
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "orders" ? (
+              /* --- ORDERS VIEW --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1
+                      className={`text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Orders Feed
+                    </h1>
+                    <p
+                      className={`text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Live order progression across counter and tables
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  {["all", "dine-in", "takeaway", "delivery"].map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setOrdersFilter(f)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize transition ${
+                        ordersFilter === f
+                          ? "bg-[#8b5cf6] text-white"
+                          : isDarkMode
+                          ? "bg-[#161822] text-slate-400 hover:text-white border border-[#232635]"
+                          : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
+                      }`}
+                    >
+                      {f.replace("-", " ")}
+                    </button>
+                  ))}
+                </div>
+
+                <div
+                  className={`rounded-2xl overflow-hidden border ${
+                    isDarkMode
+                      ? "bg-[#14161f] border-[#202330]"
+                      : "bg-white border-slate-200 shadow-xs"
+                  }`}
+                >
+                  <table className="w-full text-left text-xs">
+                    <thead
+                      className={`border-b uppercase font-semibold text-[11px] ${
+                        isDarkMode
+                          ? "bg-[#181a24] border-[#222533] text-slate-400"
+                          : "bg-slate-50 border-slate-200 text-slate-500"
+                      }`}
+                    >
+                      <tr>
+                        <th className="py-3 px-4">Order #</th>
+                        <th className="py-3 px-4">Channel</th>
+                        <th className="py-3 px-4">Order Items</th>
+                        <th className="py-3 px-4 text-right">Total</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody
+                      className={`divide-y ${
+                        isDarkMode ? "divide-[#202330]" : "divide-slate-100"
+                      }`}
+                    >
+                      {ordersList
+                        .filter((o) => ordersFilter === "all" || o.channel === ordersFilter)
+                        .map((o) => (
+                          <tr
+                            key={o.id}
+                            className={`transition ${
+                              isDarkMode ? "hover:bg-[#1a1c26]" : "hover:bg-slate-50"
+                            }`}
+                          >
+                            <td
+                              className={`py-3.5 px-4 font-bold ${
+                                isDarkMode ? "text-white" : "text-slate-900"
+                              }`}
+                            >
+                              {o.id}
+                            </td>
+                            <td className="py-3.5 px-4">
+                              <span
+                                className={`font-semibold ${
+                                  isDarkMode ? "text-slate-300" : "text-slate-700"
+                                }`}
+                              >
+                                {o.type}
+                              </span>
+                              <div className="text-[10px] text-slate-400">{o.table}</div>
+                            </td>
+                            <td
+                              className={`py-3.5 px-4 ${
+                                isDarkMode ? "text-slate-300" : "text-slate-700"
+                              }`}
+                            >
+                              {o.items}
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
+                              {o.amount}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  o.status === "PAID"
+                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800"
+                                    : o.status === "READY"
+                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-300 dark:border-blue-800"
+                                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
+                                }`}
+                              >
+                                {o.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : activeTab === "tenants" ? (
+              /* --- SUPER ADMIN: TENANT RESTAURANTS --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1
+                      className={`text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Tenant Restaurants
+                    </h1>
+                    <p
+                      className={`text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Multi-tenant accounts, subscription statuses, and branch limits
+                    </p>
+                  </div>
+                  <button className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs">
+                    <Plus className="w-3.5 h-3.5" /> Provision Tenant
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Total Restaurants</span>
+                    <div
+                      className={`text-3xl font-bold mt-2 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      14
+                    </div>
+                    <span className="text-xs text-emerald-500 mt-1 block">12 Active, 2 Trial</span>
+                  </div>
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Connected Outlets</span>
+                    <div
+                      className={`text-3xl font-bold mt-2 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      29
+                    </div>
+                    <span className="text-xs text-slate-400 mt-1 block">Across 8 regions</span>
+                  </div>
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Platform MRR</span>
+                    <div className="text-3xl font-bold text-emerald-500 mt-2">$4,850</div>
+                    <span className="text-xs text-emerald-500 mt-1 block">+18.4% MoM</span>
+                  </div>
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">System Health</span>
+                    <div className="text-3xl font-bold text-emerald-500 mt-2">99.98%</div>
+                    <span className="text-xs text-emerald-500 mt-1 block">Operational</span>
+                  </div>
+                </div>
+
+                <div
+                  className={`rounded-2xl p-5 space-y-3 border ${
+                    isDarkMode
+                      ? "bg-[#14161f] border-[#202330]"
+                      : "bg-white border-slate-200 shadow-xs"
+                  }`}
+                >
+                  <h3
+                    className={`font-bold text-sm ${
+                      isDarkMode ? "text-white" : "text-slate-900"
+                    }`}
+                  >
+                    Active Tenants Directory
+                  </h3>
+                  <div className="space-y-2">
+                    {[
+                      { name: "Nodedr Bistro (Current Demo)", outlets: 1, plan: "Enterprise ($199/mo)", status: "Active" },
+                      { name: "Bella Italia Trattoria", outlets: 3, plan: "Pro ($99/mo)", status: "Active" },
+                      { name: "Tokyo Ramen Bar", outlets: 2, plan: "Enterprise ($199/mo)", status: "Active" },
+                      { name: "Downtown Smokehouse", outlets: 1, plan: "Starter ($49/mo)", status: "Active" },
+                      { name: "Green Leaf Organics", outlets: 1, plan: "Starter ($49/mo)", status: "Trial" },
+                    ].map((r, i) => (
+                      <div
+                        key={i}
+                        className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
+                          isDarkMode
+                            ? "bg-[#1a1c26] border-[#262938]"
+                            : "bg-slate-50 border-slate-200"
+                        }`}
+                      >
+                        <div>
+                          <span
+                            className={`font-semibold block ${
+                              isDarkMode ? "text-white" : "text-slate-900"
+                            }`}
+                          >
+                            {r.name}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {r.outlets} Outlets Connected
+                          </span>
+                        </div>
+                        <span className="text-purple-600 dark:text-purple-400 font-semibold">
+                          {r.plan}
+                        </span>
+                        <span className="text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800 font-bold">
+                          {r.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "reservations" ? (
+              /* --- RESERVATION & WAITLIST (Reception Role & Admin) --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h1
+                      className={`text-2xl lg:text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Reservation & Waitlist
+                    </h1>
+                    <p
+                      className={`text-xs sm:text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Guest reservations, walk-in queue, and front desk seating allocations
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowWaitlistModal(true)}
+                      className={`px-3 py-2 rounded-xl border text-xs font-semibold transition ${
+                        isDarkMode
+                          ? "border-[#252836] bg-[#161821] text-slate-200 hover:bg-[#202330]"
+                          : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      + Add Waitlist
+                    </button>
+                    <button
+                      onClick={() => setShowAddResModal(true)}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> New Reservation
+                    </button>
+                  </div>
+                </div>
+
+                {/* Key Front Desk Metrics */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-[11px] font-semibold uppercase text-slate-400">Today's Bookings</span>
+                    <div
+                      className={`text-2xl font-bold mt-1 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      18 Guests
+                    </div>
+                    <span className="text-xs text-emerald-500 mt-0.5 block">4 Parties Scheduled</span>
+                  </div>
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-[11px] font-semibold uppercase text-slate-400">Arrived / In Lobby</span>
+                    <div className="text-2xl font-bold text-amber-500 mt-1">1 Party</div>
+                    <span className="text-xs text-amber-400 mt-0.5 block">Sophia Martinez (Table 1)</span>
+                  </div>
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-[11px] font-semibold uppercase text-slate-400">Active Waitlist</span>
+                    <div
+                      className={`text-2xl font-bold mt-1 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      {waitlist.length} Parties
+                    </div>
+                    <span className="text-xs text-slate-400 mt-0.5 block">Est. wait ~15 min</span>
+                  </div>
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-[11px] font-semibold uppercase text-slate-400">Available Tables</span>
+                    <div className="text-2xl font-bold text-emerald-500 mt-1">6 / 12</div>
+                    <span className="text-xs text-emerald-400 mt-0.5 block">50% Occupancy</span>
+                  </div>
+                </div>
+
+                {/* Two Column Layout: Reservations List & Waitlist Sidebar */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Left Column: Scheduled Reservations */}
+                  <div
+                    className={`lg:col-span-2 rounded-2xl border overflow-hidden ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <div className="p-4 border-b border-inherit flex items-center justify-between">
+                      <h3
+                        className={`font-bold text-sm ${
+                          isDarkMode ? "text-white" : "text-slate-900"
+                        }`}
+                      >
+                        Scheduled Reservations
+                      </h3>
+                      <span className="text-xs text-slate-400">{reservations.length} Active</span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr
+                            className={`border-b ${
+                              isDarkMode
+                                ? "bg-[#1a1c26] border-[#262938] text-slate-400"
+                                : "bg-slate-50 border-slate-200 text-slate-600"
+                            }`}
+                          >
+                            <th className="py-3 px-4 font-semibold">Time</th>
+                            <th className="py-3 px-4 font-semibold">Guest</th>
+                            <th className="py-3 px-4 font-semibold">Party</th>
+                            <th className="py-3 px-4 font-semibold">Table</th>
+                            <th className="py-3 px-4 font-semibold">Status</th>
+                            <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-inherit">
+                          {reservations.map((r) => (
+                            <tr
+                              key={r.id}
+                              className={`transition ${
+                                isDarkMode ? "hover:bg-[#1a1c26]" : "hover:bg-slate-50"
+                              }`}
+                            >
+                              <td className="py-3.5 px-4 font-bold text-emerald-500">{r.time}</td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`font-semibold block ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {r.guestName}
+                                </span>
+                                <span className="text-[11px] text-slate-400">{r.phone}</span>
+                                {r.notes && (
+                                  <span className="text-[10px] text-purple-400 block italic">
+                                    "{r.notes}"
+                                  </span>
+                                )}
+                              </td>
+                              <td
+                                className={`py-3.5 px-4 font-medium ${
+                                  isDarkMode ? "text-slate-300" : "text-slate-700"
+                                }`}
+                              >
+                                {r.guests} guests
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">
+                                  {r.table}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    r.status === "Arrived"
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
+                                      : r.status === "Confirmed"
+                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800"
+                                      : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-300 dark:border-slate-700"
+                                  }`}
+                                >
+                                  {r.status}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <button
+                                  onClick={() => {
+                                    setReservations((prev) =>
+                                      prev.map((item) =>
+                                        item.id === r.id ? { ...item, status: "Arrived" } : item
+                                      )
+                                    )
+                                    setActiveTab("tables")
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs"
+                                >
+                                  Seat Now
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Walk-in Waitlist Queue */}
+                  <div
+                    className={`rounded-2xl border p-4 space-y-4 ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3
+                        className={`font-bold text-sm ${
+                          isDarkMode ? "text-white" : "text-slate-900"
+                        }`}
+                      >
+                        Walk-in Waitlist
+                      </h3>
+                      <button
+                        onClick={() => setShowWaitlistModal(true)}
+                        className="text-emerald-500 hover:underline text-xs font-semibold"
+                      >
+                        + Add Guest
+                      </button>
+                    </div>
+
+                    {waitlist.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-slate-400">
+                        No walk-in parties currently waiting.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {waitlist.map((w, idx) => (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl border flex items-center justify-between ${
+                              isDarkMode
+                                ? "bg-[#1a1c26] border-[#262938]"
+                                : "bg-slate-50 border-slate-200"
+                            }`}
+                          >
+                            <div>
+                              <div
+                                className={`font-semibold text-xs ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {w.name}
+                              </div>
+                              <div className="text-[11px] text-slate-400">
+                                {w.guests} guests · {w.time} ago
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setWaitlist((prev) => prev.filter((_, i) => i !== idx))
+                                setActiveTab("tables")
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold"
+                            >
+                              Assign Table
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Add Reservation Modal */}
+                {showAddResModal && (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                    <div
+                      className={`max-w-md w-full rounded-2xl p-6 border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 ${
+                        isDarkMode
+                          ? "bg-[#181a24] border-[#2c3042] text-white"
+                          : "bg-white border-slate-200 text-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between border-b pb-3 border-inherit">
+                        <h3 className="font-bold text-base">New Table Reservation</h3>
+                        <button
+                          onClick={() => setShowAddResModal(false)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700/50"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 text-xs">
+                        <div>
+                          <label className="font-semibold block mb-1">Guest Full Name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. John Doe"
+                            value={newResGuest}
+                            onChange={(e) => setNewResGuest(e.target.value)}
+                            className={`w-full p-2.5 rounded-xl border text-xs ${
+                              isDarkMode
+                                ? "bg-[#111217] border-[#2b2f40] text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-900"
+                            }`}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-semibold block mb-1">Contact Phone</label>
+                            <input
+                              type="tel"
+                              placeholder="+1 (555) 000-0000"
+                              value={newResPhone}
+                              onChange={(e) => setNewResPhone(e.target.value)}
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="font-semibold block mb-1">Party Size</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={20}
+                              value={newResSeats}
+                              onChange={(e) => setNewResSeats(Number(e.target.value))}
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-semibold block mb-1">Reservation Time</label>
+                            <input
+                              type="time"
+                              value={newResTime}
+                              onChange={(e) => setNewResTime(e.target.value)}
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="font-semibold block mb-1">Assigned Table</label>
+                            <select
+                              value={newResTable}
+                              onChange={(e) => setNewResTable(e.target.value)}
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            >
+                              <option value="Table 1">Table 1 (4 seats)</option>
+                              <option value="Table 2">Table 2 (4 seats)</option>
+                              <option value="Table 3">Table 3 (6 seats)</option>
+                              <option value="Table 4">Table 4 (4 seats)</option>
+                              <option value="Table 6">Table 6 (6 seats)</option>
+                              <option value="Table 7">Table 7 (4 seats)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-3 border-t border-inherit">
+                        <button
+                          onClick={() => setShowAddResModal(false)}
+                          className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (!newResGuest) return
+                            setReservations((prev) => [
+                              ...prev,
+                              {
+                                id: `RES-${Math.floor(100 + Math.random() * 900)}`,
+                                guestName: newResGuest,
+                                phone: newResPhone || "+1 (555) 987-6543",
+                                guests: newResSeats,
+                                time: `${newResTime} Today`,
+                                table: newResTable,
+                                status: "Confirmed",
+                                notes: "Booked via Reception"
+                              }
+                            ])
+                            setNewResGuest("")
+                            setShowAddResModal(false)
+                          }}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
+                        >
+                          Confirm Reservation
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : activeTab === "customers" ? (
+              /* --- CUSTOMER LOOKUP (Reception Role & Admin) --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h1
+                      className={`text-2xl lg:text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Customer Lookup
+                    </h1>
+                    <p
+                      className={`text-xs sm:text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Search guest directory, dining history, VIP tiers, and seating preferences
+                    </p>
+                  </div>
+                </div>
+
+                {/* Search Bar */}
+                <div className="relative max-w-lg">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Search by customer name, phone number, or email..."
+                    value={customersSearch}
+                    onChange={(e) => setCustomersSearch(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs border outline-hidden transition ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#252838] text-white placeholder-slate-500 focus:border-purple-500"
+                        : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500 shadow-xs"
+                    }`}
+                  />
+                </div>
+
+                {/* Directory Cards Table */}
+                <div
+                  className={`rounded-2xl border overflow-hidden ${
+                    isDarkMode
+                      ? "bg-[#14161f] border-[#202330]"
+                      : "bg-white border-slate-200 shadow-xs"
+                  }`}
+                >
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr
+                          className={`border-b ${
+                            isDarkMode
+                              ? "bg-[#1a1c26] border-[#262938] text-slate-400"
+                              : "bg-slate-50 border-slate-200 text-slate-600"
+                          }`}
+                        >
+                          <th className="py-3 px-4 font-semibold">Customer</th>
+                          <th className="py-3 px-4 font-semibold">Contact Info</th>
+                          <th className="py-3 px-4 font-semibold">Tier</th>
+                          <th className="py-3 px-4 font-semibold">Visits & Spend</th>
+                          <th className="py-3 px-4 font-semibold">Preference & Notes</th>
+                          <th className="py-3 px-4 font-semibold text-right">Quick Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-inherit">
+                        {customersList
+                          .filter(
+                            (c) =>
+                              c.name.toLowerCase().includes(customersSearch.toLowerCase()) ||
+                              c.phone.includes(customersSearch) ||
+                              c.email.toLowerCase().includes(customersSearch.toLowerCase())
+                          )
+                          .map((c) => (
+                            <tr
+                              key={c.id}
+                              className={`transition ${
+                                isDarkMode ? "hover:bg-[#1a1c26]" : "hover:bg-slate-50"
+                              }`}
+                            >
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`font-bold block ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {c.name}
+                                </span>
+                                <span className="text-[10px] text-slate-400">ID: {c.id}</span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div
+                                  className={`font-medium ${
+                                    isDarkMode ? "text-slate-300" : "text-slate-700"
+                                  }`}
+                                >
+                                  {c.phone}
+                                </div>
+                                <div className="text-[11px] text-slate-400">{c.email}</div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    c.loyalty.includes("Platinum")
+                                      ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
+                                      : c.loyalty.includes("Gold")
+                                      ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
+                                      : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-300 dark:border-blue-800"
+                                  }`}
+                                >
+                                  {c.loyalty}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span className="font-bold text-purple-600 dark:text-purple-400">
+                                  {c.totalSpend}
+                                </span>
+                                <div className="text-[10px] text-slate-400">
+                                  {c.visits} visits · Last: {c.lastVisit}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div
+                                  className={`font-semibold ${
+                                    isDarkMode ? "text-slate-300" : "text-slate-700"
+                                  }`}
+                                >
+                                  {c.prefTable}
+                                </div>
+                                <div className="text-[10px] text-red-400">{c.allergies}</div>
+                              </td>
+                              <td className="py-3.5 px-4 text-right">
+                                <button
+                                  onClick={() => {
+                                    setNewResGuest(c.name)
+                                    setNewResPhone(c.phone)
+                                    setShowAddResModal(true)
+                                  }}
+                                  className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-[11px] transition shadow-xs"
+                                >
+                                  Book Table
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "kds" ? (
+              /* --- KITCHEN/BAR QUEUE (Kitchen Role & Admin) --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h1
+                      className={`text-2xl lg:text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      Kitchen/Bar Queue
+                    </h1>
+                    <p
+                      className={`text-xs sm:text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Live prep tickets for kitchen cook stations and bar orders
+                    </p>
+                  </div>
+
+                  {/* Station Filters: All / Kitchen / Bar */}
+                  <div
+                    className={`flex items-center p-1 rounded-xl border ${
+                      isDarkMode
+                        ? "bg-[#161821] border-[#252838]"
+                        : "bg-slate-100 border-slate-200"
+                    }`}
+                  >
+                    <button
+                      onClick={() => setKdsStationFilter("all")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                        kdsStationFilter === "all"
+                          ? "bg-amber-600 text-white shadow-xs"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      All Stations ({kdsTickets.length})
+                    </button>
+                    <button
+                      onClick={() => setKdsStationFilter("kitchen")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                        kdsStationFilter === "kitchen"
+                          ? "bg-amber-600 text-white shadow-xs"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      🍳 Kitchen Cook
+                    </button>
+                    <button
+                      onClick={() => setKdsStationFilter("bar")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                        kdsStationFilter === "bar"
+                          ? "bg-amber-600 text-white shadow-xs"
+                          : "text-slate-400 hover:text-white"
+                      }`}
+                    >
+                      🍸 Bar Station
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Stage 1: New Queue */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span>New Queue</span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "new").length}
+                      </span>
+                    </div>
+
+                    {kdsTickets
+                      .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "new")
+                      .map((t) => (
+                        <div
+                          key={t.id}
+                          className={`p-4 rounded-2xl border space-y-3 ${
+                            isDarkMode
+                              ? "bg-[#14161f] border-blue-500/40"
+                              : "bg-white border-blue-200 shadow-xs"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`font-bold ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {t.table}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  t.station === "bar"
+                                    ? "bg-purple-500/20 text-purple-400"
+                                    : "bg-amber-500/20 text-amber-400"
+                                }`}
+                              >
+                                {t.station}
+                              </span>
+                            </div>
+                            <span className="text-blue-500 font-semibold">{t.time} ago</span>
+                          </div>
+                          <ul
+                            className={`text-xs space-y-1 list-disc pl-4 ${
+                              isDarkMode ? "text-slate-300" : "text-slate-700"
+                            }`}
+                          >
+                            {t.items.map((i, idx) => (
+                              <li key={idx}>{i}</li>
+                            ))}
+                          </ul>
+                          <button
+                            onClick={() => advanceKdsTicket(t.id)}
+                            className="w-full py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-xs"
+                          >
+                            Start Preparing
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Stage 2: In Cook Station */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                        <span>In Cook Station</span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "preparing").length}
+                      </span>
+                    </div>
+
+                    {kdsTickets
+                      .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "preparing")
+                      .map((t) => (
+                        <div
+                          key={t.id}
+                          className={`p-4 rounded-2xl border space-y-3 ${
+                            isDarkMode
+                              ? "bg-[#14161f] border-amber-500/40"
+                              : "bg-white border-amber-200 shadow-xs"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`font-bold ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {t.table}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  t.station === "bar"
+                                    ? "bg-purple-500/20 text-purple-400"
+                                    : "bg-amber-500/20 text-amber-400"
+                                }`}
+                              >
+                                {t.station}
+                              </span>
+                            </div>
+                            <span className="text-amber-500 font-semibold">{t.time} ago</span>
+                          </div>
+                          <ul
+                            className={`text-xs space-y-1 list-disc pl-4 ${
+                              isDarkMode ? "text-slate-300" : "text-slate-700"
+                            }`}
+                          >
+                            {t.items.map((i, idx) => (
+                              <li key={idx}>{i}</li>
+                            ))}
+                          </ul>
+                          <button
+                            onClick={() => advanceKdsTicket(t.id)}
+                            className="w-full py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-xs"
+                          >
+                            Mark Ready
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* Stage 3: Ready for Table */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span>Ready for Table</span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready").length}
+                      </span>
+                    </div>
+
+                    {kdsTickets
+                      .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready")
+                      .map((t) => (
+                        <div
+                          key={t.id}
+                          className={`p-4 rounded-2xl border space-y-3 ${
+                            isDarkMode
+                              ? "bg-[#14161f] border-emerald-500/40"
+                              : "bg-white border-emerald-200 shadow-xs"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center text-xs">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`font-bold ${
+                                  isDarkMode ? "text-white" : "text-slate-900"
+                                }`}
+                              >
+                                {t.table}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                  t.station === "bar"
+                                    ? "bg-purple-500/20 text-purple-400"
+                                    : "bg-amber-500/20 text-amber-400"
+                                }`}
+                              >
+                                {t.station}
+                              </span>
+                            </div>
+                            <span className="text-emerald-500 font-semibold">Ready!</span>
+                          </div>
+                          <ul
+                            className={`text-xs space-y-1 list-disc pl-4 ${
+                              isDarkMode ? "text-slate-300" : "text-slate-700"
+                            }`}
+                          >
+                            {t.items.map((i, idx) => (
+                              <li key={idx}>{i}</li>
+                            ))}
+                          </ul>
+                          <button
+                            onClick={() => advanceKdsTicket(t.id)}
+                            className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs"
+                          >
+                            Served / Clear
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            ) : activeTab === "dashboard" ? (
+              /* --- DASHBOARD VIEW --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div>
+                  <h1
+                    className={`text-3xl font-bold tracking-tight ${
+                      isDarkMode ? "text-white" : "text-slate-900"
+                    }`}
+                  >
+                    Dashboard Overview
+                  </h1>
+                  <p
+                    className={`text-sm mt-1 ${
+                      isDarkMode ? "text-slate-400" : "text-slate-500"
+                    }`}
+                  >
+                    Real-time revenue, orders & table metrics
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Today's Revenue</span>
+                    <div
+                      className={`text-3xl font-bold mt-2 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      $1,245.80
+                    </div>
+                    <span className="text-xs text-emerald-500 mt-1 block">+12% vs yesterday</span>
+                  </div>
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Total Orders</span>
+                    <div
+                      className={`text-3xl font-bold mt-2 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      48
+                    </div>
+                    <span
+                      className={`text-xs mt-1 block ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      32 Dine-in, 16 Takeaway
+                    </span>
+                  </div>
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Active Tables</span>
+                    <div
+                      className={`text-3xl font-bold mt-2 ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      6 / 12
+                    </div>
+                    <span className="text-xs text-purple-500 mt-1 block">50% Occupancy</span>
+                  </div>
+                  <div
+                    className={`p-5 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#14161f] border-[#202330]"
+                        : "bg-white border-slate-200 shadow-xs"
+                    }`}
+                  >
+                    <span className="text-xs font-semibold uppercase text-slate-400">Connected Outlets</span>
+                    <div className="text-3xl font-bold text-emerald-500 mt-2">1 Active</div>
+                    <span
+                      className={`text-xs mt-1 block ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Main Downtown Outlet
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* --- GENERIC RELEVANT MODULE --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1
+                      className={`text-3xl font-bold tracking-tight capitalize ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      {activeTab.replace("-", " ")}
+                    </h1>
+                    <p
+                      className={`text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
+                      Module active for {userType === "super-admin" ? "Super Admin" : "Nodedr Bistro"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() =>
+                      setActiveTab(userType === "pos-staff" ? "pos" : userType === "super-admin" ? "tenants" : "tables")
+                    }
+                    className="px-3.5 py-2 rounded-xl bg-[#8b5cf6] text-white font-medium text-xs hover:bg-[#7c3aed] transition"
+                  >
+                    Return to Home
+                  </button>
+                </div>
+
+                <div
+                  className={`rounded-2xl p-8 text-center space-y-3 border ${
+                    isDarkMode
+                      ? "bg-[#14161f] border-[#202330] text-slate-400"
+                      : "bg-white border-slate-200 text-slate-600 shadow-xs"
+                  }`}
+                >
+                  <p className="text-sm">
+                    Viewing{" "}
+                    <span
+                      className={`font-bold capitalize ${
+                        isDarkMode ? "text-white" : "text-slate-900"
+                      }`}
+                    >
+                      {activeTab.replace("-", " ")}
+                    </span>{" "}
+                    module.
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Accessible for {userType.replace("-", " ")} role.
+                  </p>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+
+      {/* QR Code Modal */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`rounded-2xl p-6 max-w-sm w-full space-y-4 text-center border ${
+              isDarkMode
+                ? "bg-[#161822] border-[#272b3a]"
+                : "bg-white border-slate-200 shadow-2xl"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h3
+                className={`font-bold text-base ${
+                  isDarkMode ? "text-white" : "text-slate-900"
+                }`}
+              >
+                {showQrModal.name} QR Ordering Code
+              </h3>
+              <button
+                onClick={() => setShowQrModal(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl inline-block shadow-md">
+              <svg
+                className="w-44 h-44 text-slate-900 mx-auto"
+                viewBox="0 0 100 100"
+                fill="currentColor"
+              >
+                <rect x="0" y="0" width="30" height="30" />
+                <rect x="5" y="5" width="20" height="20" fill="white" />
+                <rect x="10" y="10" width="10" height="10" />
+                <rect x="70" y="0" width="30" height="30" />
+                <rect x="75" y="5" width="20" height="20" fill="white" />
+                <rect x="80" y="10" width="10" height="10" />
+                <rect x="0" y="70" width="30" height="30" />
+                <rect x="5" y="75" width="20" height="20" fill="white" />
+                <rect x="10" y="80" width="10" height="10" />
+                <rect x="40" y="10" width="10" height="20" />
+                <rect x="40" y="40" width="20" height="20" />
+                <rect x="70" y="40" width="15" height="10" />
+                <rect x="70" y="70" width="10" height="20" />
+                <rect x="40" y="70" width="15" height="10" />
+              </svg>
+            </div>
+
+            <p
+              className={`text-xs ${
+                isDarkMode ? "text-slate-400" : "text-slate-500"
+              }`}
+            >
+              Scan with phone camera to view menu & place digital order for {showQrModal.name}.
+            </p>
+
+            <button
+              onClick={() => setShowQrModal(null)}
+              className="w-full py-2.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-xs font-semibold transition"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Waitlist Modal */}
+      {showWaitlistModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (!waitlistName.trim()) return
+              setWaitlist((prev) => [
+                ...prev,
+                { name: waitlistName, guests: waitlistGuests, time: "Just now" },
+              ])
+              setWaitlistName("")
+              setShowWaitlistModal(false)
+            }}
+            className={`rounded-2xl p-6 max-w-sm w-full space-y-4 border ${
+              isDarkMode
+                ? "bg-[#161822] border-[#272b3a]"
+                : "bg-white border-slate-200 shadow-2xl"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <h3
+                className={`font-bold text-base ${
+                  isDarkMode ? "text-white" : "text-slate-900"
+                }`}
+              >
+                Add to Waitlist
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowWaitlistModal(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                className={`text-xs font-medium ${
+                  isDarkMode ? "text-slate-300" : "text-slate-700"
+                }`}
+              >
+                Guest Name
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. John Doe"
+                value={waitlistName}
+                onChange={(e) => setWaitlistName(e.target.value)}
+                className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500 border ${
+                  isDarkMode
+                    ? "bg-[#1e202c] border-[#2b2f3e] text-white"
+                    : "bg-slate-50 border-slate-200 text-slate-900"
+                }`}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                className={`text-xs font-medium ${
+                  isDarkMode ? "text-slate-300" : "text-slate-700"
+                }`}
+              >
+                Party Size (Guests)
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWaitlistGuests(Math.max(1, waitlistGuests - 1))}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
+                    isDarkMode ? "bg-[#222533] text-white" : "bg-slate-100 text-slate-800"
+                  }`}
+                >
+                  -
+                </button>
+                <span
+                  className={`text-sm font-bold w-8 text-center ${
+                    isDarkMode ? "text-white" : "text-slate-900"
+                  }`}
+                >
+                  {waitlistGuests}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setWaitlistGuests(waitlistGuests + 1)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold ${
+                    isDarkMode ? "bg-[#222533] text-white" : "bg-slate-100 text-slate-800"
+                  }`}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-2.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-xs font-semibold transition shadow-xs"
+            >
+              Add Guest
+            </button>
+          </form>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default function RestaurantAdminHome() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#0e0f12]" />}>
+      <RestaurantAdminContent />
+    </Suspense>
+  )
+}

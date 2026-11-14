@@ -1,0 +1,20 @@
+{
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "commands": ["turbo build"]
+    },
+    "dev": {
+      "dependsOn": ["^dev"],
+      "commands": ["turbo dev"]
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "commands": ["turbo lint"]
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "commands": ["turbo test"]
+    }
+  }
+}

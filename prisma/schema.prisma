@@ -1,0 +1,438 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+  SUPER_ADMIN
+  RESTAURANT_OWNER
+  MANAGER
+  CASHIER
+  WAITER
+  KITCHEN_STAFF
+  REPORTING_ONLY
+}
+
+enum OrderStatus {
+  OPEN
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  PARTIAL
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  UPI
+  MANUAL
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+}
+
+enum KDSStatus {
+  NEW
+  PREPARING
+  READY
+  SERVED
+}
+
+enum StockMovementType {
+  PURCHASE
+  ADJUSTMENT
+  WASTE
+  SALE
+}
+
+// Models with implicit relations (Prisma infers from field names)
+
+// User model
+model User {
+  id           String   @id @default(uuid())
+  name         String?
+  email        String   @unique
+  password     String
+  role         UserRole @default(CASHIER)
+  isActive     Boolean  @default(true)
+  restaurantId String? // nullable for super-admin
+  outletId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  restaurant  Restaurant?  @relation(fields: [restaurantId], references: [id])
+  outlet      Outlet?      @relation(fields: [outletId], references: [id])
+  memberships Membership[]
+  auditLogs   AuditLog[]
+}
+
+// Restaurant model
+model Restaurant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  plan        String? // plan name: "starter", "pro", "enterprise"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users         User[]
+  outlets       Outlet[]
+  subscriptions Subscription[]
+}
+
+// Outlet model
+model Outlet {
+  id             String   @id @default(uuid())
+  restaurantId   String
+  name           String
+  slug           String
+  operatingHours Json?
+  serviceMode    Json? // dine_in, takeaway, delivery, catering
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tables     Table[]
+  orders     Order[]
+  staff      Staff[]
+  User       User[]
+  Restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+}
+
+// Membership model
+model Membership {
+  id           String    @id @default(uuid())
+  restaurantId String
+  userId       String
+  role         UserRole
+  outletId     String? // null = restaurant-level membership
+  status       String    @default("active") // active, suspended, expired
+  joinedAt     DateTime  @default(now())
+  leftAt       DateTime?
+  User         User      @relation(fields: [userId], references: [id])
+
+  @@unique([restaurantId, userId])
+}
+
+// Subscription model
+model Subscription {
+  id                 String    @id @default(uuid())
+  restaurantId       String
+  plan               Plan      @relation(fields: [planId], references: [id])
+  status             String // active, trial, past_due, suspended, cancelled, expired
+  billingCycle       String // monthly, yearly
+  trialEndsAt        DateTime?
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  payments   Payment[]
+  Restaurant Restaurant @relation(fields: [restaurantId], references: [id])
+  planId     String
+}
+
+// Plan model
+model Plan {
+  id                String         @id @default(uuid())
+  name              String
+  price             Float
+  billingCycle      String // monthly, yearly
+  trialDurationDays Int
+  featureLimits     Json // { maxTables, maxStaff, etc. }
+  isActive          Boolean        @default(true)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  Subscription      Subscription[]
+}
+
+// Category model
+model Category {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  displayOrder Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([restaurantId, name])
+}
+
+// MenuItem model
+model MenuItem {
+  id               String   @id @default(uuid())
+  categoryId       String
+  restaurantId     String
+  name             String
+  description      String?
+  price            Float
+  imageUrl         String?
+  isAvailable      Boolean  @default(true)
+  isModifiable     Boolean  @default(true)
+  modifiersAllowed Boolean  @default(false)
+  displayOrder     Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  modifiers  Modifier[]
+  orderItems OrderItem[]
+
+  @@unique([restaurantId, name])
+}
+
+// Modifier model
+model Modifier {
+  id              String     @id @default(uuid())
+  restaurantId    String
+  name            String
+  priceAdjustment Float // positive = add cost, negative = discount
+  isRequired      Boolean    @default(false)
+  displayOrder    Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  MenuItem        MenuItem?  @relation(fields: [menuItemId], references: [id])
+  menuItemId      String?
+  OrderItem       OrderItem? @relation(fields: [orderItemId], references: [id])
+  orderItemId     String?
+
+  @@unique([restaurantId, name])
+}
+
+// Payment model - added since it was referenced
+model Payment {
+  id              String        @id @default(uuid())
+  orderId         String
+  restaurantId    String
+  amount          Float
+  status          PaymentStatus @default(UNPAID)
+  paymentMethod   PaymentMethod @default(MANUAL)
+  transactionId   String?
+  gatewayResponse Json?
+  recordedAt      DateTime      @default(now())
+  recordedBy      String?
+  isRefunded      Boolean       @default(false)
+  refundedAt      DateTime?
+  refundedBy      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  Subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
+  subscriptionId  String?
+  Order           Order         @relation(fields: [orderId], references: [id])
+}
+
+// Order model
+model Order {
+  id             String        @id @default(uuid())
+  restaurantId   String
+  outletId       String? // nullable = takeaway/delivery
+  userId         String
+  status         OrderStatus   @default(OPEN)
+  orderType      OrderType     @default(DINE_IN)
+  tableId        String? // nullable = takeaway/delivery
+  totalAmount    Float
+  taxAmount      Float         @default(0)
+  discountAmount Float         @default(0)
+  paymentStatus  PaymentStatus @default(UNPAID)
+  paymentMethod  PaymentMethod @default(MANUAL)
+  source         String // pos, waiter, kds, qr
+  orderNumber    String // unique order number
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  orderItems OrderItem[]
+  payments   Payment[]
+  Outlet     Outlet?     @relation(fields: [outletId], references: [id])
+}
+
+// OrderItem model
+model OrderItem {
+  id                  String     @id @default(uuid())
+  orderId             String
+  menuItemId          String
+  quantity            Int        @default(1)
+  unitPrice           Float // price at time of order
+  specialInstructions String?
+  modifiers           Modifier[]
+  createdAt           DateTime   @default(now())
+  MenuItem            MenuItem   @relation(fields: [menuItemId], references: [id])
+  Order               Order      @relation(fields: [orderId], references: [id])
+  KDSTicket           KDSTicket? @relation(fields: [kDSTicketId], references: [id])
+  kDSTicketId         String?
+
+  @@unique([orderId, menuItemId])
+}
+
+// KitchenStation model
+model KitchenStation {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  type         String? // grill, salads, drinks, etc.
+  isActive     Boolean  @default(true)
+  displayOrder Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  kdsTickets KDSTicket[]
+}
+
+// KDSTicket model
+model KDSTicket {
+  id               String    @id @default(uuid())
+  kitchenStationId String
+  orderId          String
+  status           KDSStatus @default(NEW)
+  priority         String    @default("normal") // normal, high
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  orderItems     OrderItem[]
+  KitchenStation KitchenStation @relation(fields: [kitchenStationId], references: [id])
+
+  @@index([kitchenStationId, status])
+}
+
+// InventoryItem model
+model InventoryItem {
+  id           String   @id @default(uuid())
+  restaurantId String
+  name         String
+  unit         String // kg, pc, liter, etc.
+  currentStock Float    @default(0)
+  minimumStock Float    @default(5)
+  isTracked    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  recipes        Recipe[]
+  stockMovements StockMovement[]
+}
+
+// Recipe model
+model Recipe {
+  id              String        @id @default(uuid())
+  menuItemId      String
+  ingredient      InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  ingredientId    String
+  quantity        Float
+  unit            String
+  createdAt       DateTime      @default(now())
+  inventoryItemId String
+
+  @@unique([menuItemId, ingredientId])
+}
+
+// StockMovement model
+model StockMovement {
+  id              String            @id @default(uuid())
+  inventoryItemId String
+  type            StockMovementType
+  quantity        Float
+  referenceType   String // order, purchase_order
+  referenceId     String // order ID, purchase order ID
+  reason          String?
+  createdAt       DateTime          @default(now())
+  InventoryItem   InventoryItem     @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([inventoryItemId, createdAt])
+}
+
+// Supplier model
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  contact   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// PurchaseOrder model
+model PurchaseOrder {
+  id               String    @id @default(uuid())
+  restaurantId     String
+  supplierId       String
+  status           String    @default("pending") // pending, received, cancelled
+  totalAmount      Float
+  expectedDelivery DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  items PurchaseOrderItem[]
+}
+
+// PurchaseOrderItem model
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  inventoryItemId String
+  quantity        Float
+  unitCost        Float
+  createdAt       DateTime      @default(now())
+  PurchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+}
+
+// Table model
+model Table {
+  id        String   @id @default(uuid())
+  outletId  String
+  name      String
+  section   String? // floor section
+  capacity  Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Outlet    Outlet   @relation(fields: [outletId], references: [id])
+}
+
+// Staff model
+model Staff {
+  id           String   @id @default(uuid())
+  restaurantId String
+  outletId     String? // nullable = restaurant-level
+  userId       String?
+  role         UserRole
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  Outlet       Outlet?  @relation(fields: [outletId], references: [id])
+}
+
+// AuditLog model
+model AuditLog {
+  id           String   @id @default(uuid())
+  entityType   String // order, subscription, menu_item, etc.
+  entityId     String
+  action       String // create, update, delete, status_change
+  userId       String? // who performed the action
+  restaurantId String? // for tenant isolation
+  outletId     String?
+  changes      Json // before/after snapshot
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  User         User?    @relation(fields: [userId], references: [id])
+
+  @@index([restaurantId])
+  @@index([entityType])
+  @@index([createdAt])
+}

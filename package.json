@@ -1,0 +1,38 @@
+{
+  "name": "restro-pos",
+  "version": "1.0.0",
+  "description": "A multi-tenant Restaurant POS platform with three applications: 1. **Super Admin Portal** — platform owner manages all restaurant accounts, subscriptions, and platform-wide operations. 2. **Restaurant Admin Portal** — each restaurant manages its outlets, menu, tables, staff, inventory, settings, and reports. 3. **Restaurant POS Application** — staff operate the restaurant through role-based screens for counter, waiter, and kitchen workflows.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@prisma/client": "^7.10.1",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.119.0",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.31",
+    "autoprefixer": "^10.6.2",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.72.0",
+    "next": "^14.2.35",
+    "postcss": "^8.5.33",
+    "prisma": "^8.0.0-rc.33",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3"
+  }
+}
