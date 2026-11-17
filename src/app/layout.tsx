@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "OrderRestro — Multi-Tenant Restaurant POS & Management Platform",
-  description: "Modern Restaurant POS, Table Management, Orders, Kitchen Display, and Super Admin Platform",
+  title: "Restro POS — Enterprise Restaurant Management & POS Platform",
+  description: "Modern Restaurant POS, Table Management, Orders, Kitchen Display, and Platform Administration",
 }
 
 export const viewport: Viewport = {

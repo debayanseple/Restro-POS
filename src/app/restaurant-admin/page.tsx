@@ -838,8 +838,8 @@ function RestaurantAdminContent() {
                 }`}
               >
                 {userType === "super-admin"
-                  ? "OrderRestro Platform"
-                  : "Nodedr Bistro (Demo)"}
+                  ? "Restro Platform"
+                  : "Nodedr Bistro"}
               </span>
             )}
           </div>
@@ -990,7 +990,7 @@ function RestaurantAdminContent() {
                     : posRole === "reception"
                     ? "Nodedr Bistro · Reception & Floor"
                     : "Nodedr Bistro · Kitchen/Bar Queue"
-                  : "Nodedr Bistro (Demo)"}
+                  : "Nodedr Bistro"}
               </h2>
             </div>
 
@@ -2353,7 +2353,7 @@ function RestaurantAdminContent() {
                   </h3>
                   <div className="space-y-2">
                     {[
-                      { name: "Nodedr Bistro (Current Demo)", outlets: 1, plan: "Enterprise ($199/mo)", status: "Active" },
+                      { name: "Nodedr Bistro", outlets: 1, plan: "Enterprise ($199/mo)", status: "Active" },
                       { name: "Bella Italia Trattoria", outlets: 3, plan: "Pro ($99/mo)", status: "Active" },
                       { name: "Tokyo Ramen Bar", outlets: 2, plan: "Enterprise ($199/mo)", status: "Active" },
                       { name: "Downtown Smokehouse", outlets: 1, plan: "Starter ($49/mo)", status: "Active" },

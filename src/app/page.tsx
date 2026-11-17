@@ -13,7 +13,7 @@ export default function RootPage() {
 
   return (
     <div className="min-h-screen bg-[#0e0f12] flex items-center justify-center text-slate-400 text-xs">
-      Loading OrderRestro Portal...
+      Loading Restaurant Portal...
     </div>
   )
 }

@@ -2,15 +2,10 @@
 
 import { useState } from "react"
 import {
-  Utensils,
   ArrowRight,
   Lock,
   Mail,
-  ShieldCheck,
   ShoppingCart,
-  CalendarCheck,
-  ChefHat,
-  Database,
   CheckCircle2,
   AlertCircle,
   LogIn,
@@ -21,8 +16,8 @@ import {
 import { supabase, isSupabaseConfigured } from "@/lib/supabase"
 
 export default function PosLogin() {
-  const [email, setEmail] = useState("orders@pos.com")
-  const [password, setPassword] = useState("password123")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [mode, setMode] = useState<"signin" | "signup">("signin")
   const [roleSelection, setRoleSelection] = useState("pos-orders")
   const [error, setError] = useState<string | null>(null)
@@ -97,17 +92,16 @@ export default function PosLogin() {
           })
 
           if (data?.session) {
-            setSuccess("Supabase staff account created and signed in!")
+            setSuccess("Staff account created successfully!")
             const userRole = determineRole(email, roleSelection)
             const posRole = userRole.startsWith("pos-") ? userRole.replace("pos-", "") : null
             setCookiesAndRedirect(userRole, posRole)
             return
           } else if (!signUpErr) {
-            setSuccess("Account registered in Supabase! Please check your email to confirm.")
+            setSuccess("Staff account registered! Please check your email to verify if required.")
             setLoading(false)
             return
           }
-          console.warn("Supabase signup note (falling back to local):", signUpErr?.message)
         } else {
           const { data, error: signInErr } = await supabase.auth.signInWithPassword({
             email,
@@ -123,13 +117,9 @@ export default function PosLogin() {
             setCookiesAndRedirect(userRole, posRole)
             return
           }
-
-          // If Supabase credentials do not match or user is not yet migrated in Supabase,
-          // log note and fall through to the local auth fallback below
-          console.warn("Supabase sign in note (falling back to local):", signInErr?.message)
         }
       } catch (err: unknown) {
-        console.warn("Supabase connection note (falling back to local):", err)
+        // Fall through to local fallback
       }
     }
 
@@ -151,28 +141,6 @@ export default function PosLogin() {
       setError("Login failed. Please check connection.")
       setLoading(false)
     }
-  }
-
-  const quickLogin = (userEmail: string, roleParam: string, tabParam: string) => {
-    setEmail(userEmail)
-    setPassword("password123")
-    fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: userEmail, password: "password123", role: roleParam }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        document.cookie = "pos_role=; path=/; max-age=0"
-        document.cookie = `restaurant_id=${data.restaurantId}; path=/; max-age=86400`
-        document.cookie = `outlet_id=${data.outletId || ""}; path=/; max-age=86400`
-        document.cookie = `user_role=${data.role}; path=/; max-age=86400`
-        if (data.posRole) {
-          document.cookie = `pos_role=${data.posRole}; path=/; max-age=86400`
-        }
-        window.location.href = `/restaurant-admin?role=${roleParam}&tab=${tabParam}`
-      })
-      .catch(() => setError("Quick login failed"))
   }
 
   return (
@@ -198,31 +166,8 @@ export default function PosLogin() {
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-white">POS Terminal Login</h1>
             <p className="text-xs text-slate-400">
-              Sign in with your assigned staff profile or credentials
+              Sign in with your assigned staff credentials
             </p>
-          </div>
-
-          {/* Supabase Status Chip */}
-          <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-[#181a24] border border-[#252837] text-[11px]">
-            <div className="flex items-center gap-2 truncate">
-              <Database className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-              <span className="text-slate-300 truncate">
-                Supabase Auth: <span className="text-slate-400 font-mono text-[10px]">yumaxzevfkcctxwdbcni</span>
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-              {isConfigured ? (
-                <span className="flex items-center gap-1 text-emerald-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Live Auth
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-purple-400 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-purple-400" />
-                  Ready (Demo Mode)
-                </span>
-              )}
-            </div>
           </div>
 
           {/* Mode Switcher */}
@@ -284,7 +229,7 @@ export default function PosLogin() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="orders@pos.com"
+                  placeholder="e.g. staff@restaurant.com"
                   required
                   className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0e0f12] border border-[#242738] text-white text-xs focus:outline-hidden focus:border-purple-500 transition"
                 />
@@ -352,69 +297,6 @@ export default function PosLogin() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick 1-Click Role Logins */}
-          <div className="pt-4 border-t border-[#202330] space-y-2.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block text-center">
-              1-Click Staff Stations
-            </span>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => quickLogin("orders@pos.com", "pos-orders", "pos")}
-                className="p-2.5 rounded-xl bg-blue-950/30 hover:bg-blue-900/40 border border-blue-800/40 text-center transition hover:border-blue-500"
-              >
-                <ShoppingCart className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-                <div className="text-xs font-semibold text-blue-300">Orders</div>
-                <div className="text-[10px] text-slate-400">POS & Feed</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin("reception@pos.com", "pos-reception", "tables")}
-                className="p-2.5 rounded-xl bg-emerald-950/30 hover:bg-emerald-900/40 border border-emerald-800/40 text-center transition hover:border-emerald-500"
-              >
-                <CalendarCheck className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-                <div className="text-xs font-semibold text-emerald-300">Reception</div>
-                <div className="text-[10px] text-slate-400">Floor & Wait</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin("kitchen@pos.com", "pos-kitchen", "kds")}
-                className="p-2.5 rounded-xl bg-amber-950/30 hover:bg-amber-900/40 border border-amber-800/40 text-center transition hover:border-amber-500"
-              >
-                <ChefHat className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-                <div className="text-xs font-semibold text-amber-300">Kitchen</div>
-                <div className="text-[10px] text-slate-400">Bar & Cook</div>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => quickLogin("admin@restaurant.com", "restaurant-admin", "tables")}
-                className="p-2 rounded-xl bg-[#1a1c26] hover:bg-[#222534] border border-[#282c3c] text-left transition hover:border-purple-500/50"
-              >
-                <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  <Utensils className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Restaurant Admin</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => quickLogin("superadmin@platform.com", "super-admin", "tenants")}
-                className="p-2 rounded-xl bg-[#1a1c26] hover:bg-[#222534] border border-[#282c3c] text-left transition hover:border-red-500/50"
-              >
-                <div className="text-xs font-semibold text-white flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-red-400" />
-                  <span>Super Admin</span>
-                </div>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
