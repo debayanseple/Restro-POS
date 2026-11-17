@@ -96,36 +96,25 @@ export default function PosLogin() {
             },
           })
 
-          if (signUpErr) {
-            setError(signUpErr.message)
-            setLoading(false)
-            return
-          }
-
-          if (data.session) {
+          if (data?.session) {
             setSuccess("Supabase staff account created and signed in!")
             const userRole = determineRole(email, roleSelection)
             const posRole = userRole.startsWith("pos-") ? userRole.replace("pos-", "") : null
             setCookiesAndRedirect(userRole, posRole)
             return
-          } else {
+          } else if (!signUpErr) {
             setSuccess("Account registered in Supabase! Please check your email to confirm.")
             setLoading(false)
             return
           }
+          console.warn("Supabase signup note (falling back to local):", signUpErr?.message)
         } else {
           const { data, error: signInErr } = await supabase.auth.signInWithPassword({
             email,
             password,
           })
 
-          if (signInErr) {
-            setError(signInErr.message)
-            setLoading(false)
-            return
-          }
-
-          if (data.user) {
+          if (!signInErr && data.user) {
             const metaRole =
               (data.user.user_metadata?.role as string) ||
               (data.user.app_metadata?.role as string)
@@ -134,12 +123,13 @@ export default function PosLogin() {
             setCookiesAndRedirect(userRole, posRole)
             return
           }
+
+          // If Supabase credentials do not match or user is not yet migrated in Supabase,
+          // log note and fall through to the local auth fallback below
+          console.warn("Supabase sign in note (falling back to local):", signInErr?.message)
         }
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Supabase connection error"
-        setError(message)
-        setLoading(false)
-        return
+        console.warn("Supabase connection note (falling back to local):", err)
       }
     }
 
