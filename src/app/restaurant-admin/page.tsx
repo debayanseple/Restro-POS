@@ -380,8 +380,83 @@ function RestaurantAdminContent() {
   const total = subtotal + tax
 
   // --- ORDERS STATE ---
+  const initialSampleOrders: SupabaseOrder[] = [
+    {
+      id: "ord_demo_1046",
+      restaurant_id: "demo-restaurant-1",
+      outlet_id: "outlet-1",
+      user_id: "user-1",
+      status: "OPEN",
+      order_type: "dine-in",
+      table_id: "Table 04",
+      total_amount: 41.00,
+      tax_amount: 3.28,
+      discount_amount: 0,
+      payment_status: "UNPAID",
+      payment_method: "MANUAL",
+      source: "pos",
+      order_number: "ORD-1046",
+      notes: "Medium rare burgers",
+      created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+      updated_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+      order_items: [
+        { id: "it-1", order_id: "ord_demo_1046", menu_item_id: "m1", quantity: 2, unit_price: 16.50, special_instructions: null, MenuItem: { name: "Classic Wagyu Burger" } },
+        { id: "it-2", order_id: "ord_demo_1046", menu_item_id: "m4", quantity: 1, unit_price: 8.00, special_instructions: null, MenuItem: { name: "Crispy Truffle Fries" } },
+      ],
+      Payment: null,
+    },
+    {
+      id: "ord_demo_1045",
+      restaurant_id: "demo-restaurant-1",
+      outlet_id: "outlet-1",
+      user_id: "user-1",
+      status: "CLOSED",
+      order_type: "takeaway",
+      table_id: "Counter",
+      total_amount: 32.50,
+      tax_amount: 2.60,
+      discount_amount: 0,
+      payment_status: "PAID",
+      payment_method: "CARD",
+      source: "pos",
+      order_number: "ORD-1045",
+      notes: null,
+      created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+      updated_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+      order_items: [
+        { id: "it-3", order_id: "ord_demo_1045", menu_item_id: "m2", quantity: 1, unit_price: 18.00, special_instructions: null, MenuItem: { name: "Truffle Mushroom Pasta" } },
+        { id: "it-4", order_id: "ord_demo_1045", menu_item_id: "m3", quantity: 1, unit_price: 14.50, special_instructions: null, MenuItem: { name: "Margherita Artisan Pizza" } },
+      ],
+      Payment: null,
+    },
+    {
+      id: "ord_demo_1044",
+      restaurant_id: "demo-restaurant-1",
+      outlet_id: "outlet-1",
+      user_id: "user-1",
+      status: "READY",
+      order_type: "delivery",
+      table_id: "Online",
+      total_amount: 26.50,
+      tax_amount: 2.12,
+      discount_amount: 0,
+      payment_status: "PAID",
+      payment_method: "ONLINE",
+      source: "pos",
+      order_number: "ORD-1044",
+      notes: null,
+      created_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
+      updated_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
+      order_items: [
+        { id: "it-5", order_id: "ord_demo_1044", menu_item_id: "m6", quantity: 1, unit_price: 11.00, special_instructions: null, MenuItem: { name: "Grilled Chicken Wings" } },
+        { id: "it-6", order_id: "ord_demo_1044", menu_item_id: "m7", quantity: 2, unit_price: 7.50, special_instructions: null, MenuItem: { name: "Craft IPA Beer" } },
+      ],
+      Payment: null,
+    },
+  ]
+
   const [ordersFilter, setOrdersFilter] = useState("all")
-  const [orders, setOrders] = useState<SupabaseOrder[]>([])
+  const [orders, setOrders] = useState<SupabaseOrder[]>(initialSampleOrders)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
   const [outletId, setOutletId] = useState<string | null>(null)
@@ -410,12 +485,25 @@ function RestaurantAdminContent() {
     })
   }, [])
 
-  // Fetch orders from Supabase
+  // Fetch orders from API and Supabase
   useEffect(() => {
     fetchOrders()
   }, [])
 
   const fetchOrders = async () => {
+    try {
+      const res = await fetch("/api/orders")
+      if (res.ok) {
+        const data = await res.json()
+        if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
+          setOrders(data.orders as SupabaseOrder[])
+          return
+        }
+      }
+    } catch (err) {
+      console.warn("Could not fetch orders from API:", err)
+    }
+
     try {
       const { data, error } = await supabase
         .from("Order")
@@ -426,11 +514,11 @@ function RestaurantAdminContent() {
         `)
         .order("created_at", { ascending: false })
 
-      if (error) throw error
-
-      setOrders(data as SupabaseOrder[])
+      if (!error && data && data.length > 0) {
+        setOrders(data as SupabaseOrder[])
+      }
     } catch (error: any) {
-      console.error("Error fetching orders:", error.message)
+      console.warn("Direct Supabase fetch note:", error.message)
     }
   }
 
@@ -1808,53 +1896,111 @@ function RestaurantAdminContent() {
 
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (cart.length === 0) return
                           
                           // Get current table selection
-                          const tableId = selectedTableId ? String(selectedTableId) : null
+                          const tableId = selectedTableId ? `Table 0${selectedTableId}` : null
                           
-                          // Create order via API
-                          fetch("/api/orders", {
-                            method: "POST",
-                            headers: {
-                              "Content-Type": "application/json",
+                          const orderItems = cart.map((item: any) => ({
+                            menuItemId: item.id,
+                            name: item.name,
+                            quantity: item.quantity,
+                            unitPrice: item.price,
+                            price: item.price,
+                            specialInstructions: item.specialInstructions || "",
+                          }))
+
+                          const generatedOrderNum = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
+                          const optimisticOrder: SupabaseOrder = {
+                            id: `ord_${Date.now()}`,
+                            restaurant_id: restaurantId || "demo-restaurant-1",
+                            outlet_id: outletId,
+                            user_id: userId || "user-default",
+                            status: "OPEN",
+                            order_type: posOrderType,
+                            table_id: tableId || (posOrderType === "takeaway" ? "Takeaway" : posOrderType === "delivery" ? "Delivery" : "Counter"),
+                            total_amount: total,
+                            tax_amount: tax,
+                            discount_amount: 0,
+                            payment_status: "UNPAID",
+                            payment_method: "MANUAL",
+                            source: "pos",
+                            order_number: generatedOrderNum,
+                            notes: null,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            order_items: orderItems.map((it, idx) => ({
+                              id: `item_${Date.now()}_${idx}`,
+                              order_id: `ord_${Date.now()}`,
+                              menu_item_id: it.menuItemId,
+                              quantity: it.quantity,
+                              unit_price: it.unitPrice,
+                              special_instructions: null,
+                              MenuItem: { name: it.name },
+                            })),
+                            Payment: null,
+                          }
+
+                          // Update state immediately
+                          setOrders((prev) => [optimisticOrder, ...prev])
+                          setKdsTickets((prev) => [
+                            {
+                              id: `T-${generatedOrderNum.replace(/\D/g, "") || Math.floor(100 + Math.random() * 900)}`,
+                              table: optimisticOrder.table_id || "Counter",
+                              time: "Just now",
+                              station: "kitchen",
+                              items: cart.map((it) => `${it.quantity}x ${it.name}`),
+                              stage: "new",
                             },
-                            body: JSON.stringify({
-                              restaurant_id: restaurantId ? restaurantId : "restaurant-default",
-                              outlet_id: outletId ? outletId : null,
-                              user_id: userId ? userId : "user-default",
-                              orderType: posOrderType,
-                              tableId,
-                              items: cart.map((item: any) => ({
-                                menuItemId: item.id,
-                                quantity: item.quantity,
-                                unitPrice: item.price,
-                                specialInstructions: item.specialInstructions,
-                              })),
-                              totalAmount: total,
-                              taxAmount: tax,
-                              discountAmount: 0,
-                              paymentStatus: "UNPAID",
-                              paymentMethod: "MANUAL",
-                              source: "pos",
-                            }),
-                          })
-                            .then((res) => res.json())
-                            .then((data) => {
-                              if (data.success) {
-                                // Show toast and clear cart
-                                setOrderSentToast(true)
-                                setTimeout(() => setOrderSentToast(false), 2500)
-                                setCart([])
-                                
-                                // Navigate to orders tab to see new order
-                                setActiveTab("orders")
-                              }
+                            ...prev,
+                          ])
+
+                          setOrderSentToast(true)
+                          setTimeout(() => setOrderSentToast(false), 2500)
+                          setCart([])
+                          setActiveTab("orders")
+
+                          try {
+                            const res = await fetch("/api/orders", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                restaurant_id: restaurantId || "restaurant-default",
+                                restaurantId: restaurantId || "restaurant-default",
+                                outlet_id: outletId,
+                                outletId: outletId,
+                                user_id: userId || "user-default",
+                                userId: userId || "user-default",
+                                order_type: posOrderType,
+                                orderType: posOrderType,
+                                table_id: tableId,
+                                tableId: tableId,
+                                items: orderItems,
+                                total_amount: total,
+                                totalAmount: total,
+                                tax_amount: tax,
+                                taxAmount: tax,
+                                discount_amount: 0,
+                                discountAmount: 0,
+                                payment_status: "UNPAID",
+                                paymentStatus: "UNPAID",
+                                payment_method: "MANUAL",
+                                paymentMethod: "MANUAL",
+                                source: "pos",
+                                order_number: generatedOrderNum,
+                              }),
                             })
-                            .catch((err) => {
-                              console.error("Order creation error:", err)
-                            })
+                            const data = await res.json()
+                            if (data.success && data.order) {
+                              setOrders((prev) => [
+                                data.order,
+                                ...prev.filter((o) => o.id !== optimisticOrder.id && o.id !== data.order.id),
+                              ])
+                            }
+                          } catch (err) {
+                            console.error("Order creation API error:", err)
+                          }
                         }}
                         disabled={cart.length === 0}
                         className={`py-2.5 rounded-xl text-xs font-semibold border transition disabled:opacity-50 ${
@@ -1866,56 +2012,110 @@ function RestaurantAdminContent() {
                         Send to Kitchen
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (cart.length === 0) return
                           
-          // Get current table selection
-          const tableId = selectedTableId ? String(selectedTableId) : null
-          
-          // Create order via API
-          fetch("/api/orders", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              restaurantId: restaurantId || "restaurant-default",
-              outletId: outletId || null,
-              userId: userId || "user-default",
-              orderType: posOrderType,
-              tableId,
-              items: cart.map((item: any) => ({
-                menuItemId: item.id,
-                quantity: item.quantity,
-                unitPrice: item.price,
-                specialInstructions: item.specialInstructions,
-              })),
-              totalAmount: total,
-              taxAmount: tax,
-              discountAmount: 0,
-              paymentStatus: "PAID",
-              paymentMethod: "MANUAL",
-              source: "pos",
-            }),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              if (data.success) {
-                // Show toast and clear cart
-                setOrderSentToast(true)
-                setTimeout(() => {
-                  setOrderSentToast(false)
-                  setCart([])
-                }, 1500)
-                
-                // Navigate to orders tab to see new order
-                setActiveTab("orders")
-              }
-            })
-            .catch((err) => {
-              console.error("Order creation error:", err)
-            })
-        }}
+                          // Get current table selection
+                          const tableId = selectedTableId ? `Table 0${selectedTableId}` : null
+                          
+                          const orderItems = cart.map((item: any) => ({
+                            menuItemId: item.id,
+                            name: item.name,
+                            quantity: item.quantity,
+                            unitPrice: item.price,
+                            price: item.price,
+                            specialInstructions: item.specialInstructions || "",
+                          }))
+
+                          const generatedOrderNum = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
+                          const optimisticOrder: SupabaseOrder = {
+                            id: `ord_${Date.now()}`,
+                            restaurant_id: restaurantId || "demo-restaurant-1",
+                            outlet_id: outletId,
+                            user_id: userId || "user-default",
+                            status: "OPEN",
+                            order_type: posOrderType,
+                            table_id: tableId || (posOrderType === "takeaway" ? "Takeaway" : posOrderType === "delivery" ? "Delivery" : "Counter"),
+                            total_amount: total,
+                            tax_amount: tax,
+                            discount_amount: 0,
+                            payment_status: "PAID",
+                            payment_method: "MANUAL",
+                            source: "pos",
+                            order_number: generatedOrderNum,
+                            notes: null,
+                            created_at: new Date().toISOString(),
+                            updated_at: new Date().toISOString(),
+                            order_items: orderItems.map((it, idx) => ({
+                              id: `item_${Date.now()}_${idx}`,
+                              order_id: `ord_${Date.now()}`,
+                              menu_item_id: it.menuItemId,
+                              quantity: it.quantity,
+                              unit_price: it.unitPrice,
+                              special_instructions: null,
+                              MenuItem: { name: it.name },
+                            })),
+                            Payment: [
+                              {
+                                id: `pay_${Date.now()}`,
+                                order_id: `ord_${Date.now()}`,
+                                amount: total,
+                                status: "PAID",
+                                payment_method: "MANUAL",
+                                recorded_at: new Date().toISOString(),
+                              },
+                            ],
+                          }
+
+                          // Update state immediately
+                          setOrders((prev) => [optimisticOrder, ...prev])
+
+                          setOrderSentToast(true)
+                          setTimeout(() => setOrderSentToast(false), 2500)
+                          setCart([])
+                          setActiveTab("orders")
+
+                          try {
+                            const res = await fetch("/api/orders", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({
+                                restaurant_id: restaurantId || "restaurant-default",
+                                restaurantId: restaurantId || "restaurant-default",
+                                outlet_id: outletId,
+                                outletId: outletId,
+                                user_id: userId || "user-default",
+                                userId: userId || "user-default",
+                                order_type: posOrderType,
+                                orderType: posOrderType,
+                                table_id: tableId,
+                                tableId: tableId,
+                                items: orderItems,
+                                total_amount: total,
+                                totalAmount: total,
+                                tax_amount: tax,
+                                taxAmount: tax,
+                                discount_amount: 0,
+                                discountAmount: 0,
+                                payment_status: "PAID",
+                                paymentStatus: "PAID",
+                                payment_method: "MANUAL",
+                                paymentMethod: "MANUAL",
+                                source: "pos",
+                                order_number: generatedOrderNum,
+                              }),
+                            })
+                            const data = await res.json()
+                            if (data.success && data.order) {
+                              setOrders((prev) => [
+                                data.order,
+                                ...prev.filter((o) => o.id !== optimisticOrder.id && o.id !== data.order.id),
+                              ])
+                            }
+                          } catch (err) {
+                            console.error("Order creation API error:", err)
+                          }
+                        }}
                         disabled={cart.length === 0}
                         className="py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
                       >
@@ -1994,7 +2194,12 @@ function RestaurantAdminContent() {
                       }`}
                     >
                       {orders
-                        .filter((o) => ordersFilter === "all" || o.order_type === ordersFilter)
+                        .filter((o) => {
+                          if (ordersFilter === "all") return true
+                          const normType = (o.order_type || "").toLowerCase().replace(/[-_ ]/g, "")
+                          const normFilter = ordersFilter.toLowerCase().replace(/[-_ ]/g, "")
+                          return normType === normFilter
+                        })
                         .map((o) => (
                           <tr
                             key={o.id}
@@ -2011,23 +2216,23 @@ function RestaurantAdminContent() {
                             </td>
                             <td className="py-3.5 px-4">
                               <span
-                                className={`font-semibold ${
+                                className={`font-semibold capitalize ${
                                   isDarkMode ? "text-slate-300" : "text-slate-700"
                                 }`}
                               >
-                                {o.order_type}
+                                {o.order_type?.replace(/[-_]/g, " ")}
                               </span>
-                              <div className="text-[10px] text-slate-400">{o.table_id || "N/A"}</div>
+                              <div className="text-[10px] text-slate-400">{o.table_id || "Counter"}</div>
                             </td>
                             <td
                               className={`py-3.5 px-4 ${
                                 isDarkMode ? "text-slate-300" : "text-slate-700"
                               }`}
                             >
-                              {((o.order_items || []).filter((item) => item.MenuItem?.name).map((item) => `${item.quantity}x ${item.MenuItem.name}`).join(", ") || "No items")}
+                              {((o.order_items || []).map((item: any) => `${item.quantity}x ${item.MenuItem?.name || item.name || "Item"}`).join(", ") || "No items")}
                             </td>
                             <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
-                              ${o.total_amount.toFixed(2)}
+                              ${(typeof o.total_amount === "number" ? o.total_amount : Number(o.total_amount || 0)).toFixed(2)}
                             </td>
                             <td className="py-3.5 px-4 text-center">
                               <span
