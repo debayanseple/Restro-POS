@@ -46,6 +46,46 @@ import {
   LogOut,
 } from "lucide-react"
 
+// Types for Order data from Supabase
+interface SupabaseOrder {
+  id: string
+  restaurant_id: string
+  outlet_id: string | null
+  user_id: string
+  status: string
+  order_type: string
+  table_id: string | null
+  total_amount: number
+  tax_amount: number
+  discount_amount: number
+  payment_status: string
+  payment_method: string
+  source: string
+  order_number: string
+  notes: string | null
+  created_at: string
+  updated_at: string
+  order_items: Array<{
+    id: string
+    order_id: string
+    menu_item_id: string
+    quantity: number
+    unit_price: number
+    special_instructions: string | null
+    MenuItem: {
+      name: string
+    } | null
+  }>
+  Payment: Array<{
+    id: string
+    order_id: string
+    amount: number
+    status: string
+    payment_method: string
+    recorded_at: string
+  }> | null
+}
+
 // 3 Distinct User Types & 3 POS Staff Roles
 type UserType = "restaurant-admin" | "pos-staff" | "super-admin"
 type PosRole = "orders" | "reception" | "kitchen"
@@ -137,6 +177,14 @@ function RestaurantAdminContent() {
       )
       const posCookie = document.cookie.replace(
         /(?:(?:^|.*)\s*pos_role\s*=\s*([^;]*).*$)|^.*$/,
+        "$1"
+      )
+      const restaurantIdCookie = document.cookie.replace(
+        /(?:(?:^|.*)\s*restaurant_id\s*=\s*([^;]*).*$)|^.*$/,
+        "$1"
+      )
+      const outletIdCookie = document.cookie.replace(
+        /(?:(?:^|.*)\s*outlet_id\s*=\s*([^;]*).*$)|^.*$/,
         "$1"
       )
 
@@ -333,13 +381,83 @@ function RestaurantAdminContent() {
 
   // --- ORDERS STATE ---
   const [ordersFilter, setOrdersFilter] = useState("all")
-  const ordersList = [
-    { id: "#1046", type: "DINE IN", table: "Table 10", items: "2x Wagyu Burger, 1x IPA Beer", amount: "$38.00", status: "PREPARING", time: "3m ago", channel: "dine-in" },
-    { id: "#1045", type: "DINE IN", table: "Table 06", items: "1x Truffle Pasta, 1x Caesar Salad, 2x Pinot", amount: "$64.20", status: "READY", time: "12m ago", channel: "dine-in" },
-    { id: "#1044", type: "TAKEAWAY", table: "Counter", items: "3x Margherita Pizza, 2x Sparkling Water", amount: "$54.50", status: "PAID", time: "18m ago", channel: "takeaway" },
-    { id: "#1043", type: "DINE IN", table: "Table 03", items: "2x Ribeye Steak, 1x Grilled Salmon", amount: "$92.00", status: "SERVED", time: "35m ago", channel: "dine-in" },
-    { id: "#1042", type: "DELIVERY", table: "UberEats", items: "1x Crispy Chicken Bowl, 1x Mango Boba", amount: "$48.50", status: "PAID", time: "42m ago", channel: "delivery" },
-  ]
+  const [orders, setOrders] = useState<SupabaseOrder[]>([])
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [restaurantId, setRestaurantId] = useState("")
+  const [outletId, setOutletId] = useState<string | null>(null)
+  const [userId, setUserId] = useState("")
+
+  // Extract tenant context from cookies on mount
+  useEffect(() => {
+    // Parse restaurant_id from session cookie
+    const restaurantCookie = document.cookie.match(
+      /(?:(?:^|.)*restaurant_id=([^;])*)/
+    )?.[1]
+    
+    // Parse outlet_id from session cookie
+    const outletCookie = document.cookie.match(
+      /(?:(?:^|.)*outlet_id=([^;])*)/
+    )?.[1]
+    
+    setRestaurantId(restaurantCookie || "")
+    setOutletId(outletCookie ? outletCookie : null)
+    
+    // Get user ID from Supabase auth
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserId(user.id)
+      }
+    })
+  }, [])
+
+  // Fetch orders from Supabase
+  useEffect(() => {
+    fetchOrders()
+  }, [])
+
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("Order")
+        .select(`
+          *,
+          OrderItem(*),
+          Payment(*)
+        `)
+        .order("created_at", { ascending: false })
+
+      if (error) throw error
+
+      setOrders(data as SupabaseOrder[])
+    } catch (error: any) {
+      console.error("Error fetching orders:", error.message)
+    }
+  }
+
+  // Set up real-time subscription for new orders
+  useEffect(() => {
+    if (!isSubscribed) {
+      const channel = supabase
+        .channel("orders_changes")
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "Order" },
+          (payload) => {
+            // Add new order to the beginning of the list
+            setOrders((prev) => [payload.new as SupabaseOrder, ...prev])
+          }
+        )
+        .subscribe()
+
+      setIsSubscribed(true)
+
+      // Cleanup on unmount
+      return () => {
+        supabase.removeChannel(channel)
+        setIsSubscribed(false)
+      }
+    }
+  }, [isSubscribed])
 
   // --- KDS TICKETS STATE (Kitchen/Bar Queue) ---
   const [kdsTickets, setKdsTickets] = useState<
@@ -1691,8 +1809,52 @@ function RestaurantAdminContent() {
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         onClick={() => {
-                          setOrderSentToast(true)
-                          setTimeout(() => setOrderSentToast(false), 2500)
+                          if (cart.length === 0) return
+                          
+                          // Get current table selection
+                          const tableId = selectedTableId ? String(selectedTableId) : null
+                          
+                          // Create order via API
+                          fetch("/api/orders", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                              restaurant_id: restaurantId ? restaurantId : "restaurant-default",
+                              outlet_id: outletId ? outletId : null,
+                              user_id: userId ? userId : "user-default",
+                              orderType: posOrderType,
+                              tableId,
+                              items: cart.map((item: any) => ({
+                                menuItemId: item.id,
+                                quantity: item.quantity,
+                                unitPrice: item.price,
+                                specialInstructions: item.specialInstructions,
+                              })),
+                              totalAmount: total,
+                              taxAmount: tax,
+                              discountAmount: 0,
+                              paymentStatus: "UNPAID",
+                              paymentMethod: "MANUAL",
+                              source: "pos",
+                            }),
+                          })
+                            .then((res) => res.json())
+                            .then((data) => {
+                              if (data.success) {
+                                // Show toast and clear cart
+                                setOrderSentToast(true)
+                                setTimeout(() => setOrderSentToast(false), 2500)
+                                setCart([])
+                                
+                                // Navigate to orders tab to see new order
+                                setActiveTab("orders")
+                              }
+                            })
+                            .catch((err) => {
+                              console.error("Order creation error:", err)
+                            })
                         }}
                         disabled={cart.length === 0}
                         className={`py-2.5 rounded-xl text-xs font-semibold border transition disabled:opacity-50 ${
@@ -1705,12 +1867,55 @@ function RestaurantAdminContent() {
                       </button>
                       <button
                         onClick={() => {
-                          setOrderSentToast(true)
-                          setTimeout(() => {
-                            setOrderSentToast(false)
-                            setCart([])
-                          }, 1500)
-                        }}
+                          if (cart.length === 0) return
+                          
+          // Get current table selection
+          const tableId = selectedTableId ? String(selectedTableId) : null
+          
+          // Create order via API
+          fetch("/api/orders", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              restaurantId: restaurantId || "restaurant-default",
+              outletId: outletId || null,
+              userId: userId || "user-default",
+              orderType: posOrderType,
+              tableId,
+              items: cart.map((item: any) => ({
+                menuItemId: item.id,
+                quantity: item.quantity,
+                unitPrice: item.price,
+                specialInstructions: item.specialInstructions,
+              })),
+              totalAmount: total,
+              taxAmount: tax,
+              discountAmount: 0,
+              paymentStatus: "PAID",
+              paymentMethod: "MANUAL",
+              source: "pos",
+            }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.success) {
+                // Show toast and clear cart
+                setOrderSentToast(true)
+                setTimeout(() => {
+                  setOrderSentToast(false)
+                  setCart([])
+                }, 1500)
+                
+                // Navigate to orders tab to see new order
+                setActiveTab("orders")
+              }
+            })
+            .catch((err) => {
+              console.error("Order creation error:", err)
+            })
+        }}
                         disabled={cart.length === 0}
                         className="py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
                       >
@@ -1788,8 +1993,8 @@ function RestaurantAdminContent() {
                         isDarkMode ? "divide-[#202330]" : "divide-slate-100"
                       }`}
                     >
-                      {ordersList
-                        .filter((o) => ordersFilter === "all" || o.channel === ordersFilter)
+                      {orders
+                        .filter((o) => ordersFilter === "all" || o.order_type === ordersFilter)
                         .map((o) => (
                           <tr
                             key={o.id}
@@ -1802,7 +2007,7 @@ function RestaurantAdminContent() {
                                 isDarkMode ? "text-white" : "text-slate-900"
                               }`}
                             >
-                              {o.id}
+                              {o.order_number}
                             </td>
                             <td className="py-3.5 px-4">
                               <span
@@ -1810,31 +2015,31 @@ function RestaurantAdminContent() {
                                   isDarkMode ? "text-slate-300" : "text-slate-700"
                                 }`}
                               >
-                                {o.type}
+                                {o.order_type}
                               </span>
-                              <div className="text-[10px] text-slate-400">{o.table}</div>
+                              <div className="text-[10px] text-slate-400">{o.table_id || "N/A"}</div>
                             </td>
                             <td
                               className={`py-3.5 px-4 ${
                                 isDarkMode ? "text-slate-300" : "text-slate-700"
                               }`}
                             >
-                              {o.items}
+                              {((o.order_items || []).filter((item) => item.MenuItem?.name).map((item) => `${item.quantity}x ${item.MenuItem.name}`).join(", ") || "No items")}
                             </td>
                             <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
-                              {o.amount}
+                              ${o.total_amount.toFixed(2)}
                             </td>
                             <td className="py-3.5 px-4 text-center">
                               <span
                                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  o.status === "PAID"
+                                  o.payment_status === "PAID"
                                     ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800"
-                                    : o.status === "READY"
+                                    : o.payment_status === "READY"
                                     ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-300 dark:border-blue-800"
                                     : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
                                 }`}
                               >
-                                {o.status}
+                                {o.payment_status}
                               </span>
                             </td>
                           </tr>

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { updateSession } from "@/utils/supabase/middleware"
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Allow static assets, images, API
@@ -14,13 +15,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Refresh Supabase user session cookies
+  let response = await updateSession(request)
+
   // Allow login pages and auth callbacks
   if (
     pathname.startsWith("/restaurant-admin/login") ||
     pathname.startsWith("/pos/login") ||
     pathname.startsWith("/auth")
   ) {
-    return NextResponse.next()
+    return response
   }
 
   const userRole = request.cookies.get("user_role")?.value
@@ -82,7 +86,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
