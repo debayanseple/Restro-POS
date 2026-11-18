@@ -53,6 +53,7 @@ interface SupabaseOrder {
   outlet_id: string | null
   user_id: string
   status: string
+  kds_stage?: "new" | "preparing" | "ready" | "completed"
   order_type: string
   table_id: string | null
   total_amount: number
@@ -84,6 +85,122 @@ interface SupabaseOrder {
     payment_method: string
     recorded_at: string
   }> | null
+}
+
+interface KdsTicket {
+  id: string
+  orderId: string
+  table: string
+  time: string
+  station: "kitchen" | "bar"
+  items: string[]
+  stage: "new" | "preparing" | "ready"
+}
+
+function formatTimeAgo(isoString?: string): string {
+  if (!isoString) return "Just now"
+  const diffMs = Date.now() - new Date(isoString).getTime()
+  if (isNaN(diffMs) || diffMs < 0) return "Just now"
+  const diffMins = Math.floor(diffMs / (1000 * 60))
+  if (diffMins < 1) return "Just now"
+  if (diffMins < 60) return `${diffMins}m`
+  const diffHours = Math.floor(diffMins / 60)
+  return `${diffHours}h`
+}
+
+function buildKdsTicketsFromOrders(ordersList: SupabaseOrder[]): KdsTicket[] {
+  const tickets: KdsTicket[] = []
+
+  const isBarItem = (name: string) => {
+    const lower = name.toLowerCase()
+    return (
+      lower.includes("beer") ||
+      lower.includes("wine") ||
+      lower.includes("fizz") ||
+      lower.includes("cocktail") ||
+      lower.includes("macchiato") ||
+      lower.includes("coffee") ||
+      lower.includes("drink") ||
+      lower.includes("juice") ||
+      lower.includes("beverage") ||
+      lower.includes("tea") ||
+      lower.includes("smoothie") ||
+      lower.includes("soda")
+    )
+  }
+
+  for (const order of ordersList) {
+    const rawStage = order.kds_stage || (
+      order.status === "CLOSED" ? "completed" :
+      order.status === "READY" ? "ready" :
+      order.status === "PREPARING" ? "preparing" : "new"
+    )
+
+    if (rawStage === "completed" || order.status === "CLOSED") {
+      continue
+    }
+
+    const validStage: "new" | "preparing" | "ready" =
+      rawStage === "preparing" || rawStage === "ready" ? rawStage : "new"
+
+    const orderNum = order.order_number?.replace(/\D/g, "") || order.id.slice(-4)
+    const tableName = order.table_id || (order.order_type === "takeaway" ? "Takeaway" : order.order_type === "delivery" ? "Delivery" : "Counter")
+    const timeAgo = formatTimeAgo(order.created_at)
+
+    const kitchenItems: string[] = []
+    const barItems: string[] = []
+
+    if (order.order_items && Array.isArray(order.order_items)) {
+      for (const it of order.order_items) {
+        const name = it.MenuItem?.name || (it as any).name || "Item"
+        const qty = it.quantity || 1
+        const line = `${qty}x ${name}`
+        if (isBarItem(name)) {
+          barItems.push(line)
+        } else {
+          kitchenItems.push(line)
+        }
+      }
+    }
+
+    if (kitchenItems.length > 0) {
+      tickets.push({
+        id: `T-${orderNum}-K`,
+        orderId: order.id,
+        table: tableName,
+        time: timeAgo,
+        station: "kitchen",
+        items: kitchenItems,
+        stage: validStage,
+      })
+    }
+
+    if (barItems.length > 0) {
+      tickets.push({
+        id: `T-${orderNum}-B`,
+        orderId: order.id,
+        table: tableName,
+        time: timeAgo,
+        station: "bar",
+        items: barItems,
+        stage: validStage,
+      })
+    }
+
+    if (kitchenItems.length === 0 && barItems.length === 0) {
+      tickets.push({
+        id: `T-${orderNum}`,
+        orderId: order.id,
+        table: tableName,
+        time: timeAgo,
+        station: "kitchen",
+        items: ["1x Kitchen Order"],
+        stage: validStage,
+      })
+    }
+  }
+
+  return tickets
 }
 
 // 3 Distinct User Types & 3 POS Staff Roles
@@ -387,6 +504,7 @@ function RestaurantAdminContent() {
       outlet_id: "outlet-1",
       user_id: "user-1",
       status: "OPEN",
+      kds_stage: "new",
       order_type: "dine-in",
       table_id: "Table 04",
       total_amount: 41.00,
@@ -411,6 +529,7 @@ function RestaurantAdminContent() {
       outlet_id: "outlet-1",
       user_id: "user-1",
       status: "CLOSED",
+      kds_stage: "completed",
       order_type: "takeaway",
       table_id: "Counter",
       total_amount: 32.50,
@@ -435,6 +554,7 @@ function RestaurantAdminContent() {
       outlet_id: "outlet-1",
       user_id: "user-1",
       status: "READY",
+      kds_stage: "ready",
       order_type: "delivery",
       table_id: "Online",
       total_amount: 26.50,
@@ -485,9 +605,47 @@ function RestaurantAdminContent() {
     })
   }, [])
 
-  // Fetch orders from API and Supabase
+  // Fetch orders from API and Supabase with 3s background polling
   useEffect(() => {
     fetchOrders()
+    const interval = setInterval(() => {
+      fetchOrders()
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Cross-tab synchronization via BroadcastChannel
+  useEffect(() => {
+    if (typeof window === "undefined" || !("BroadcastChannel" in window)) return
+
+    const channel = new BroadcastChannel("restro_sync_channel")
+    channel.onmessage = (event) => {
+      if (!event.data) return
+      if (event.data.type === "new_order" && event.data.order) {
+        const newOrd = event.data.order as SupabaseOrder
+        setOrders((prev) => [newOrd, ...prev.filter((o) => o.id !== newOrd.id)])
+      } else if (event.data.type === "order_updated") {
+        const { order_id, kds_stage, status } = event.data
+        setOrders((prev) =>
+          prev.map((o) => {
+            if (o.id === order_id || o.order_number === order_id) {
+              return {
+                ...o,
+                kds_stage: kds_stage || o.kds_stage,
+                status: status || o.status,
+              }
+            }
+            return o
+          })
+        )
+      } else if (event.data.type === "refresh_orders") {
+        fetchOrders()
+      }
+    }
+
+    return () => {
+      channel.close()
+    }
   }, [])
 
   const fetchOrders = async () => {
@@ -495,7 +653,7 @@ function RestaurantAdminContent() {
       const res = await fetch("/api/orders")
       if (res.ok) {
         const data = await res.json()
-        if (data.orders && Array.isArray(data.orders) && data.orders.length > 0) {
+        if (data.orders && Array.isArray(data.orders)) {
           setOrders(data.orders as SupabaseOrder[])
           return
         }
@@ -522,19 +680,45 @@ function RestaurantAdminContent() {
     }
   }
 
-  // Set up real-time subscription for new orders
+  // Set up real-time subscription for new and updated orders
   useEffect(() => {
     if (!isSubscribed) {
       const channel = supabase
         .channel("orders_changes")
         .on(
           "postgres_changes",
-          { event: "INSERT", schema: "public", table: "Order" },
+          { event: "*", schema: "public", table: "Order" },
           (payload) => {
-            // Add new order to the beginning of the list
-            setOrders((prev) => [payload.new as SupabaseOrder, ...prev])
+            if (payload.eventType === "INSERT") {
+              setOrders((prev) => [payload.new as SupabaseOrder, ...prev.filter((o) => o.id !== (payload.new as any).id)])
+            } else if (payload.eventType === "UPDATE") {
+              setOrders((prev) =>
+                prev.map((o) => (o.id === (payload.new as any).id ? { ...o, ...(payload.new as any) } : o))
+              )
+            }
           }
         )
+        .on("broadcast", { event: "new_order" }, ({ payload }) => {
+          if (payload && payload.order) {
+            setOrders((prev) => [payload.order as SupabaseOrder, ...prev.filter((o) => o.id !== payload.order.id)])
+          }
+        })
+        .on("broadcast", { event: "order_updated" }, ({ payload }) => {
+          if (payload) {
+            setOrders((prev) =>
+              prev.map((o) => {
+                if (o.id === payload.order_id || o.order_number === payload.order_id) {
+                  return {
+                    ...o,
+                    kds_stage: payload.kds_stage || o.kds_stage,
+                    status: payload.status || o.status,
+                  }
+                }
+                return o
+              })
+            )
+          }
+        })
         .subscribe()
 
       setIsSubscribed(true)
@@ -548,36 +732,75 @@ function RestaurantAdminContent() {
   }, [isSubscribed])
 
   // --- KDS TICKETS STATE (Kitchen/Bar Queue) ---
-  const [kdsTickets, setKdsTickets] = useState<
-    Array<{
-      id: string
-      table: string
-      time: string
-      station: "kitchen" | "bar"
-      items: string[]
-      stage: "new" | "preparing" | "ready"
-    }>
-  >([
-    { id: "T-104", table: "Table 04", time: "4m", station: "kitchen", items: ["2x Wagyu Burger (Medium)", "1x Truffle Fries"], stage: "new" },
-    { id: "T-105", table: "Table 02", time: "11m", station: "kitchen", items: ["1x Truffle Pasta", "1x Margherita Pizza"], stage: "preparing" },
-    { id: "T-106", table: "Table 08", time: "18m", station: "bar", items: ["2x Craft IPA Beer", "1x Sparkling Berry Fizz"], stage: "ready" },
-    { id: "T-107", table: "Table 01", time: "2m", station: "bar", items: ["2x Iced Caramel Macchiato", "1x Berry Fizz"], stage: "new" },
-    { id: "T-108", table: "Table 03", time: "8m", station: "kitchen", items: ["1x Ribeye Steak (Medium)", "1x Caesar Salad"], stage: "preparing" },
-  ])
+  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>(() =>
+    buildKdsTicketsFromOrders(initialSampleOrders)
+  )
 
-  const advanceKdsTicket = (id: string) => {
-    setKdsTickets((prev) =>
-      prev
-        .map((t) => {
-          if (t.id === id) {
-            if (t.stage === "new") return { ...t, stage: "preparing" as const }
-            if (t.stage === "preparing") return { ...t, stage: "ready" as const }
-            return t
+  // Keep KDS tickets synchronized with orders list
+  useEffect(() => {
+    setKdsTickets(buildKdsTicketsFromOrders(orders))
+  }, [orders])
+
+  const advanceKdsTicket = async (ticketId: string) => {
+    const ticket = kdsTickets.find((t) => t.id === ticketId)
+    if (!ticket) return
+
+    let nextStage: "new" | "preparing" | "ready" | "completed" = "new"
+    let nextStatus = "OPEN"
+
+    if (ticket.stage === "new") {
+      nextStage = "preparing"
+      nextStatus = "PREPARING"
+    } else if (ticket.stage === "preparing") {
+      nextStage = "ready"
+      nextStatus = "READY"
+    } else if (ticket.stage === "ready") {
+      nextStage = "completed"
+      nextStatus = "CLOSED"
+    }
+
+    // 1. Optimistically update local orders state
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === ticket.orderId || o.order_number === ticket.orderId) {
+          return {
+            ...o,
+            kds_stage: nextStage,
+            status: nextStatus,
           }
-          return t
-        })
-        .filter((t) => t.id !== id || t.stage !== "ready")
+        }
+        return o
+      })
     )
+
+    // 2. Broadcast across tabs immediately
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({
+          type: "order_updated",
+          order_id: ticket.orderId,
+          kds_stage: nextStage,
+          status: nextStatus,
+        })
+        bc.close()
+      }
+    } catch {}
+
+    // 3. Persist update to /api/orders
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: ticket.orderId,
+          kds_stage: nextStage,
+          status: nextStatus,
+        }),
+      })
+    } catch (err) {
+      console.warn("Could not patch order KDS stage:", err)
+    }
   }
 
   // --- RESERVATIONS STATE (For Reception & Admin) ---
@@ -1918,6 +2141,7 @@ function RestaurantAdminContent() {
                             outlet_id: outletId,
                             user_id: userId || "user-default",
                             status: "OPEN",
+                            kds_stage: "new",
                             order_type: posOrderType,
                             table_id: tableId || (posOrderType === "takeaway" ? "Takeaway" : posOrderType === "delivery" ? "Delivery" : "Counter"),
                             total_amount: total,
@@ -1943,18 +2167,16 @@ function RestaurantAdminContent() {
                           }
 
                           // Update state immediately
-                          setOrders((prev) => [optimisticOrder, ...prev])
-                          setKdsTickets((prev) => [
-                            {
-                              id: `T-${generatedOrderNum.replace(/\D/g, "") || Math.floor(100 + Math.random() * 900)}`,
-                              table: optimisticOrder.table_id || "Counter",
-                              time: "Just now",
-                              station: "kitchen",
-                              items: cart.map((it) => `${it.quantity}x ${it.name}`),
-                              stage: "new",
-                            },
-                            ...prev,
-                          ])
+                          setOrders((prev) => [optimisticOrder, ...prev.filter((o) => o.id !== optimisticOrder.id)])
+
+                          // Broadcast to kitchen and other tabs immediately
+                          try {
+                            if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                              const bc = new BroadcastChannel("restro_sync_channel")
+                              bc.postMessage({ type: "new_order", order: optimisticOrder })
+                              bc.close()
+                            }
+                          } catch {}
 
                           setOrderSentToast(true)
                           setTimeout(() => setOrderSentToast(false), 2500)
@@ -1997,6 +2219,13 @@ function RestaurantAdminContent() {
                                 data.order,
                                 ...prev.filter((o) => o.id !== optimisticOrder.id && o.id !== data.order.id),
                               ])
+                              try {
+                                if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                                  const bc = new BroadcastChannel("restro_sync_channel")
+                                  bc.postMessage({ type: "new_order", order: data.order })
+                                  bc.close()
+                                }
+                              } catch {}
                             }
                           } catch (err) {
                             console.error("Order creation API error:", err)
@@ -2034,6 +2263,7 @@ function RestaurantAdminContent() {
                             outlet_id: outletId,
                             user_id: userId || "user-default",
                             status: "OPEN",
+                            kds_stage: "new",
                             order_type: posOrderType,
                             table_id: tableId || (posOrderType === "takeaway" ? "Takeaway" : posOrderType === "delivery" ? "Delivery" : "Counter"),
                             total_amount: total,
@@ -2068,7 +2298,16 @@ function RestaurantAdminContent() {
                           }
 
                           // Update state immediately
-                          setOrders((prev) => [optimisticOrder, ...prev])
+                          setOrders((prev) => [optimisticOrder, ...prev.filter((o) => o.id !== optimisticOrder.id)])
+
+                          // Broadcast to kitchen and other tabs immediately
+                          try {
+                            if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                              const bc = new BroadcastChannel("restro_sync_channel")
+                              bc.postMessage({ type: "new_order", order: optimisticOrder })
+                              bc.close()
+                            }
+                          } catch {}
 
                           setOrderSentToast(true)
                           setTimeout(() => setOrderSentToast(false), 2500)
@@ -2111,6 +2350,13 @@ function RestaurantAdminContent() {
                                 data.order,
                                 ...prev.filter((o) => o.id !== optimisticOrder.id && o.id !== data.order.id),
                               ])
+                              try {
+                                if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                                  const bc = new BroadcastChannel("restro_sync_channel")
+                                  bc.postMessage({ type: "new_order", order: data.order })
+                                  bc.close()
+                                }
+                              } catch {}
                             }
                           } catch (err) {
                             console.error("Order creation API error:", err)
@@ -3028,55 +3274,64 @@ function RestaurantAdminContent() {
                       </span>
                     </div>
 
-                    {kdsTickets
-                      .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "new")
-                      .map((t) => (
-                        <div
-                          key={t.id}
-                          className={`p-4 rounded-2xl border space-y-3 ${
-                            isDarkMode
-                              ? "bg-[#14161f] border-blue-500/40"
-                              : "bg-white border-blue-200 shadow-xs"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center text-xs">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`font-bold ${
-                                  isDarkMode ? "text-white" : "text-slate-900"
-                                }`}
-                              >
-                                {t.table}
-                              </span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                                  t.station === "bar"
-                                    ? "bg-purple-500/20 text-purple-400"
-                                    : "bg-amber-500/20 text-amber-400"
-                                }`}
-                              >
-                                {t.station}
-                              </span>
-                            </div>
-                            <span className="text-blue-500 font-semibold">{t.time} ago</span>
-                          </div>
-                          <ul
-                            className={`text-xs space-y-1 list-disc pl-4 ${
-                              isDarkMode ? "text-slate-300" : "text-slate-700"
+                    {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "new").length === 0 ? (
+                      <div className={`p-8 rounded-2xl border border-dashed text-center ${
+                        isDarkMode ? "border-slate-800 text-slate-500" : "border-slate-200 text-slate-400"
+                      }`}>
+                        <span className="text-2xl block mb-1">✓</span>
+                        <p className="text-xs font-medium">New queue is clear</p>
+                      </div>
+                    ) : (
+                      kdsTickets
+                        .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "new")
+                        .map((t) => (
+                          <div
+                            key={t.id}
+                            className={`p-4 rounded-2xl border space-y-3 ${
+                              isDarkMode
+                                ? "bg-[#14161f] border-blue-500/40"
+                                : "bg-white border-blue-200 shadow-xs"
                             }`}
                           >
-                            {t.items.map((i, idx) => (
-                              <li key={idx}>{i}</li>
-                            ))}
-                          </ul>
-                          <button
-                            onClick={() => advanceKdsTicket(t.id)}
-                            className="w-full py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-xs"
-                          >
-                            Start Preparing
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`font-bold ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {t.table}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                    t.station === "bar"
+                                      ? "bg-purple-500/20 text-purple-400"
+                                      : "bg-amber-500/20 text-amber-400"
+                                  }`}
+                                >
+                                  {t.station}
+                                </span>
+                              </div>
+                              <span className="text-blue-500 font-semibold">{t.time === "Just now" ? t.time : `${t.time} ago`}</span>
+                            </div>
+                            <ul
+                              className={`text-xs space-y-1 list-disc pl-4 ${
+                                isDarkMode ? "text-slate-300" : "text-slate-700"
+                              }`}
+                            >
+                              {t.items.map((i, idx) => (
+                                <li key={idx}>{i}</li>
+                              ))}
+                            </ul>
+                            <button
+                              onClick={() => advanceKdsTicket(t.id)}
+                              className="w-full py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-xs"
+                            >
+                              Start Preparing
+                            </button>
+                          </div>
+                        ))
+                    )}
                   </div>
 
                   {/* Stage 2: In Cook Station */}
@@ -3091,55 +3346,64 @@ function RestaurantAdminContent() {
                       </span>
                     </div>
 
-                    {kdsTickets
-                      .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "preparing")
-                      .map((t) => (
-                        <div
-                          key={t.id}
-                          className={`p-4 rounded-2xl border space-y-3 ${
-                            isDarkMode
-                              ? "bg-[#14161f] border-amber-500/40"
-                              : "bg-white border-amber-200 shadow-xs"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center text-xs">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`font-bold ${
-                                  isDarkMode ? "text-white" : "text-slate-900"
-                                }`}
-                              >
-                                {t.table}
-                              </span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                                  t.station === "bar"
-                                    ? "bg-purple-500/20 text-purple-400"
-                                    : "bg-amber-500/20 text-amber-400"
-                                }`}
-                              >
-                                {t.station}
-                              </span>
-                            </div>
-                            <span className="text-amber-500 font-semibold">{t.time} ago</span>
-                          </div>
-                          <ul
-                            className={`text-xs space-y-1 list-disc pl-4 ${
-                              isDarkMode ? "text-slate-300" : "text-slate-700"
+                    {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "preparing").length === 0 ? (
+                      <div className={`p-8 rounded-2xl border border-dashed text-center ${
+                        isDarkMode ? "border-slate-800 text-slate-500" : "border-slate-200 text-slate-400"
+                      }`}>
+                        <span className="text-2xl block mb-1">✓</span>
+                        <p className="text-xs font-medium">No items cooking</p>
+                      </div>
+                    ) : (
+                      kdsTickets
+                        .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "preparing")
+                        .map((t) => (
+                          <div
+                            key={t.id}
+                            className={`p-4 rounded-2xl border space-y-3 ${
+                              isDarkMode
+                                ? "bg-[#14161f] border-amber-500/40"
+                                : "bg-white border-amber-200 shadow-xs"
                             }`}
                           >
-                            {t.items.map((i, idx) => (
-                              <li key={idx}>{i}</li>
-                            ))}
-                          </ul>
-                          <button
-                            onClick={() => advanceKdsTicket(t.id)}
-                            className="w-full py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-xs"
-                          >
-                            Mark Ready
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`font-bold ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {t.table}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                    t.station === "bar"
+                                      ? "bg-purple-500/20 text-purple-400"
+                                      : "bg-amber-500/20 text-amber-400"
+                                  }`}
+                                >
+                                  {t.station}
+                                </span>
+                              </div>
+                              <span className="text-amber-500 font-semibold">{t.time === "Just now" ? t.time : `${t.time} ago`}</span>
+                            </div>
+                            <ul
+                              className={`text-xs space-y-1 list-disc pl-4 ${
+                                isDarkMode ? "text-slate-300" : "text-slate-700"
+                              }`}
+                            >
+                              {t.items.map((i, idx) => (
+                                <li key={idx}>{i}</li>
+                              ))}
+                            </ul>
+                            <button
+                              onClick={() => advanceKdsTicket(t.id)}
+                              className="w-full py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-xs"
+                            >
+                              Mark Ready
+                            </button>
+                          </div>
+                        ))
+                    )}
                   </div>
 
                   {/* Stage 3: Ready for Table */}
@@ -3154,55 +3418,64 @@ function RestaurantAdminContent() {
                       </span>
                     </div>
 
-                    {kdsTickets
-                      .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready")
-                      .map((t) => (
-                        <div
-                          key={t.id}
-                          className={`p-4 rounded-2xl border space-y-3 ${
-                            isDarkMode
-                              ? "bg-[#14161f] border-emerald-500/40"
-                              : "bg-white border-emerald-200 shadow-xs"
-                          }`}
-                        >
-                          <div className="flex justify-between items-center text-xs">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`font-bold ${
-                                  isDarkMode ? "text-white" : "text-slate-900"
-                                }`}
-                              >
-                                {t.table}
-                              </span>
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
-                                  t.station === "bar"
-                                    ? "bg-purple-500/20 text-purple-400"
-                                    : "bg-amber-500/20 text-amber-400"
-                                }`}
-                              >
-                                {t.station}
-                              </span>
-                            </div>
-                            <span className="text-emerald-500 font-semibold">Ready!</span>
-                          </div>
-                          <ul
-                            className={`text-xs space-y-1 list-disc pl-4 ${
-                              isDarkMode ? "text-slate-300" : "text-slate-700"
+                    {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready").length === 0 ? (
+                      <div className={`p-8 rounded-2xl border border-dashed text-center ${
+                        isDarkMode ? "border-slate-800 text-slate-500" : "border-slate-200 text-slate-400"
+                      }`}>
+                        <span className="text-2xl block mb-1">✓</span>
+                        <p className="text-xs font-medium">All orders served</p>
+                      </div>
+                    ) : (
+                      kdsTickets
+                        .filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready")
+                        .map((t) => (
+                          <div
+                            key={t.id}
+                            className={`p-4 rounded-2xl border space-y-3 ${
+                              isDarkMode
+                                ? "bg-[#14161f] border-emerald-500/40"
+                                : "bg-white border-emerald-200 shadow-xs"
                             }`}
                           >
-                            {t.items.map((i, idx) => (
-                              <li key={idx}>{i}</li>
-                            ))}
-                          </ul>
-                          <button
-                            onClick={() => advanceKdsTicket(t.id)}
-                            className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs"
-                          >
-                            Served / Clear
-                          </button>
-                        </div>
-                      ))}
+                            <div className="flex justify-between items-center text-xs">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`font-bold ${
+                                    isDarkMode ? "text-white" : "text-slate-900"
+                                  }`}
+                                >
+                                  {t.table}
+                                </span>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                    t.station === "bar"
+                                      ? "bg-purple-500/20 text-purple-400"
+                                      : "bg-amber-500/20 text-amber-400"
+                                  }`}
+                                >
+                                  {t.station}
+                                </span>
+                              </div>
+                              <span className="text-emerald-500 font-semibold">Ready!</span>
+                            </div>
+                            <ul
+                              className={`text-xs space-y-1 list-disc pl-4 ${
+                                isDarkMode ? "text-slate-300" : "text-slate-700"
+                              }`}
+                            >
+                              {t.items.map((i, idx) => (
+                                <li key={idx}>{i}</li>
+                              ))}
+                            </ul>
+                            <button
+                              onClick={() => advanceKdsTicket(t.id)}
+                              className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs"
+                            >
+                              Served / Clear
+                            </button>
+                          </div>
+                        ))
+                    )}
                   </div>
                 </div>
               </div>

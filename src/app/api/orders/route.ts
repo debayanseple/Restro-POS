@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
-// In-memory runtime cache for orders so POS always works seamlessly
-// even before Supabase database tables or migrations are applied
+// In-memory runtime cache for orders so POS and KDS always work seamlessly
+// even before remote database tables or migrations are applied
 let cachedOrders: any[] = [
   {
     id: "ord_demo_1046",
@@ -10,6 +10,7 @@ let cachedOrders: any[] = [
     outlet_id: "outlet-1",
     user_id: "user-1",
     status: "OPEN",
+    kds_stage: "new",
     order_type: "dine-in",
     table_id: "Table 04",
     total_amount: 41.00,
@@ -20,8 +21,8 @@ let cachedOrders: any[] = [
     source: "pos",
     order_number: "ORD-1046",
     notes: "Medium rare burgers",
-    created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
+    created_at: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
     order_items: [
       { id: "it-1", order_id: "ord_demo_1046", menu_item_id: "m1", quantity: 2, unit_price: 16.50, name: "Classic Wagyu Burger", MenuItem: { name: "Classic Wagyu Burger" } },
       { id: "it-2", order_id: "ord_demo_1046", menu_item_id: "m4", quantity: 1, unit_price: 8.00, name: "Crispy Truffle Fries", MenuItem: { name: "Crispy Truffle Fries" } },
@@ -33,7 +34,8 @@ let cachedOrders: any[] = [
     restaurant_id: "demo-restaurant-1",
     outlet_id: "outlet-1",
     user_id: "user-1",
-    status: "CLOSED",
+    status: "PREPARING",
+    kds_stage: "preparing",
     order_type: "takeaway",
     table_id: "Counter",
     total_amount: 32.50,
@@ -44,8 +46,8 @@ let cachedOrders: any[] = [
     source: "pos",
     order_number: "ORD-1045",
     notes: null,
-    created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
+    created_at: new Date(Date.now() - 1000 * 60 * 11).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 11).toISOString(),
     order_items: [
       { id: "it-3", order_id: "ord_demo_1045", menu_item_id: "m2", quantity: 1, unit_price: 18.00, name: "Truffle Mushroom Pasta", MenuItem: { name: "Truffle Mushroom Pasta" } },
       { id: "it-4", order_id: "ord_demo_1045", menu_item_id: "m3", quantity: 1, unit_price: 14.50, name: "Margherita Artisan Pizza", MenuItem: { name: "Margherita Artisan Pizza" } },
@@ -58,6 +60,7 @@ let cachedOrders: any[] = [
     outlet_id: "outlet-1",
     user_id: "user-1",
     status: "READY",
+    kds_stage: "ready",
     order_type: "delivery",
     table_id: "Online",
     total_amount: 26.50,
@@ -68,8 +71,8 @@ let cachedOrders: any[] = [
     source: "pos",
     order_number: "ORD-1044",
     notes: null,
-    created_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
-    updated_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
+    created_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
+    updated_at: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
     order_items: [
       { id: "it-5", order_id: "ord_demo_1044", menu_item_id: "m6", quantity: 1, unit_price: 11.00, name: "Grilled Chicken Wings", MenuItem: { name: "Grilled Chicken Wings" } },
       { id: "it-6", order_id: "ord_demo_1044", menu_item_id: "m7", quantity: 2, unit_price: 7.50, name: "Craft IPA Beer", MenuItem: { name: "Craft IPA Beer" } },
@@ -83,7 +86,7 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     // Normalize parameter names across both camelCase and snake_case
-    const restaurant_id = body.restaurant_id || body.restaurantId || "restaurant-default"
+    const restaurant_id = body.restaurant_id || body.restaurantId || "demo-restaurant-1"
     const outlet_id = body.outlet_id || body.outletId || null
     const user_id = body.user_id || body.userId || "user-default"
     const order_type = body.order_type || body.orderType || "dine-in"
@@ -144,13 +147,14 @@ export async function POST(request: Request) {
       }
     })
 
-    // Construct the full order object
+    // Construct the full order object with KDS stage
     const newOrder = {
       id: orderId,
       restaurant_id,
       outlet_id,
       user_id,
       status: "OPEN",
+      kds_stage: "new",
       order_type,
       table_id: table_id
         ? String(table_id).startsWith("Table")
@@ -231,7 +235,7 @@ export async function POST(request: Request) {
       console.warn("Supabase database insert note (cache fallback active):", dbErr?.message || dbErr)
     }
 
-    // 2. Try broadcasting on Supabase real-time
+    // 2. Broadcast on Supabase real-time
     try {
       await supabase.channel("orders_changes").send({
         type: "broadcast",
@@ -306,5 +310,52 @@ export async function GET(request: Request) {
       success: true,
       orders: cachedOrders,
     })
+  }
+}
+
+// PATCH endpoint to advance KDS stage & order status
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { order_id, id, kds_stage, stage, status } = body
+    const targetId = order_id || id
+    const targetStage = kds_stage || stage
+
+    if (!targetId) {
+      return NextResponse.json({ error: "order_id is required" }, { status: 400 })
+    }
+
+    const order = cachedOrders.find((o) => o.id === targetId || o.order_number === targetId)
+    if (order) {
+      if (targetStage) order.kds_stage = targetStage
+      if (status) order.status = status
+      order.updated_at = new Date().toISOString()
+    }
+
+    // Update in Supabase if table exists
+    try {
+      const updateData: any = { updated_at: new Date().toISOString() }
+      if (status) updateData.status = status
+      await supabase.from("Order").update(updateData).eq("id", targetId)
+    } catch {}
+
+    // Broadcast update to all connected screens
+    try {
+      await supabase.channel("orders_changes").send({
+        type: "broadcast",
+        event: "order_updated",
+        payload: { order_id: targetId, kds_stage: targetStage, status },
+      })
+    } catch {}
+
+    return NextResponse.json({
+      success: true,
+      order,
+    })
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: "Failed to update order", details: err?.message },
+      { status: 500 }
+    )
   }
 }
