@@ -2594,7 +2594,7 @@ function RestaurantAdminContent() {
                 </div>
 
                 <div
-                  className={`rounded-2xl overflow-hidden border ${
+                  className={`rounded-2xl border ${
                     isDarkMode
                       ? "bg-[#14161f] border-[#202330]"
                       : "bg-white border-slate-200 shadow-xs"
@@ -2609,13 +2609,13 @@ function RestaurantAdminContent() {
                       }`}
                     >
                       <tr>
-                        <th className="py-3 px-4">Order #</th>
+                        <th className="py-3 px-4 rounded-tl-2xl">Order #</th>
                         <th className="py-3 px-4">Channel & Table</th>
                         <th className="py-3 px-4">Order Items</th>
                         <th className="py-3 px-4 text-right">Total</th>
                         <th className="py-3 px-4">Prep Stage</th>
                         <th className="py-3 px-4 text-center">Payment</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-3 px-4 text-right rounded-tr-2xl">Actions</th>
                       </tr>
                     </thead>
                     <tbody
@@ -2630,7 +2630,8 @@ function RestaurantAdminContent() {
                           const normFilter = ordersFilter.toLowerCase().replace(/[-_ ]/g, "")
                           return normType === normFilter
                         })
-                        .map((o) => {
+                        .map((o, idx, filteredArr) => {
+                          const isNearBottom = idx >= filteredArr.length - 2 || filteredArr.length <= 2
                           const hasKitchen = (o.order_items || []).some((it: any) => !isBarItem(it.MenuItem?.name || it.name || ""))
                           const hasBar = (o.order_items || []).some((it: any) => isBarItem(it.MenuItem?.name || it.name || ""))
 
@@ -2740,12 +2741,14 @@ function RestaurantAdminContent() {
                                 </div>
                               </td>
                               <td className="py-3.5 px-4 text-center">
-                                <span
-                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${
+                                <button
+                                  onClick={() => updatePaymentStatus(o.id, o.payment_status === "PAID" ? "UNPAID" : "PAID")}
+                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition hover:scale-105 active:scale-95 cursor-pointer ${
                                     o.payment_status === "PAID"
-                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30"
+                                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
                                   }`}
+                                  title={`Click to mark as ${o.payment_status === "PAID" ? "Unpaid" : "Paid"}`}
                                 >
                                   <span
                                     className={`w-1.5 h-1.5 rounded-full ${
@@ -2753,7 +2756,7 @@ function RestaurantAdminContent() {
                                     }`}
                                   />
                                   {o.payment_status === "PAID" ? "Paid" : "Unpaid"}
-                                </span>
+                                </button>
                               </td>
                               <td className="py-3.5 px-4 text-right relative">
                                 <button
@@ -2776,7 +2779,9 @@ function RestaurantAdminContent() {
                                 {activeOrderMenuId === o.id && (
                                   <div
                                     onClick={(e) => e.stopPropagation()}
-                                    className={`absolute right-4 top-11 z-50 w-48 rounded-xl border p-1.5 shadow-2xl text-left ${
+                                    className={`absolute right-4 ${
+                                      isNearBottom ? "bottom-11 mb-1" : "top-11 mt-1"
+                                    } z-50 w-48 rounded-xl border p-1.5 shadow-2xl text-left ${
                                       isDarkMode
                                         ? "bg-[#191b26] border-[#2d3144] text-slate-200 shadow-black/80"
                                         : "bg-white border-slate-200 text-slate-800 shadow-slate-300/60"
