@@ -25,35 +25,12 @@ function getTables(): any[] {
       if (Array.isArray(parsed) && parsed.length > 0) {
         tables = parsed
       }
+    } else {
+      saveTables(tables)
     }
   } catch (err) {
     console.warn("Failed to load tables.json:", err)
   }
-
-  // Cross-reference with active orders: if a table has an open order, it is occupied
-  try {
-    if (fs.existsSync(ORDERS_FILE)) {
-      const ordersContent = fs.readFileSync(ORDERS_FILE, "utf-8")
-      const orders = JSON.parse(ordersContent)
-      if (Array.isArray(orders)) {
-        const activeTableNames = new Set(
-          orders
-            .filter((o) => o.status !== "CLOSED" && o.status !== "CANCELLED" && o.table_id)
-            .map((o) => String(o.table_id).toLowerCase().trim())
-        )
-
-        tables = tables.map((t) => {
-          const match1 = activeTableNames.has(t.name.toLowerCase().trim())
-          const match2 = activeTableNames.has(`table ${t.id}`)
-          const match3 = activeTableNames.has(`table 0${t.id}`)
-          if (match1 || match2 || match3) {
-            return { ...t, status: "occupied", isOpen: true }
-          }
-          return t
-        })
-      }
-    }
-  } catch {}
 
   return tables
 }

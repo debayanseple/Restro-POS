@@ -1,1 +1,126 @@
-[]
+[
+  {
+    "id": "ord_1795000553219_g6rn",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 2",
+    "total_amount": 39.42,
+    "tax_amount": 2.92,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-5914",
+    "notes": null,
+    "created_at": "2026-11-18T11:15:53.219Z",
+    "updated_at": "2026-11-18T11:16:42.017Z",
+    "order_items": [
+      {
+        "id": "it_1795000553219_0",
+        "order_id": "ord_1795000553219_g6rn",
+        "menu_item_id": "m7",
+        "quantity": 1,
+        "unit_price": 7.5,
+        "special_instructions": null,
+        "name": "Craft IPA Beer",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer"
+        }
+      },
+      {
+        "id": "it_1795000553219_1",
+        "order_id": "ord_1795000553219_g6rn",
+        "menu_item_id": "m3",
+        "quantity": 2,
+        "unit_price": 14.5,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795000553219",
+        "order_id": "ord_1795000553219_g6rn",
+        "amount": 39.42,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-18T11:15:53.219Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1794999893549_z71s",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 22.14,
+    "tax_amount": 1.6400000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-9640",
+    "notes": null,
+    "created_at": "2026-11-18T11:04:53.550Z",
+    "updated_at": "2026-11-18T11:15:11.992Z",
+    "order_items": [
+      {
+        "id": "it_1794999893550_0",
+        "order_id": "ord_1794999893549_z71s",
+        "menu_item_id": "m6",
+        "quantity": 1,
+        "unit_price": 11,
+        "special_instructions": null,
+        "name": "Grilled Chicken Wings",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Grilled Chicken Wings"
+        }
+      },
+      {
+        "id": "it_1794999893550_1",
+        "order_id": "ord_1794999893549_z71s",
+        "menu_item_id": "m5",
+        "quantity": 1,
+        "unit_price": 9.5,
+        "special_instructions": null,
+        "name": "Caesar Salad Bowl",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Caesar Salad Bowl"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1794999893550",
+        "order_id": "ord_1794999893549_z71s",
+        "amount": 22.14,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-18T11:04:53.550Z"
+      }
+    ]
+  }
+]

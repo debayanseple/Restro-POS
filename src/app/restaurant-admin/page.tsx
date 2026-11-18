@@ -268,9 +268,22 @@ interface CartItem {
   quantity: number
 }
 
+const DEFAULT_TABLES_LIST: TableItem[] = [
+  { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
+  { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
+  { id: 3, name: "Table 3", seats: 6, status: "available", isOpen: false },
+  { id: 4, name: "Table 4", seats: 4, status: "available", isOpen: false },
+  { id: 6, name: "Table 6", seats: 6, status: "available", isOpen: false },
+  { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
+  { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
+]
+
 function RestaurantAdminContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // Hydration safety flag
+  const [isMounted, setIsMounted] = useState(false)
 
   // 1. Current Active User Type & POS Sub-role
   const [userType, setUserType] = useState<UserType>("restaurant-admin")
@@ -295,6 +308,8 @@ function RestaurantAdminContent() {
   }
 
   useEffect(() => {
+    setIsMounted(true)
+
     // Check saved theme or system preference
     const savedTheme = localStorage.getItem("orderrestro_theme")
     if (savedTheme === "light") {
@@ -304,6 +319,24 @@ function RestaurantAdminContent() {
       setIsDarkMode(true)
       document.documentElement.classList.add("dark")
     }
+
+    // Load saved tables from localStorage if available
+    try {
+      const savedTables = localStorage.getItem("restro_pos_tables")
+      if (savedTables) {
+        const parsed = JSON.parse(savedTables)
+        if (Array.isArray(parsed) && parsed.length > 0) setTables(parsed)
+      }
+    } catch {}
+
+    // Load saved orders from localStorage if available
+    try {
+      const savedOrders = localStorage.getItem("restro_pos_orders")
+      if (savedOrders) {
+        const parsed = JSON.parse(savedOrders)
+        if (Array.isArray(parsed) && parsed.length > 0) setOrders(parsed)
+      }
+    } catch {}
 
     const roleParam = searchParams.get("role")
     const posRoleParam = searchParams.get("posRole")
@@ -372,6 +405,8 @@ function RestaurantAdminContent() {
     setPosRole(determinedPosRole)
     if (determinedPosRole === "kitchen") {
       setKdsStationFilter("kitchen")
+    } else if (roleParam === "pos-bar" || roleParam === "bar") {
+      setKdsStationFilter("bar")
     }
 
     if (tabParam) {
@@ -453,26 +488,7 @@ function RestaurantAdminContent() {
   }
 
   // --- TABLES STATE ---
-  const [tables, setTables] = useState<TableItem[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("restro_pos_tables")
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed
-        }
-      } catch {}
-    }
-    return [
-      { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
-      { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
-      { id: 3, name: "Table 3", seats: 6, status: "available", isOpen: false },
-      { id: 4, name: "Table 4", seats: 4, status: "available", isOpen: false },
-      { id: 6, name: "Table 6", seats: 6, status: "available", isOpen: false },
-      { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
-      { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
-    ]
-  })
+  const [tables, setTables] = useState<TableItem[]>(DEFAULT_TABLES_LIST)
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null)
   const [tableValidationError, setTableValidationError] = useState(false)
   const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
@@ -493,36 +509,39 @@ function RestaurantAdminContent() {
   const setTableStatus = async (status: TableItem["status"]) => {
     if (selectedTableId === null) return
     const targetId = selectedTableId
+    const nextIsOpen = status === "occupied"
     setTables((prev) =>
-      prev.map((t) => (t.id === targetId ? { ...t, status } : t))
+      prev.map((t) => (t.id === targetId ? { ...t, status, isOpen: nextIsOpen } : t))
     )
     setSelectedTableId(null)
 
     try {
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         const bc = new BroadcastChannel("restro_sync_channel")
-        bc.postMessage({ type: "table_updated", table_id: targetId, status })
+        bc.postMessage({ type: "table_updated", table_id: targetId, status, isOpen: nextIsOpen })
         bc.close()
       }
       await fetch("/api/tables", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ table_id: targetId, status }),
+        body: JSON.stringify({ table_id: targetId, status, isOpen: nextIsOpen }),
       })
     } catch {}
   }
 
   const toggleTableCode = async (tableId: number) => {
     let nextState = false
+    let nextStatus: TableItem["status"] = "available"
     setTables((prev) =>
       prev.map((t) => {
         if (t.id === tableId) {
           nextState = !t.isOpen
+          nextStatus = nextState ? "occupied" : "available"
           return {
             ...t,
             isOpen: nextState,
             orderCode: nextState ? `ORD-${Math.floor(100 + Math.random() * 900)}` : undefined,
-            status: nextState ? "occupied" : t.status === "occupied" ? "available" : t.status,
+            status: nextStatus,
           }
         }
         return t
@@ -535,7 +554,7 @@ function RestaurantAdminContent() {
         bc.postMessage({
           type: "table_updated",
           table_id: tableId,
-          status: nextState ? "occupied" : "available",
+          status: nextStatus,
           isOpen: nextState,
         })
         bc.close()
@@ -545,7 +564,7 @@ function RestaurantAdminContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           table_id: tableId,
-          status: nextState ? "occupied" : "available",
+          status: nextStatus,
           isOpen: nextState,
         }),
       })
@@ -600,18 +619,7 @@ function RestaurantAdminContent() {
 
   // --- ORDERS STATE ---
   const [ordersFilter, setOrdersFilter] = useState("all")
-  const [orders, setOrders] = useState<SupabaseOrder[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const saved = localStorage.getItem("restro_pos_orders")
-        if (saved) {
-          const parsed = JSON.parse(saved)
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed
-        }
-      } catch {}
-    }
-    return []
-  })
+  const [orders, setOrders] = useState<SupabaseOrder[]>([])
   const [activeOrderMenuId, setActiveOrderMenuId] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
@@ -625,32 +633,6 @@ function RestaurantAdminContent() {
         localStorage.setItem("restro_pos_orders", JSON.stringify(orders))
       } catch {}
     }
-  }, [orders])
-
-  // Automatically keep tables in sync with active open orders
-  useEffect(() => {
-    if (orders.length === 0) return
-    setTables((prev) => {
-      const activeTableNames = new Set(
-        orders
-          .filter((o) => o.status !== "CLOSED" && o.status !== "CANCELLED" && o.table_id)
-          .map((o) => String(o.table_id).toLowerCase().trim())
-      )
-
-      return prev.map((t) => {
-        const match1 = activeTableNames.has(t.name.toLowerCase().trim())
-        const match2 = activeTableNames.has(`table ${t.id}`)
-        const match3 = activeTableNames.has(`table 0${t.id}`)
-
-        if (match1 || match2 || match3) {
-          return { ...t, status: "occupied", isOpen: true }
-        }
-        if (t.status === "occupied" && !match1 && !match2 && !match3) {
-          return { ...t, status: "available", isOpen: false }
-        }
-        return t
-      })
-    })
   }, [orders])
 
   // Close order actions menu when clicking outside
@@ -1258,15 +1240,7 @@ function RestaurantAdminContent() {
   ])
 
   // --- KDS STATIONS FILTER ---
-  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search)
-      const r = params.get("role")
-      if (r === "pos-kitchen" || r === "kitchen") return "kitchen"
-      if (r === "pos-bar" || r === "bar") return "bar"
-    }
-    return "all"
-  })
+  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">("all")
 
   // --- MENUS PER USER TYPE & POS SUB-ROLES ---
   const adminMenuItems = [
@@ -1324,6 +1298,17 @@ function RestaurantAdminContent() {
         ? posReceptionMenuItems
         : posKitchenMenuItems
       : adminMenuItems
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#0e0f12] flex items-center justify-center text-slate-400">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-[#8b5cf6] border-t-transparent rounded-full animate-spin" />
+          <span className="text-sm font-medium">Loading POS...</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

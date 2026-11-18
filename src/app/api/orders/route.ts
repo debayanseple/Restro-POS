@@ -51,6 +51,33 @@ function isBarItem(name: string): boolean {
   )
 }
 
+function markTableOccupied(tableIdentifier: string | null) {
+  if (!tableIdentifier) return
+  try {
+    const TABLES_FILE = path.join(DATA_DIR, "tables.json")
+    if (fs.existsSync(TABLES_FILE)) {
+      const content = fs.readFileSync(TABLES_FILE, "utf-8")
+      let tables = JSON.parse(content)
+      if (Array.isArray(tables)) {
+        const clean = String(tableIdentifier).toLowerCase().trim()
+        tables = tables.map((t: any) => {
+          const match1 = t.name.toLowerCase().trim() === clean
+          const match2 = `table ${t.id}` === clean
+          const match3 = `table 0${t.id}` === clean
+          const match4 = String(t.id) === clean
+          if (match1 || match2 || match3 || match4) {
+            return { ...t, status: "occupied", isOpen: true }
+          }
+          return t
+        })
+        fs.writeFileSync(TABLES_FILE, JSON.stringify(tables, null, 2), "utf-8")
+      }
+    }
+  } catch (err) {
+    console.warn("Could not mark table occupied in tables.json:", err)
+  }
+}
+
 // Persistent runtime cache for orders
 let cachedOrders: any[] = loadSavedOrders()
 
@@ -225,6 +252,9 @@ export async function POST(request: Request) {
     // 3. Prepend to in-memory orders cache & persist to disk
     cachedOrders.unshift(newOrder)
     saveOrdersToDisk(cachedOrders)
+    if (newOrder.table_id) {
+      markTableOccupied(newOrder.table_id)
+    }
 
     return NextResponse.json({
       success: true,
