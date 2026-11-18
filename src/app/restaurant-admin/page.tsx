@@ -54,6 +54,8 @@ interface SupabaseOrder {
   user_id: string
   status: string
   kds_stage?: "new" | "preparing" | "ready" | "completed"
+  kitchen_stage?: "new" | "preparing" | "ready" | "completed"
+  bar_stage?: "new" | "preparing" | "ready" | "completed"
   order_type: string
   table_id: string | null
   total_amount: number
@@ -73,6 +75,9 @@ interface SupabaseOrder {
     quantity: number
     unit_price: number
     special_instructions: string | null
+    name?: string
+    station?: "kitchen" | "bar"
+    status?: string
     MenuItem: {
       name: string
     } | null
@@ -87,14 +92,43 @@ interface SupabaseOrder {
   }> | null
 }
 
+interface KdsTicketItem {
+  id: string
+  name: string
+  quantity: number
+  status: "new" | "preparing" | "ready" | "completed"
+  instructions?: string | null
+}
+
 interface KdsTicket {
   id: string
   orderId: string
   table: string
   time: string
   station: "kitchen" | "bar"
-  items: string[]
+  items: KdsTicketItem[]
   stage: "new" | "preparing" | "ready"
+}
+
+function isBarItem(name: string): boolean {
+  const lower = (name || "").toLowerCase()
+  return (
+    lower.includes("beer") ||
+    lower.includes("wine") ||
+    lower.includes("fizz") ||
+    lower.includes("cocktail") ||
+    lower.includes("macchiato") ||
+    lower.includes("coffee") ||
+    lower.includes("drink") ||
+    lower.includes("juice") ||
+    lower.includes("beverage") ||
+    lower.includes("tea") ||
+    lower.includes("smoothie") ||
+    lower.includes("soda") ||
+    lower.includes("water") ||
+    lower.includes("latte") ||
+    lower.includes("espresso")
+  )
 }
 
 function formatTimeAgo(isoString?: string): string {
@@ -111,59 +145,50 @@ function formatTimeAgo(isoString?: string): string {
 function buildKdsTicketsFromOrders(ordersList: SupabaseOrder[]): KdsTicket[] {
   const tickets: KdsTicket[] = []
 
-  const isBarItem = (name: string) => {
-    const lower = name.toLowerCase()
-    return (
-      lower.includes("beer") ||
-      lower.includes("wine") ||
-      lower.includes("fizz") ||
-      lower.includes("cocktail") ||
-      lower.includes("macchiato") ||
-      lower.includes("coffee") ||
-      lower.includes("drink") ||
-      lower.includes("juice") ||
-      lower.includes("beverage") ||
-      lower.includes("tea") ||
-      lower.includes("smoothie") ||
-      lower.includes("soda")
-    )
-  }
-
   for (const order of ordersList) {
-    const rawStage = order.kds_stage || (
+    const orderNum = order.order_number?.replace(/\D/g, "") || order.id.slice(-4)
+    const tableName = order.table_id || (order.order_type === "takeaway" ? "Takeaway" : order.order_type === "delivery" ? "Delivery" : "Counter")
+    const timeAgo = formatTimeAgo(order.created_at)
+
+    const kitchenItems: KdsTicketItem[] = []
+    const barItems: KdsTicketItem[] = []
+
+    if (order.order_items && Array.isArray(order.order_items)) {
+      for (const it of order.order_items) {
+        const name = it.MenuItem?.name || it.name || "Item"
+        const qty = it.quantity || 1
+        const itemStatus: "new" | "preparing" | "ready" | "completed" =
+          it.status === "ready" ? "ready" :
+          it.status === "preparing" ? "preparing" :
+          it.status === "completed" ? "completed" : "new"
+
+        const itemObj: KdsTicketItem = {
+          id: it.id,
+          name,
+          quantity: qty,
+          status: itemStatus,
+          instructions: it.special_instructions,
+        }
+
+        if (isBarItem(name)) {
+          barItems.push(itemObj)
+        } else {
+          kitchenItems.push(itemObj)
+        }
+      }
+    }
+
+    // --- KITCHEN TICKET (Independent station stage) ---
+    const rawKitchenStage = order.kitchen_stage || order.kds_stage || (
       order.status === "CLOSED" ? "completed" :
       order.status === "READY" ? "ready" :
       order.status === "PREPARING" ? "preparing" : "new"
     )
 
-    if (rawStage === "completed" || order.status === "CLOSED") {
-      continue
-    }
+    if (kitchenItems.length > 0 && rawKitchenStage !== "completed") {
+      const validKitchenStage: "new" | "preparing" | "ready" =
+        rawKitchenStage === "preparing" || rawKitchenStage === "ready" ? rawKitchenStage : "new"
 
-    const validStage: "new" | "preparing" | "ready" =
-      rawStage === "preparing" || rawStage === "ready" ? rawStage : "new"
-
-    const orderNum = order.order_number?.replace(/\D/g, "") || order.id.slice(-4)
-    const tableName = order.table_id || (order.order_type === "takeaway" ? "Takeaway" : order.order_type === "delivery" ? "Delivery" : "Counter")
-    const timeAgo = formatTimeAgo(order.created_at)
-
-    const kitchenItems: string[] = []
-    const barItems: string[] = []
-
-    if (order.order_items && Array.isArray(order.order_items)) {
-      for (const it of order.order_items) {
-        const name = it.MenuItem?.name || (it as any).name || "Item"
-        const qty = it.quantity || 1
-        const line = `${qty}x ${name}`
-        if (isBarItem(name)) {
-          barItems.push(line)
-        } else {
-          kitchenItems.push(line)
-        }
-      }
-    }
-
-    if (kitchenItems.length > 0) {
       tickets.push({
         id: `T-${orderNum}-K`,
         orderId: order.id,
@@ -171,11 +196,21 @@ function buildKdsTicketsFromOrders(ordersList: SupabaseOrder[]): KdsTicket[] {
         time: timeAgo,
         station: "kitchen",
         items: kitchenItems,
-        stage: validStage,
+        stage: validKitchenStage,
       })
     }
 
-    if (barItems.length > 0) {
+    // --- BAR TICKET (Independent station stage) ---
+    const rawBarStage = order.bar_stage || order.kds_stage || (
+      order.status === "CLOSED" ? "completed" :
+      order.status === "READY" ? "ready" :
+      order.status === "PREPARING" ? "preparing" : "new"
+    )
+
+    if (barItems.length > 0 && rawBarStage !== "completed") {
+      const validBarStage: "new" | "preparing" | "ready" =
+        rawBarStage === "preparing" || rawBarStage === "ready" ? rawBarStage : "new"
+
       tickets.push({
         id: `T-${orderNum}-B`,
         orderId: order.id,
@@ -183,18 +218,27 @@ function buildKdsTicketsFromOrders(ordersList: SupabaseOrder[]): KdsTicket[] {
         time: timeAgo,
         station: "bar",
         items: barItems,
-        stage: validStage,
+        stage: validBarStage,
       })
     }
 
-    if (kitchenItems.length === 0 && barItems.length === 0) {
+    // Fallback if order has 0 categorized items but is active
+    if (kitchenItems.length === 0 && barItems.length === 0 && rawKitchenStage !== "completed") {
+      const validStage: "new" | "preparing" | "ready" =
+        rawKitchenStage === "preparing" || rawKitchenStage === "ready" ? rawKitchenStage : "new"
+
       tickets.push({
         id: `T-${orderNum}`,
         orderId: order.id,
         table: tableName,
         time: timeAgo,
         station: "kitchen",
-        items: ["1x Kitchen Order"],
+        items: [{
+          id: `it_${order.id}_fb`,
+          name: "Kitchen Order",
+          quantity: 1,
+          status: validStage,
+        }],
         stage: validStage,
       })
     }
@@ -505,6 +549,8 @@ function RestaurantAdminContent() {
       user_id: "user-1",
       status: "OPEN",
       kds_stage: "new",
+      kitchen_stage: "new",
+      bar_stage: "new",
       order_type: "dine-in",
       table_id: "Table 04",
       total_amount: 41.00,
@@ -518,8 +564,8 @@ function RestaurantAdminContent() {
       created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
       updated_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
       order_items: [
-        { id: "it-1", order_id: "ord_demo_1046", menu_item_id: "m1", quantity: 2, unit_price: 16.50, special_instructions: null, MenuItem: { name: "Classic Wagyu Burger" } },
-        { id: "it-2", order_id: "ord_demo_1046", menu_item_id: "m4", quantity: 1, unit_price: 8.00, special_instructions: null, MenuItem: { name: "Crispy Truffle Fries" } },
+        { id: "it-1", order_id: "ord_demo_1046", menu_item_id: "m1", quantity: 2, unit_price: 16.50, special_instructions: null, name: "Classic Wagyu Burger", station: "kitchen", status: "new", MenuItem: { name: "Classic Wagyu Burger" } },
+        { id: "it-2", order_id: "ord_demo_1046", menu_item_id: "m4", quantity: 1, unit_price: 8.00, special_instructions: null, name: "Crispy Truffle Fries", station: "kitchen", status: "new", MenuItem: { name: "Crispy Truffle Fries" } },
       ],
       Payment: null,
     },
@@ -530,6 +576,8 @@ function RestaurantAdminContent() {
       user_id: "user-1",
       status: "CLOSED",
       kds_stage: "completed",
+      kitchen_stage: "completed",
+      bar_stage: "completed",
       order_type: "takeaway",
       table_id: "Counter",
       total_amount: 32.50,
@@ -543,8 +591,8 @@ function RestaurantAdminContent() {
       created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
       updated_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
       order_items: [
-        { id: "it-3", order_id: "ord_demo_1045", menu_item_id: "m2", quantity: 1, unit_price: 18.00, special_instructions: null, MenuItem: { name: "Truffle Mushroom Pasta" } },
-        { id: "it-4", order_id: "ord_demo_1045", menu_item_id: "m3", quantity: 1, unit_price: 14.50, special_instructions: null, MenuItem: { name: "Margherita Artisan Pizza" } },
+        { id: "it-3", order_id: "ord_demo_1045", menu_item_id: "m2", quantity: 1, unit_price: 18.00, special_instructions: null, name: "Truffle Mushroom Pasta", station: "kitchen", status: "completed", MenuItem: { name: "Truffle Mushroom Pasta" } },
+        { id: "it-4", order_id: "ord_demo_1045", menu_item_id: "m3", quantity: 1, unit_price: 14.50, special_instructions: null, name: "Margherita Artisan Pizza", station: "kitchen", status: "completed", MenuItem: { name: "Margherita Artisan Pizza" } },
       ],
       Payment: null,
     },
@@ -555,6 +603,8 @@ function RestaurantAdminContent() {
       user_id: "user-1",
       status: "READY",
       kds_stage: "ready",
+      kitchen_stage: "preparing",
+      bar_stage: "ready",
       order_type: "delivery",
       table_id: "Online",
       total_amount: 26.50,
@@ -568,8 +618,8 @@ function RestaurantAdminContent() {
       created_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
       updated_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
       order_items: [
-        { id: "it-5", order_id: "ord_demo_1044", menu_item_id: "m6", quantity: 1, unit_price: 11.00, special_instructions: null, MenuItem: { name: "Grilled Chicken Wings" } },
-        { id: "it-6", order_id: "ord_demo_1044", menu_item_id: "m7", quantity: 2, unit_price: 7.50, special_instructions: null, MenuItem: { name: "Craft IPA Beer" } },
+        { id: "it-5", order_id: "ord_demo_1044", menu_item_id: "m6", quantity: 1, unit_price: 11.00, special_instructions: null, name: "Grilled Chicken Wings", station: "kitchen", status: "preparing", MenuItem: { name: "Grilled Chicken Wings" } },
+        { id: "it-6", order_id: "ord_demo_1044", menu_item_id: "m7", quantity: 2, unit_price: 7.50, special_instructions: null, name: "Craft IPA Beer", station: "bar", status: "ready", MenuItem: { name: "Craft IPA Beer" } },
       ],
       Payment: null,
     },
@@ -625,14 +675,33 @@ function RestaurantAdminContent() {
         const newOrd = event.data.order as SupabaseOrder
         setOrders((prev) => [newOrd, ...prev.filter((o) => o.id !== newOrd.id)])
       } else if (event.data.type === "order_updated") {
-        const { order_id, kds_stage, status } = event.data
+        const { order_id, station, stage, kitchen_stage, bar_stage, status } = event.data
+        setOrders((prev) =>
+          prev.map((o) => {
+            if (o.id === order_id || o.order_number === order_id) {
+              const updated = { ...o }
+              if (station === "kitchen" || kitchen_stage) {
+                updated.kitchen_stage = stage || kitchen_stage
+              }
+              if (station === "bar" || bar_stage) {
+                updated.bar_stage = stage || bar_stage
+              }
+              if (status) updated.status = status
+              return updated
+            }
+            return o
+          })
+        )
+      } else if (event.data.type === "item_updated") {
+        const { order_id, item_id, item_status } = event.data
         setOrders((prev) =>
           prev.map((o) => {
             if (o.id === order_id || o.order_number === order_id) {
               return {
                 ...o,
-                kds_stage: kds_stage || o.kds_stage,
-                status: status || o.status,
+                order_items: o.order_items?.map((it: any) =>
+                  it.id === item_id ? { ...it, status: item_status } : it
+                ),
               }
             }
             return o
@@ -708,10 +777,31 @@ function RestaurantAdminContent() {
             setOrders((prev) =>
               prev.map((o) => {
                 if (o.id === payload.order_id || o.order_number === payload.order_id) {
+                  const updated = { ...o }
+                  if (payload.station === "kitchen" || payload.kitchen_stage) {
+                    updated.kitchen_stage = payload.stage || payload.kitchen_stage
+                  }
+                  if (payload.station === "bar" || payload.bar_stage) {
+                    updated.bar_stage = payload.stage || payload.bar_stage
+                  }
+                  if (payload.status) updated.status = payload.status
+                  return updated
+                }
+                return o
+              })
+            )
+          }
+        })
+        .on("broadcast", { event: "item_updated" }, ({ payload }) => {
+          if (payload) {
+            setOrders((prev) =>
+              prev.map((o) => {
+                if (o.id === payload.order_id || o.order_number === payload.order_id) {
                   return {
                     ...o,
-                    kds_stage: payload.kds_stage || o.kds_stage,
-                    status: payload.status || o.status,
+                    order_items: o.order_items?.map((it: any) =>
+                      it.id === payload.item_id ? { ...it, status: payload.item_status } : it
+                    ),
                   }
                 }
                 return o
@@ -746,28 +836,68 @@ function RestaurantAdminContent() {
     if (!ticket) return
 
     let nextStage: "new" | "preparing" | "ready" | "completed" = "new"
-    let nextStatus = "OPEN"
 
     if (ticket.stage === "new") {
       nextStage = "preparing"
-      nextStatus = "PREPARING"
     } else if (ticket.stage === "preparing") {
       nextStage = "ready"
-      nextStatus = "READY"
     } else if (ticket.stage === "ready") {
       nextStage = "completed"
-      nextStatus = "CLOSED"
     }
 
-    // 1. Optimistically update local orders state
+    const station = ticket.station // "kitchen" | "bar"
+
+    // 1. Optimistically update local orders state ONLY for that station
     setOrders((prev) =>
       prev.map((o) => {
         if (o.id === ticket.orderId || o.order_number === ticket.orderId) {
-          return {
-            ...o,
-            kds_stage: nextStage,
-            status: nextStatus,
+          const updatedOrder = { ...o }
+          if (station === "kitchen") {
+            updatedOrder.kitchen_stage = nextStage
+          } else if (station === "bar") {
+            updatedOrder.bar_stage = nextStage
           }
+
+          // Also update items belonging to this station
+          if (updatedOrder.order_items) {
+            updatedOrder.order_items = updatedOrder.order_items.map((it: any) => {
+              const itemIsBar = isBarItem(it.MenuItem?.name || it.name || "")
+              if ((station === "bar" && itemIsBar) || (station === "kitchen" && !itemIsBar)) {
+                return {
+                  ...it,
+                  status: nextStage,
+                }
+              }
+              return it
+            })
+          }
+
+          // Calculate overall order status
+          const kStage = updatedOrder.kitchen_stage || "new"
+          const bStage = updatedOrder.bar_stage || "new"
+          const hasKitchenItems = updatedOrder.order_items?.some((it: any) => !isBarItem(it.MenuItem?.name || it.name || ""))
+          const hasBarItems = updatedOrder.order_items?.some((it: any) => isBarItem(it.MenuItem?.name || it.name || ""))
+
+          const kitchenDone = !hasKitchenItems || kStage === "completed"
+          const barDone = !hasBarItems || bStage === "completed"
+
+          if (kitchenDone && barDone) {
+            updatedOrder.status = "CLOSED"
+          } else if (
+            (hasKitchenItems && kStage === "ready") ||
+            (hasBarItems && bStage === "ready")
+          ) {
+            updatedOrder.status = "READY"
+          } else if (
+            (hasKitchenItems && kStage === "preparing") ||
+            (hasBarItems && bStage === "preparing")
+          ) {
+            updatedOrder.status = "PREPARING"
+          } else {
+            updatedOrder.status = "OPEN"
+          }
+
+          return updatedOrder
         }
         return o
       })
@@ -780,8 +910,8 @@ function RestaurantAdminContent() {
         bc.postMessage({
           type: "order_updated",
           order_id: ticket.orderId,
-          kds_stage: nextStage,
-          status: nextStatus,
+          station: station,
+          stage: nextStage,
         })
         bc.close()
       }
@@ -794,12 +924,66 @@ function RestaurantAdminContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           order_id: ticket.orderId,
-          kds_stage: nextStage,
-          status: nextStatus,
+          station: station,
+          stage: nextStage,
         }),
       })
     } catch (err) {
       console.warn("Could not patch order KDS stage:", err)
+    }
+  }
+
+  const toggleItemStatus = async (orderId: string, itemId: string) => {
+    let targetNewStatus = "ready"
+    let targetStation: "kitchen" | "bar" = "kitchen"
+
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === orderId || o.order_number === orderId) {
+          const updatedItems = o.order_items?.map((it: any) => {
+            if (it.id === itemId) {
+              const currentStatus = it.status || "new"
+              targetNewStatus = currentStatus === "ready" ? "new" : "ready"
+              const itemIsBar = isBarItem(it.MenuItem?.name || it.name || "")
+              targetStation = itemIsBar ? "bar" : "kitchen"
+              return { ...it, status: targetNewStatus }
+            }
+            return it
+          })
+          return { ...o, order_items: updatedItems }
+        }
+        return o
+      })
+    )
+
+    // Broadcast item update
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({
+          type: "item_updated",
+          order_id: orderId,
+          item_id: itemId,
+          item_status: targetNewStatus,
+          station: targetStation,
+        })
+        bc.close()
+      }
+    } catch {}
+
+    // Persist to API
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId,
+          item_id: itemId,
+          item_status: targetNewStatus,
+        }),
+      })
+    } catch (err) {
+      console.warn("Could not patch item status:", err)
     }
   }
 
@@ -2142,6 +2326,8 @@ function RestaurantAdminContent() {
                             user_id: userId || "user-default",
                             status: "OPEN",
                             kds_stage: "new",
+                            kitchen_stage: "new",
+                            bar_stage: "new",
                             order_type: posOrderType,
                             table_id: tableId || (posOrderType === "takeaway" ? "Takeaway" : posOrderType === "delivery" ? "Delivery" : "Counter"),
                             total_amount: total,
@@ -2161,6 +2347,9 @@ function RestaurantAdminContent() {
                               quantity: it.quantity,
                               unit_price: it.unitPrice,
                               special_instructions: null,
+                              name: it.name,
+                              station: isBarItem(it.name) ? "bar" : "kitchen",
+                              status: "new",
                               MenuItem: { name: it.name },
                             })),
                             Payment: null,
@@ -2264,6 +2453,8 @@ function RestaurantAdminContent() {
                             user_id: userId || "user-default",
                             status: "OPEN",
                             kds_stage: "new",
+                            kitchen_stage: "new",
+                            bar_stage: "new",
                             order_type: posOrderType,
                             table_id: tableId || (posOrderType === "takeaway" ? "Takeaway" : posOrderType === "delivery" ? "Delivery" : "Counter"),
                             total_amount: total,
@@ -2283,6 +2474,9 @@ function RestaurantAdminContent() {
                               quantity: it.quantity,
                               unit_price: it.unitPrice,
                               special_instructions: null,
+                              name: it.name,
+                              station: isBarItem(it.name) ? "bar" : "kitchen",
+                              status: "new",
                               MenuItem: { name: it.name },
                             })),
                             Payment: [
@@ -3314,20 +3508,58 @@ function RestaurantAdminContent() {
                               </div>
                               <span className="text-blue-500 font-semibold">{t.time === "Just now" ? t.time : `${t.time} ago`}</span>
                             </div>
-                            <ul
-                              className={`text-xs space-y-1 list-disc pl-4 ${
-                                isDarkMode ? "text-slate-300" : "text-slate-700"
-                              }`}
-                            >
-                              {t.items.map((i, idx) => (
-                                <li key={idx}>{i}</li>
+                            <div className="space-y-1.5">
+                              {t.items.map((it) => (
+                                <div
+                                  key={it.id}
+                                  onClick={() => toggleItemStatus(t.orderId, it.id)}
+                                  className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${
+                                    it.status === "ready" || it.status === "completed"
+                                      ? isDarkMode
+                                        ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300 line-through opacity-80"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-800 line-through opacity-80"
+                                      : isDarkMode
+                                        ? "bg-[#181a24] border-[#252838] text-slate-200 hover:border-slate-600"
+                                        : "bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300"
+                                  }`}
+                                  title="Click to toggle item preparation status"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border shrink-0 transition ${
+                                        it.status === "ready" || it.status === "completed"
+                                          ? "bg-emerald-500 border-emerald-500 text-white"
+                                          : isDarkMode
+                                            ? "border-slate-600 text-transparent"
+                                            : "border-slate-400 text-transparent"
+                                      }`}
+                                    >
+                                      ✓
+                                    </span>
+                                    <span className="font-semibold truncate">{it.quantity}x {it.name}</span>
+                                  </div>
+                                  <span
+                                    className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 px-1.5 py-0.5 rounded ${
+                                      it.status === "ready" || it.status === "completed"
+                                        ? "bg-emerald-500/20 text-emerald-400"
+                                        : "bg-slate-500/20 text-slate-400"
+                                    }`}
+                                  >
+                                    {it.status === "ready" || it.status === "completed" ? "Done" : "Pending"}
+                                  </span>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                             <button
                               onClick={() => advanceKdsTicket(t.id)}
-                              className="w-full py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-xs"
+                              className={`w-full py-1.5 rounded-xl text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 ${
+                                t.station === "bar"
+                                  ? "bg-purple-600 hover:bg-purple-500"
+                                  : "bg-blue-600 hover:bg-blue-500"
+                              }`}
                             >
-                              Start Preparing
+                              <span>Start Preparing</span>
+                              <span className="text-[10px] opacity-80 uppercase">({t.station})</span>
                             </button>
                           </div>
                         ))
@@ -3386,20 +3618,54 @@ function RestaurantAdminContent() {
                               </div>
                               <span className="text-amber-500 font-semibold">{t.time === "Just now" ? t.time : `${t.time} ago`}</span>
                             </div>
-                            <ul
-                              className={`text-xs space-y-1 list-disc pl-4 ${
-                                isDarkMode ? "text-slate-300" : "text-slate-700"
-                              }`}
-                            >
-                              {t.items.map((i, idx) => (
-                                <li key={idx}>{i}</li>
+                            <div className="space-y-1.5">
+                              {t.items.map((it) => (
+                                <div
+                                  key={it.id}
+                                  onClick={() => toggleItemStatus(t.orderId, it.id)}
+                                  className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${
+                                    it.status === "ready" || it.status === "completed"
+                                      ? isDarkMode
+                                        ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300 line-through opacity-80"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-800 line-through opacity-80"
+                                      : isDarkMode
+                                        ? "bg-[#181a24] border-[#252838] text-slate-200 hover:border-slate-600"
+                                        : "bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300"
+                                  }`}
+                                  title="Click to toggle item preparation status"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border shrink-0 transition ${
+                                        it.status === "ready" || it.status === "completed"
+                                          ? "bg-emerald-500 border-emerald-500 text-white"
+                                          : isDarkMode
+                                            ? "border-slate-600 text-transparent"
+                                            : "border-slate-400 text-transparent"
+                                      }`}
+                                    >
+                                      ✓
+                                    </span>
+                                    <span className="font-semibold truncate">{it.quantity}x {it.name}</span>
+                                  </div>
+                                  <span
+                                    className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 px-1.5 py-0.5 rounded ${
+                                      it.status === "ready" || it.status === "completed"
+                                        ? "bg-emerald-500/20 text-emerald-400"
+                                        : "bg-slate-500/20 text-slate-400"
+                                    }`}
+                                  >
+                                    {it.status === "ready" || it.status === "completed" ? "Done" : "Pending"}
+                                  </span>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                             <button
                               onClick={() => advanceKdsTicket(t.id)}
-                              className="w-full py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-xs"
+                              className="w-full py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
                             >
-                              Mark Ready
+                              <span>Mark Ready</span>
+                              <span className="text-[10px] opacity-80 uppercase">({t.station})</span>
                             </button>
                           </div>
                         ))
@@ -3458,20 +3724,54 @@ function RestaurantAdminContent() {
                               </div>
                               <span className="text-emerald-500 font-semibold">Ready!</span>
                             </div>
-                            <ul
-                              className={`text-xs space-y-1 list-disc pl-4 ${
-                                isDarkMode ? "text-slate-300" : "text-slate-700"
-                              }`}
-                            >
-                              {t.items.map((i, idx) => (
-                                <li key={idx}>{i}</li>
+                            <div className="space-y-1.5">
+                              {t.items.map((it) => (
+                                <div
+                                  key={it.id}
+                                  onClick={() => toggleItemStatus(t.orderId, it.id)}
+                                  className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${
+                                    it.status === "ready" || it.status === "completed"
+                                      ? isDarkMode
+                                        ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300 line-through opacity-80"
+                                        : "bg-emerald-50 border-emerald-200 text-emerald-800 line-through opacity-80"
+                                      : isDarkMode
+                                        ? "bg-[#181a24] border-[#252838] text-slate-200 hover:border-slate-600"
+                                        : "bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300"
+                                  }`}
+                                  title="Click to toggle item preparation status"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border shrink-0 transition ${
+                                        it.status === "ready" || it.status === "completed"
+                                          ? "bg-emerald-500 border-emerald-500 text-white"
+                                          : isDarkMode
+                                            ? "border-slate-600 text-transparent"
+                                            : "border-slate-400 text-transparent"
+                                      }`}
+                                    >
+                                      ✓
+                                    </span>
+                                    <span className="font-semibold truncate">{it.quantity}x {it.name}</span>
+                                  </div>
+                                  <span
+                                    className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 px-1.5 py-0.5 rounded ${
+                                      it.status === "ready" || it.status === "completed"
+                                        ? "bg-emerald-500/20 text-emerald-400"
+                                        : "bg-slate-500/20 text-slate-400"
+                                    }`}
+                                  >
+                                    {it.status === "ready" || it.status === "completed" ? "Done" : "Pending"}
+                                  </span>
+                                </div>
                               ))}
-                            </ul>
+                            </div>
                             <button
                               onClick={() => advanceKdsTicket(t.id)}
-                              className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs"
+                              className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
                             >
-                              Served / Clear
+                              <span>Served / Clear</span>
+                              <span className="text-[10px] opacity-80 uppercase">({t.station})</span>
                             </button>
                           </div>
                         ))
