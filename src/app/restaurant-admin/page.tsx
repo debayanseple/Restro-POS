@@ -370,6 +370,9 @@ function RestaurantAdminContent() {
 
     setUserType(determinedRole)
     setPosRole(determinedPosRole)
+    if (determinedPosRole === "kitchen") {
+      setKdsStationFilter("kitchen")
+    }
 
     if (tabParam) {
       setActiveTab(tabParam)
@@ -495,11 +498,7 @@ function RestaurantAdminContent() {
   const [posCategory, setPosCategory] = useState("all")
   const [posSearch, setPosSearch] = useState("")
   const [posOrderType, setPosOrderType] = useState<"dine-in" | "takeaway" | "delivery">("dine-in")
-  const [cart, setCart] = useState<CartItem[]>([
-    { id: "m1", name: "Classic Wagyu Burger", price: 16.50, quantity: 2 },
-    { id: "m4", name: "Crispy Truffle Fries", price: 8.00, quantity: 1 },
-    { id: "m7", name: "Craft IPA Beer", price: 7.50, quantity: 2 },
-  ])
+  const [cart, setCart] = useState<CartItem[]>([])
   const [orderSentToast, setOrderSentToast] = useState(false)
 
   const menuCatalog = [
@@ -542,92 +541,8 @@ function RestaurantAdminContent() {
   const total = subtotal + tax
 
   // --- ORDERS STATE ---
-  const initialSampleOrders: SupabaseOrder[] = [
-    {
-      id: "ord_demo_1046",
-      restaurant_id: "demo-restaurant-1",
-      outlet_id: "outlet-1",
-      user_id: "user-1",
-      status: "OPEN",
-      kds_stage: "new",
-      kitchen_stage: "new",
-      bar_stage: "new",
-      order_type: "dine-in",
-      table_id: "Table 04",
-      total_amount: 41.00,
-      tax_amount: 3.28,
-      discount_amount: 0,
-      payment_status: "UNPAID",
-      payment_method: "MANUAL",
-      source: "pos",
-      order_number: "ORD-1046",
-      notes: "Medium rare burgers",
-      created_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-      updated_at: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-      order_items: [
-        { id: "it-1", order_id: "ord_demo_1046", menu_item_id: "m1", quantity: 2, unit_price: 16.50, special_instructions: null, name: "Classic Wagyu Burger", station: "kitchen", status: "new", MenuItem: { name: "Classic Wagyu Burger" } },
-        { id: "it-2", order_id: "ord_demo_1046", menu_item_id: "m4", quantity: 1, unit_price: 8.00, special_instructions: null, name: "Crispy Truffle Fries", station: "kitchen", status: "new", MenuItem: { name: "Crispy Truffle Fries" } },
-      ],
-      Payment: null,
-    },
-    {
-      id: "ord_demo_1045",
-      restaurant_id: "demo-restaurant-1",
-      outlet_id: "outlet-1",
-      user_id: "user-1",
-      status: "CLOSED",
-      kds_stage: "completed",
-      kitchen_stage: "completed",
-      bar_stage: "completed",
-      order_type: "takeaway",
-      table_id: "Counter",
-      total_amount: 32.50,
-      tax_amount: 2.60,
-      discount_amount: 0,
-      payment_status: "PAID",
-      payment_method: "CARD",
-      source: "pos",
-      order_number: "ORD-1045",
-      notes: null,
-      created_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-      updated_at: new Date(Date.now() - 1000 * 60 * 35).toISOString(),
-      order_items: [
-        { id: "it-3", order_id: "ord_demo_1045", menu_item_id: "m2", quantity: 1, unit_price: 18.00, special_instructions: null, name: "Truffle Mushroom Pasta", station: "kitchen", status: "completed", MenuItem: { name: "Truffle Mushroom Pasta" } },
-        { id: "it-4", order_id: "ord_demo_1045", menu_item_id: "m3", quantity: 1, unit_price: 14.50, special_instructions: null, name: "Margherita Artisan Pizza", station: "kitchen", status: "completed", MenuItem: { name: "Margherita Artisan Pizza" } },
-      ],
-      Payment: null,
-    },
-    {
-      id: "ord_demo_1044",
-      restaurant_id: "demo-restaurant-1",
-      outlet_id: "outlet-1",
-      user_id: "user-1",
-      status: "READY",
-      kds_stage: "ready",
-      kitchen_stage: "preparing",
-      bar_stage: "ready",
-      order_type: "delivery",
-      table_id: "Online",
-      total_amount: 26.50,
-      tax_amount: 2.12,
-      discount_amount: 0,
-      payment_status: "PAID",
-      payment_method: "ONLINE",
-      source: "pos",
-      order_number: "ORD-1044",
-      notes: null,
-      created_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
-      updated_at: new Date(Date.now() - 1000 * 60 * 65).toISOString(),
-      order_items: [
-        { id: "it-5", order_id: "ord_demo_1044", menu_item_id: "m6", quantity: 1, unit_price: 11.00, special_instructions: null, name: "Grilled Chicken Wings", station: "kitchen", status: "preparing", MenuItem: { name: "Grilled Chicken Wings" } },
-        { id: "it-6", order_id: "ord_demo_1044", menu_item_id: "m7", quantity: 2, unit_price: 7.50, special_instructions: null, name: "Craft IPA Beer", station: "bar", status: "ready", MenuItem: { name: "Craft IPA Beer" } },
-      ],
-      Payment: null,
-    },
-  ]
-
   const [ordersFilter, setOrdersFilter] = useState("all")
-  const [orders, setOrders] = useState<SupabaseOrder[]>(initialSampleOrders)
+  const [orders, setOrders] = useState<SupabaseOrder[]>([])
   const [activeOrderMenuId, setActiveOrderMenuId] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
@@ -835,9 +750,7 @@ function RestaurantAdminContent() {
   }, [isSubscribed])
 
   // --- KDS TICKETS STATE (Kitchen/Bar Queue) ---
-  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>(() =>
-    buildKdsTicketsFromOrders(initialSampleOrders)
-  )
+  const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>([])
 
   // Keep KDS tickets synchronized with orders list
   useEffect(() => {
@@ -1170,7 +1083,15 @@ function RestaurantAdminContent() {
   ])
 
   // --- KDS STATIONS FILTER ---
-  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">("all")
+  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      const r = params.get("role")
+      if (r === "pos-kitchen" || r === "kitchen") return "kitchen"
+      if (r === "pos-bar" || r === "bar") return "bar"
+    }
+    return "all"
+  })
 
   // --- MENUS PER USER TYPE & POS SUB-ROLES ---
   const adminMenuItems = [
