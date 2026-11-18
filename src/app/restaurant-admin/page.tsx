@@ -462,7 +462,8 @@ function RestaurantAdminContent() {
     { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
     { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
   ])
-  const [selectedTableId, setSelectedTableId] = useState<number | null>(1)
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null)
+  const [tableValidationError, setTableValidationError] = useState(false)
   const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
   const [waitlist, setWaitlist] = useState<Array<{ name: string; guests: number; time: string }>>([])
@@ -2159,7 +2160,11 @@ function RestaurantAdminContent() {
                       {(["dine-in", "takeaway", "delivery"] as const).map((type) => (
                         <button
                           key={type}
-                          onClick={() => setPosOrderType(type)}
+                          onClick={() => {
+                            setPosOrderType(type)
+                            setTableValidationError(false)
+                            if (type !== "dine-in") setSelectedTableId(null)
+                          }}
                           className={`py-1 rounded-lg capitalize transition ${
                             posOrderType === type
                               ? "bg-[#8b5cf6] text-white"
@@ -2170,6 +2175,85 @@ function RestaurantAdminContent() {
                         </button>
                       ))}
                     </div>
+
+                    {posOrderType === "dine-in" && (
+                      <div
+                        className={`p-2.5 rounded-xl border text-xs space-y-1.5 transition ${
+                          tableValidationError && !selectedTableId
+                            ? "border-red-500/80 bg-red-500/10"
+                            : isDarkMode
+                            ? "bg-[#181a24] border-[#252837]"
+                            : "bg-slate-50 border-slate-200"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <label
+                            htmlFor="pos-table-select"
+                            className={`font-semibold text-[11px] flex items-center gap-1.5 ${
+                              tableValidationError && !selectedTableId
+                                ? "text-red-400 font-bold"
+                                : isDarkMode
+                                ? "text-slate-300"
+                                : "text-slate-700"
+                            }`}
+                          >
+                            <LayoutGrid className="w-3.5 h-3.5 text-purple-400" />
+                            <span>Table Number</span>
+                            <span className="text-red-400">*</span>
+                          </label>
+                          {selectedTableId ? (
+                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                              Table {selectedTableId} Selected
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 animate-pulse">
+                              Mandatory
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="relative">
+                          <select
+                            id="pos-table-select"
+                            value={selectedTableId ?? ""}
+                            onChange={(e) => {
+                              const val = e.target.value
+                              setSelectedTableId(val ? Number(val) : null)
+                              setTableValidationError(false)
+                            }}
+                            className={`w-full text-xs font-medium rounded-lg px-2.5 py-1.5 pr-8 border transition cursor-pointer appearance-none outline-hidden ${
+                              tableValidationError && !selectedTableId
+                                ? "border-red-500 bg-red-500/10 text-red-300 focus:ring-1 focus:ring-red-500"
+                                : isDarkMode
+                                ? "bg-[#14161f] border-[#292c3c] text-white hover:border-purple-500/50"
+                                : "bg-white border-slate-300 text-slate-900 hover:border-purple-500/50"
+                            }`}
+                          >
+                            <option value="" disabled className="text-slate-400">
+                              -- Choose a Table (Required) --
+                            </option>
+                            {tables.map((t) => (
+                              <option
+                                key={t.id}
+                                value={t.id}
+                                className={isDarkMode ? "bg-[#14161f] text-slate-200" : "bg-white text-slate-800"}
+                              >
+                                {t.name} ({t.seats} Seats) — {t.status === "available" ? "Available" : t.status.toUpperCase()}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </div>
+                        </div>
+
+                        {tableValidationError && !selectedTableId && (
+                          <p className="text-[10px] font-semibold text-red-400 flex items-center gap-1">
+                            <span>⚠️</span> Table number is mandatory to place a Dine In order.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                       {cart.length === 0 ? (
@@ -2289,13 +2373,28 @@ function RestaurantAdminContent() {
                       </div>
                     )}
 
+                    {posOrderType === "dine-in" && !selectedTableId && cart.length > 0 && (
+                      <p className="text-[11px] font-semibold text-amber-400 text-center py-1 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                        Please choose a table number above to proceed
+                      </p>
+                    )}
+
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         onClick={async () => {
                           if (cart.length === 0) return
+                          if (posOrderType === "dine-in" && !selectedTableId) {
+                            setTableValidationError(true)
+                            return
+                          }
                           
                           // Get current table selection
-                          const tableId = selectedTableId ? `Table 0${selectedTableId}` : null
+                          const chosenTable = tables.find((t) => t.id === selectedTableId)
+                          const tableId = posOrderType === "dine-in"
+                            ? (chosenTable?.name || `Table ${selectedTableId}`)
+                            : posOrderType === "takeaway"
+                            ? "Takeaway"
+                            : "Delivery"
                           
                           const orderItems = cart.map((item: any) => ({
                             menuItemId: item.id,
@@ -2357,6 +2456,13 @@ function RestaurantAdminContent() {
 
                           setOrderSentToast(true)
                           setTimeout(() => setOrderSentToast(false), 2500)
+                          if (selectedTableId) {
+                            setTables((prev) =>
+                              prev.map((t) => (t.id === selectedTableId ? { ...t, status: "occupied", isOpen: true } : t))
+                            )
+                          }
+                          setSelectedTableId(null)
+                          setTableValidationError(false)
                           setCart([])
                           setActiveTab("orders")
 
@@ -2420,9 +2526,18 @@ function RestaurantAdminContent() {
                       <button
                         onClick={async () => {
                           if (cart.length === 0) return
+                          if (posOrderType === "dine-in" && !selectedTableId) {
+                            setTableValidationError(true)
+                            return
+                          }
                           
                           // Get current table selection
-                          const tableId = selectedTableId ? `Table 0${selectedTableId}` : null
+                          const chosenTable = tables.find((t) => t.id === selectedTableId)
+                          const tableId = posOrderType === "dine-in"
+                            ? (chosenTable?.name || `Table ${selectedTableId}`)
+                            : posOrderType === "takeaway"
+                            ? "Takeaway"
+                            : "Delivery"
                           
                           const orderItems = cart.map((item: any) => ({
                             menuItemId: item.id,
@@ -2493,6 +2608,13 @@ function RestaurantAdminContent() {
 
                           setOrderSentToast(true)
                           setTimeout(() => setOrderSentToast(false), 2500)
+                          if (selectedTableId) {
+                            setTables((prev) =>
+                              prev.map((t) => (t.id === selectedTableId ? { ...t, status: "occupied", isOpen: true } : t))
+                            )
+                          }
+                          setSelectedTableId(null)
+                          setTableValidationError(false)
                           setCart([])
                           setActiveTab("orders")
 
