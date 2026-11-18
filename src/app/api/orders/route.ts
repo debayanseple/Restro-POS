@@ -360,6 +360,7 @@ export async function PATCH(request: Request) {
       bar_stage,
       item_id,
       item_status,
+      payment_status,
     } = body
     const targetId = order_id || id
     const targetStage = kds_stage || stage
@@ -370,6 +371,9 @@ export async function PATCH(request: Request) {
 
     const order = cachedOrders.find((o) => o.id === targetId || o.order_number === targetId)
     if (order) {
+      if (payment_status) {
+        order.payment_status = payment_status
+      }
       // 1. Station-specific stage updates (Kitchen vs Bar are completely separate)
       if (station === "kitchen") {
         order.kitchen_stage = targetStage || kitchen_stage
@@ -435,6 +439,7 @@ export async function PATCH(request: Request) {
     try {
       const updateData: any = { updated_at: new Date().toISOString() }
       if (order?.status) updateData.status = order.status
+      if (order?.payment_status) updateData.payment_status = order.payment_status
       await supabase.from("Order").update(updateData).eq("id", targetId)
     } catch {}
 
@@ -452,6 +457,7 @@ export async function PATCH(request: Request) {
           item_id,
           item_status,
           status: order?.status,
+          payment_status: order?.payment_status,
         },
       })
     } catch {}

@@ -44,6 +44,7 @@ import {
   Sliders,
   Clock,
   LogOut,
+  MoreVertical,
 } from "lucide-react"
 
 // Types for Order data from Supabase
@@ -627,10 +628,20 @@ function RestaurantAdminContent() {
 
   const [ordersFilter, setOrdersFilter] = useState("all")
   const [orders, setOrders] = useState<SupabaseOrder[]>(initialSampleOrders)
+  const [activeOrderMenuId, setActiveOrderMenuId] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
   const [outletId, setOutletId] = useState<string | null>(null)
   const [userId, setUserId] = useState("")
+
+  // Close order actions menu when clicking outside
+  useEffect(() => {
+    const handleDocClick = () => setActiveOrderMenuId(null)
+    if (activeOrderMenuId) {
+      document.addEventListener("click", handleDocClick)
+      return () => document.removeEventListener("click", handleDocClick)
+    }
+  }, [activeOrderMenuId])
 
   // Extract tenant context from cookies on mount
   useEffect(() => {
@@ -675,7 +686,7 @@ function RestaurantAdminContent() {
         const newOrd = event.data.order as SupabaseOrder
         setOrders((prev) => [newOrd, ...prev.filter((o) => o.id !== newOrd.id)])
       } else if (event.data.type === "order_updated") {
-        const { order_id, station, stage, kitchen_stage, bar_stage, status } = event.data
+        const { order_id, station, stage, kitchen_stage, bar_stage, status, payment_status } = event.data
         setOrders((prev) =>
           prev.map((o) => {
             if (o.id === order_id || o.order_number === order_id) {
@@ -687,6 +698,7 @@ function RestaurantAdminContent() {
                 updated.bar_stage = stage || bar_stage
               }
               if (status) updated.status = status
+              if (payment_status) updated.payment_status = payment_status
               return updated
             }
             return o
@@ -785,6 +797,7 @@ function RestaurantAdminContent() {
                     updated.bar_stage = payload.stage || payload.bar_stage
                   }
                   if (payload.status) updated.status = payload.status
+                  if (payload.payment_status) updated.payment_status = payload.payment_status
                   return updated
                 }
                 return o
@@ -984,6 +997,60 @@ function RestaurantAdminContent() {
       })
     } catch (err) {
       console.warn("Could not patch item status:", err)
+    }
+  }
+
+  const updatePaymentStatus = async (orderId: string, newPaymentStatus: "PAID" | "UNPAID") => {
+    setActiveOrderMenuId(null)
+
+    // 1. Optimistically update local orders
+    setOrders((prev) =>
+      prev.map((o) => {
+        if (o.id === orderId || o.order_number === orderId) {
+          return {
+            ...o,
+            payment_status: newPaymentStatus,
+            Payment: newPaymentStatus === "PAID" ? [
+              {
+                id: `pay_${Date.now()}`,
+                order_id: o.id,
+                amount: o.total_amount,
+                status: "PAID",
+                payment_method: "MANUAL",
+                recorded_at: new Date().toISOString(),
+              }
+            ] : null,
+          }
+        }
+        return o
+      })
+    )
+
+    // 2. Broadcast across tabs immediately
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({
+          type: "order_updated",
+          order_id: orderId,
+          payment_status: newPaymentStatus,
+        })
+        bc.close()
+      }
+    } catch {}
+
+    // 3. Persist update to /api/orders
+    try {
+      await fetch("/api/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId,
+          payment_status: newPaymentStatus,
+        }),
+      })
+    } catch (err) {
+      console.warn("Could not patch payment status:", err)
     }
   }
 
@@ -2622,10 +2689,12 @@ function RestaurantAdminContent() {
                     >
                       <tr>
                         <th className="py-3 px-4">Order #</th>
-                        <th className="py-3 px-4">Channel</th>
+                        <th className="py-3 px-4">Channel & Table</th>
                         <th className="py-3 px-4">Order Items</th>
                         <th className="py-3 px-4 text-right">Total</th>
-                        <th className="py-3 px-4 text-center">Status</th>
+                        <th className="py-3 px-4">Prep Stage</th>
+                        <th className="py-3 px-4 text-center">Payment</th>
+                        <th className="py-3 px-4 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody
@@ -2640,55 +2709,224 @@ function RestaurantAdminContent() {
                           const normFilter = ordersFilter.toLowerCase().replace(/[-_ ]/g, "")
                           return normType === normFilter
                         })
-                        .map((o) => (
-                          <tr
-                            key={o.id}
-                            className={`transition ${
-                              isDarkMode ? "hover:bg-[#1a1c26]" : "hover:bg-slate-50"
-                            }`}
-                          >
-                            <td
-                              className={`py-3.5 px-4 font-bold ${
-                                isDarkMode ? "text-white" : "text-slate-900"
+                        .map((o) => {
+                          const hasKitchen = (o.order_items || []).some((it: any) => !isBarItem(it.MenuItem?.name || it.name || ""))
+                          const hasBar = (o.order_items || []).some((it: any) => isBarItem(it.MenuItem?.name || it.name || ""))
+
+                          const kStage = o.kitchen_stage || o.kds_stage || (
+                            o.status === "CLOSED" ? "completed" :
+                            o.status === "READY" ? "ready" :
+                            o.status === "PREPARING" ? "preparing" : "new"
+                          )
+                          const bStage = o.bar_stage || o.kds_stage || (
+                            o.status === "CLOSED" ? "completed" :
+                            o.status === "READY" ? "ready" :
+                            o.status === "PREPARING" ? "preparing" : "new"
+                          )
+
+                          return (
+                            <tr
+                              key={o.id}
+                              className={`transition ${
+                                isDarkMode ? "hover:bg-[#1a1c26]" : "hover:bg-slate-50"
                               }`}
                             >
-                              {o.order_number}
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <span
-                                className={`font-semibold capitalize ${
+                              <td className="py-3.5 px-4 font-bold">
+                                <span className={isDarkMode ? "text-white" : "text-slate-900"}>
+                                  {o.order_number}
+                                </span>
+                                <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                                  {formatTimeAgo(o.created_at)}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <span
+                                  className={`font-semibold capitalize ${
+                                    isDarkMode ? "text-slate-300" : "text-slate-700"
+                                  }`}
+                                >
+                                  {o.order_type?.replace(/[-_]/g, " ")}
+                                </span>
+                                <div className="text-[10px] text-purple-400 font-semibold mt-0.5">
+                                  {o.table_id || "Counter"}
+                                </div>
+                              </td>
+                              <td
+                                className={`py-3.5 px-4 max-w-xs ${
                                   isDarkMode ? "text-slate-300" : "text-slate-700"
                                 }`}
                               >
-                                {o.order_type?.replace(/[-_]/g, " ")}
-                              </span>
-                              <div className="text-[10px] text-slate-400">{o.table_id || "Counter"}</div>
-                            </td>
-                            <td
-                              className={`py-3.5 px-4 ${
-                                isDarkMode ? "text-slate-300" : "text-slate-700"
-                              }`}
-                            >
-                              {((o.order_items || []).map((item: any) => `${item.quantity}x ${item.MenuItem?.name || item.name || "Item"}`).join(", ") || "No items")}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
-                              ${(typeof o.total_amount === "number" ? o.total_amount : Number(o.total_amount || 0)).toFixed(2)}
-                            </td>
-                            <td className="py-3.5 px-4 text-center">
-                              <span
-                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  o.payment_status === "PAID"
-                                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800"
-                                    : o.payment_status === "READY"
-                                    ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-300 dark:border-blue-800"
-                                    : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
-                                }`}
-                              >
-                                {o.payment_status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                                {((o.order_items || []).map((item: any) => `${item.quantity}x ${item.MenuItem?.name || item.name || "Item"}`).join(", ") || "No items")}
+                              </td>
+                              <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
+                                ${(typeof o.total_amount === "number" ? o.total_amount : Number(o.total_amount || 0)).toFixed(2)}
+                              </td>
+                              <td className="py-3.5 px-4">
+                                <div className="flex flex-col gap-1.5 items-start">
+                                  {hasKitchen && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                        <span>🍳</span> Kitchen:
+                                      </span>
+                                      <span
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                          kStage === "ready"
+                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                            : kStage === "preparing"
+                                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                            : kStage === "completed"
+                                            ? "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                                            : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                        }`}
+                                      >
+                                        {kStage === "new" ? "New Queue" : kStage === "preparing" ? "Cooking" : kStage === "ready" ? "Food Ready" : "Served"}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {hasBar && (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                        <span>🍸</span> Bar:
+                                      </span>
+                                      <span
+                                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                          bStage === "ready"
+                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                            : bStage === "preparing"
+                                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                            : bStage === "completed"
+                                            ? "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                                            : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                                        }`}
+                                      >
+                                        {bStage === "new" ? "Bar Queue" : bStage === "preparing" ? "Mixing" : bStage === "ready" ? "Drinks Ready" : "Served"}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {!hasKitchen && !hasBar && (
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                                        o.status === "CLOSED"
+                                          ? "bg-slate-500/20 text-slate-400 border border-slate-500/30"
+                                          : o.status === "READY"
+                                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                          : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                      }`}
+                                    >
+                                      {o.status}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span
+                                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 ${
+                                    o.payment_status === "PAID"
+                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                      : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      o.payment_status === "PAID" ? "bg-emerald-400" : "bg-amber-400"
+                                    }`}
+                                  />
+                                  {o.payment_status === "PAID" ? "Paid" : "Unpaid"}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right relative">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setActiveOrderMenuId(activeOrderMenuId === o.id ? null : o.id)
+                                  }}
+                                  className={`p-1.5 rounded-lg border transition ${
+                                    activeOrderMenuId === o.id
+                                      ? "bg-purple-600 text-white border-purple-500"
+                                      : isDarkMode
+                                      ? "bg-[#1e212d] text-slate-300 border-[#2b2f42] hover:bg-slate-700 hover:text-white"
+                                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900"
+                                  }`}
+                                  title="Actions"
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+
+                                {activeOrderMenuId === o.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className={`absolute right-4 top-11 z-50 w-48 rounded-xl border p-1.5 shadow-2xl text-left ${
+                                      isDarkMode
+                                        ? "bg-[#191b26] border-[#2d3144] text-slate-200 shadow-black/80"
+                                        : "bg-white border-slate-200 text-slate-800 shadow-slate-300/60"
+                                    }`}
+                                  >
+                                    {o.payment_status !== "PAID" ? (
+                                      <button
+                                        onClick={() => updatePaymentStatus(o.id, "PAID")}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2 transition"
+                                      >
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                        <span>Mark as Paid</span>
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => updatePaymentStatus(o.id, "UNPAID")}
+                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition"
+                                      >
+                                        <X className="w-4 h-4 text-amber-400" />
+                                        <span>Mark as Unpaid</span>
+                                      </button>
+                                    )}
+
+                                    <button
+                                      onClick={() => {
+                                        setActiveOrderMenuId(null)
+                                        window.print()
+                                      }}
+                                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
+                                        isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
+                                      }`}
+                                    >
+                                      <Receipt className="w-4 h-4 text-purple-400" />
+                                      <span>Print Receipt</span>
+                                    </button>
+
+                                    {hasKitchen && kStage !== "completed" && (
+                                      <button
+                                        onClick={() => {
+                                          advanceKdsTicket(`T-${o.order_number?.replace(/\D/g, "") || o.id.slice(-4)}-K`)
+                                          setActiveOrderMenuId(null)
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
+                                          isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
+                                        }`}
+                                      >
+                                        <ChefHat className="w-4 h-4 text-blue-400" />
+                                        <span>Advance Kitchen</span>
+                                      </button>
+                                    )}
+
+                                    {hasBar && bStage !== "completed" && (
+                                      <button
+                                        onClick={() => {
+                                          advanceKdsTicket(`T-${o.order_number?.replace(/\D/g, "") || o.id.slice(-4)}-B`)
+                                          setActiveOrderMenuId(null)
+                                        }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
+                                          isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
+                                        }`}
+                                      >
+                                        <Utensils className="w-4 h-4 text-amber-400" />
+                                        <span>Advance Bar</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
                     </tbody>
                   </table>
                 </div>
