@@ -453,15 +453,26 @@ function RestaurantAdminContent() {
   }
 
   // --- TABLES STATE ---
-  const [tables, setTables] = useState<TableItem[]>([
-    { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
-    { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
-    { id: 3, name: "Table 3", seats: 6, status: "available", isOpen: false },
-    { id: 4, name: "Table 4", seats: 4, status: "available", isOpen: false },
-    { id: 6, name: "Table 6", seats: 6, status: "available", isOpen: false },
-    { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
-    { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
-  ])
+  const [tables, setTables] = useState<TableItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("restro_pos_tables")
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch {}
+    }
+    return [
+      { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
+      { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
+      { id: 3, name: "Table 3", seats: 6, status: "available", isOpen: false },
+      { id: 4, name: "Table 4", seats: 4, status: "available", isOpen: false },
+      { id: 6, name: "Table 6", seats: 6, status: "available", isOpen: false },
+      { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
+      { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
+    ]
+  })
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null)
   const [tableValidationError, setTableValidationError] = useState(false)
   const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
@@ -470,19 +481,43 @@ function RestaurantAdminContent() {
   const [waitlistName, setWaitlistName] = useState("")
   const [waitlistGuests, setWaitlistGuests] = useState(2)
 
-  const setTableStatus = (status: TableItem["status"]) => {
+  // Persist tables to localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined" && tables.length > 0) {
+      try {
+        localStorage.setItem("restro_pos_tables", JSON.stringify(tables))
+      } catch {}
+    }
+  }, [tables])
+
+  const setTableStatus = async (status: TableItem["status"]) => {
     if (selectedTableId === null) return
+    const targetId = selectedTableId
     setTables((prev) =>
-      prev.map((t) => (t.id === selectedTableId ? { ...t, status } : t))
+      prev.map((t) => (t.id === targetId ? { ...t, status } : t))
     )
     setSelectedTableId(null)
+
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({ type: "table_updated", table_id: targetId, status })
+        bc.close()
+      }
+      await fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ table_id: targetId, status }),
+      })
+    } catch {}
   }
 
-  const toggleTableCode = (tableId: number) => {
+  const toggleTableCode = async (tableId: number) => {
+    let nextState = false
     setTables((prev) =>
       prev.map((t) => {
         if (t.id === tableId) {
-          const nextState = !t.isOpen
+          nextState = !t.isOpen
           return {
             ...t,
             isOpen: nextState,
@@ -493,6 +528,28 @@ function RestaurantAdminContent() {
         return t
       })
     )
+
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({
+          type: "table_updated",
+          table_id: tableId,
+          status: nextState ? "occupied" : "available",
+          isOpen: nextState,
+        })
+        bc.close()
+      }
+      await fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          table_id: tableId,
+          status: nextState ? "occupied" : "available",
+          isOpen: nextState,
+        }),
+      })
+    } catch {}
   }
 
   // --- POS STATE ---
@@ -543,12 +600,58 @@ function RestaurantAdminContent() {
 
   // --- ORDERS STATE ---
   const [ordersFilter, setOrdersFilter] = useState("all")
-  const [orders, setOrders] = useState<SupabaseOrder[]>([])
+  const [orders, setOrders] = useState<SupabaseOrder[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("restro_pos_orders")
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch {}
+    }
+    return []
+  })
   const [activeOrderMenuId, setActiveOrderMenuId] = useState<string | null>(null)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
   const [outletId, setOutletId] = useState<string | null>(null)
   const [userId, setUserId] = useState("")
+
+  // Save orders to localStorage whenever updated
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem("restro_pos_orders", JSON.stringify(orders))
+      } catch {}
+    }
+  }, [orders])
+
+  // Automatically keep tables in sync with active open orders
+  useEffect(() => {
+    if (orders.length === 0) return
+    setTables((prev) => {
+      const activeTableNames = new Set(
+        orders
+          .filter((o) => o.status !== "CLOSED" && o.status !== "CANCELLED" && o.table_id)
+          .map((o) => String(o.table_id).toLowerCase().trim())
+      )
+
+      return prev.map((t) => {
+        const match1 = activeTableNames.has(t.name.toLowerCase().trim())
+        const match2 = activeTableNames.has(`table ${t.id}`)
+        const match3 = activeTableNames.has(`table 0${t.id}`)
+
+        if (match1 || match2 || match3) {
+          return { ...t, status: "occupied", isOpen: true }
+        }
+        if (t.status === "occupied" && !match1 && !match2 && !match3) {
+          return { ...t, status: "available", isOpen: false }
+        }
+        return t
+      })
+    })
+  }, [orders])
 
   // Close order actions menu when clicking outside
   useEffect(() => {
@@ -582,11 +685,25 @@ function RestaurantAdminContent() {
     })
   }, [])
 
-  // Fetch orders from API and Supabase with 3s background polling
+  const fetchTables = async () => {
+    try {
+      const res = await fetch("/api/tables")
+      if (res.ok) {
+        const data = await res.json()
+        if (data.tables && Array.isArray(data.tables)) {
+          setTables(data.tables)
+        }
+      }
+    } catch {}
+  }
+
+  // Fetch orders and tables with 3s background polling
   useEffect(() => {
     fetchOrders()
+    fetchTables()
     const interval = setInterval(() => {
       fetchOrders()
+      fetchTables()
     }, 3000)
     return () => clearInterval(interval)
   }, [])
@@ -600,30 +717,63 @@ function RestaurantAdminContent() {
       if (!event.data) return
       if (event.data.type === "new_order" && event.data.order) {
         const newOrd = event.data.order as SupabaseOrder
-        setOrders((prev) => [newOrd, ...prev.filter((o) => o.id !== newOrd.id)])
+        setOrders((prev) => {
+          const updated = [newOrd, ...prev.filter((o) => o.id !== newOrd.id)]
+          try {
+            localStorage.setItem("restro_pos_orders", JSON.stringify(updated))
+          } catch {}
+          return updated
+        })
+        if (newOrd.table_id) {
+          setTables((prev) =>
+            prev.map((t) => {
+              const m1 = t.name.toLowerCase().trim() === String(newOrd.table_id).toLowerCase().trim()
+              const m2 = `table ${t.id}` === String(newOrd.table_id).toLowerCase().trim()
+              const m3 = `table 0${t.id}` === String(newOrd.table_id).toLowerCase().trim()
+              if (m1 || m2 || m3) {
+                return { ...t, status: "occupied", isOpen: true }
+              }
+              return t
+            })
+          )
+        }
+      } else if (event.data.type === "table_updated") {
+        const { table_id, status } = event.data
+        setTables((prev) =>
+          prev.map((t) => {
+            if (t.id === Number(table_id) || t.name.toLowerCase() === String(table_id).toLowerCase()) {
+              return { ...t, status }
+            }
+            return t
+          })
+        )
       } else if (event.data.type === "order_updated") {
         const { order_id, station, stage, kitchen_stage, bar_stage, status, payment_status } = event.data
-        setOrders((prev) =>
-          prev.map((o) => {
+        setOrders((prev) => {
+          const updated = prev.map((o) => {
             if (o.id === order_id || o.order_number === order_id) {
-              const updated = { ...o }
+              const up = { ...o }
               if (station === "kitchen" || kitchen_stage) {
-                updated.kitchen_stage = stage || kitchen_stage
+                up.kitchen_stage = stage || kitchen_stage
               }
               if (station === "bar" || bar_stage) {
-                updated.bar_stage = stage || bar_stage
+                up.bar_stage = stage || bar_stage
               }
-              if (status) updated.status = status
-              if (payment_status) updated.payment_status = payment_status
-              return updated
+              if (status) up.status = status
+              if (payment_status) up.payment_status = payment_status
+              return up
             }
             return o
           })
-        )
+          try {
+            localStorage.setItem("restro_pos_orders", JSON.stringify(updated))
+          } catch {}
+          return updated
+        })
       } else if (event.data.type === "item_updated") {
         const { order_id, item_id, item_status } = event.data
-        setOrders((prev) =>
-          prev.map((o) => {
+        setOrders((prev) => {
+          const updated = prev.map((o) => {
             if (o.id === order_id || o.order_number === order_id) {
               return {
                 ...o,
@@ -634,9 +784,14 @@ function RestaurantAdminContent() {
             }
             return o
           })
-        )
+          try {
+            localStorage.setItem("restro_pos_orders", JSON.stringify(updated))
+          } catch {}
+          return updated
+        })
       } else if (event.data.type === "refresh_orders") {
         fetchOrders()
+        fetchTables()
       }
     }
 
@@ -651,7 +806,23 @@ function RestaurantAdminContent() {
       if (res.ok) {
         const data = await res.json()
         if (data.orders && Array.isArray(data.orders)) {
-          setOrders(data.orders as SupabaseOrder[])
+          if (data.orders.length > 0) {
+            setOrders(data.orders as SupabaseOrder[])
+            try {
+              localStorage.setItem("restro_pos_orders", JSON.stringify(data.orders))
+            } catch {}
+          } else {
+            // Check localStorage
+            try {
+              const saved = localStorage.getItem("restro_pos_orders")
+              if (saved) {
+                const localOrders = JSON.parse(saved)
+                if (Array.isArray(localOrders) && localOrders.length > 0) {
+                  setOrders(localOrders)
+                }
+              }
+            } catch {}
+          }
           return
         }
       }
@@ -671,6 +842,9 @@ function RestaurantAdminContent() {
 
       if (!error && data && data.length > 0) {
         setOrders(data as SupabaseOrder[])
+        try {
+          localStorage.setItem("restro_pos_orders", JSON.stringify(data))
+        } catch {}
       }
     } catch (error: any) {
       console.warn("Direct Supabase fetch note:", error.message)
@@ -2457,9 +2631,22 @@ function RestaurantAdminContent() {
                           setOrderSentToast(true)
                           setTimeout(() => setOrderSentToast(false), 2500)
                           if (selectedTableId) {
+                            const tId = selectedTableId
                             setTables((prev) =>
-                              prev.map((t) => (t.id === selectedTableId ? { ...t, status: "occupied", isOpen: true } : t))
+                              prev.map((t) => (t.id === tId ? { ...t, status: "occupied", isOpen: true } : t))
                             )
+                            try {
+                              if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                                const bc = new BroadcastChannel("restro_sync_channel")
+                                bc.postMessage({ type: "table_updated", table_id: tId, status: "occupied", isOpen: true })
+                                bc.close()
+                              }
+                              fetch("/api/tables", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ table_id: tId, status: "occupied", isOpen: true }),
+                              }).catch(() => {})
+                            } catch {}
                           }
                           setSelectedTableId(null)
                           setTableValidationError(false)
@@ -2609,9 +2796,22 @@ function RestaurantAdminContent() {
                           setOrderSentToast(true)
                           setTimeout(() => setOrderSentToast(false), 2500)
                           if (selectedTableId) {
+                            const tId = selectedTableId
                             setTables((prev) =>
-                              prev.map((t) => (t.id === selectedTableId ? { ...t, status: "occupied", isOpen: true } : t))
+                              prev.map((t) => (t.id === tId ? { ...t, status: "occupied", isOpen: true } : t))
                             )
+                            try {
+                              if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                                const bc = new BroadcastChannel("restro_sync_channel")
+                                bc.postMessage({ type: "table_updated", table_id: tId, status: "occupied", isOpen: true })
+                                bc.close()
+                              }
+                              fetch("/api/tables", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ table_id: tId, status: "occupied", isOpen: true }),
+                              }).catch(() => {})
+                            } catch {}
                           }
                           setSelectedTableId(null)
                           setTableValidationError(false)

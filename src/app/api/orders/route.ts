@@ -1,5 +1,34 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import fs from "fs"
+import path from "path"
+
+const DATA_DIR = path.join(process.cwd(), "data")
+const ORDERS_FILE = path.join(DATA_DIR, "orders.json")
+
+function loadSavedOrders(): any[] {
+  try {
+    if (fs.existsSync(ORDERS_FILE)) {
+      const content = fs.readFileSync(ORDERS_FILE, "utf-8")
+      const parsed = JSON.parse(content)
+      if (Array.isArray(parsed)) return parsed
+    }
+  } catch (err) {
+    console.warn("Could not read orders from disk:", err)
+  }
+  return []
+}
+
+function saveOrdersToDisk(orders: any[]) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true })
+    }
+    fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf-8")
+  } catch (err) {
+    console.warn("Could not save orders to disk:", err)
+  }
+}
 
 function isBarItem(name: string): boolean {
   const lower = (name || "").toLowerCase()
@@ -22,8 +51,8 @@ function isBarItem(name: string): boolean {
   )
 }
 
-// In-memory runtime cache for orders so POS and KDS always work seamlessly
-let cachedOrders: any[] = []
+// Persistent runtime cache for orders
+let cachedOrders: any[] = loadSavedOrders()
 
 export async function POST(request: Request) {
   try {
@@ -193,8 +222,9 @@ export async function POST(request: Request) {
       })
     } catch {}
 
-    // 3. Prepend to in-memory orders cache
+    // 3. Prepend to in-memory orders cache & persist to disk
     cachedOrders.unshift(newOrder)
+    saveOrdersToDisk(cachedOrders)
 
     return NextResponse.json({
       success: true,
@@ -233,7 +263,7 @@ export async function GET(request: Request) {
 
       const { data: dbOrders, error } = await query
 
-      if (!error && dbOrders) {
+      if (!error && dbOrders && dbOrders.length > 0) {
         return NextResponse.json({
           success: true,
           orders: dbOrders,
@@ -243,7 +273,10 @@ export async function GET(request: Request) {
       console.warn("Supabase fetch fallback to cached orders:", dbErr)
     }
 
-    // 2. Return cached orders
+    // 2. Return cached orders from memory/disk
+    if (cachedOrders.length === 0) {
+      cachedOrders = loadSavedOrders()
+    }
     let result = [...cachedOrders]
     if (restaurant_id) result = result.filter((o) => o.restaurant_id === restaurant_id)
     if (outlet_id) result = result.filter((o) => o.outlet_id === outlet_id)
@@ -350,6 +383,7 @@ export async function PATCH(request: Request) {
       }
 
       order.updated_at = new Date().toISOString()
+      saveOrdersToDisk(cachedOrders)
     }
 
     // Update in Supabase if table exists
