@@ -1,5 +1,191 @@
 [
   {
+    "id": "ord_1795003768083_lxvm",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 2",
+    "total_amount": 22.14,
+    "tax_amount": 1.6400000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-1500",
+    "notes": null,
+    "created_at": "2026-11-18T12:09:28.083Z",
+    "updated_at": "2026-11-18T12:09:39.108Z",
+    "order_items": [
+      {
+        "id": "it_1795003768083_0",
+        "order_id": "ord_1795003768083_lxvm",
+        "menu_item_id": "m5",
+        "quantity": 1,
+        "unit_price": 9.5,
+        "special_instructions": null,
+        "name": "Caesar Salad Bowl",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Caesar Salad Bowl"
+        }
+      },
+      {
+        "id": "it_1795003768083_1",
+        "order_id": "ord_1795003768083_lxvm",
+        "menu_item_id": "m6",
+        "quantity": 1,
+        "unit_price": 11,
+        "special_instructions": null,
+        "name": "Grilled Chicken Wings",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Grilled Chicken Wings"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795003768083",
+        "order_id": "ord_1795003768083_lxvm",
+        "amount": 22.14,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-18T12:09:28.083Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795003732704_k9r9",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 3",
+    "total_amount": 37.26,
+    "tax_amount": 2.7600000000000002,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-3637",
+    "notes": null,
+    "created_at": "2026-11-18T12:08:52.704Z",
+    "updated_at": "2026-11-18T12:09:07.300Z",
+    "order_items": [
+      {
+        "id": "it_1795003732704_0",
+        "order_id": "ord_1795003732704_k9r9",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 18,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      },
+      {
+        "id": "it_1795003732704_1",
+        "order_id": "ord_1795003732704_k9r9",
+        "menu_item_id": "m1",
+        "quantity": 1,
+        "unit_price": 16.5,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795003732704",
+        "order_id": "ord_1795003732704_k9r9",
+        "amount": 37.26,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-18T12:08:52.704Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795003696062_rrt6",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 35.1,
+    "tax_amount": 2.6,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-1233",
+    "notes": null,
+    "created_at": "2026-11-18T12:08:16.062Z",
+    "updated_at": "2026-11-18T12:08:28.252Z",
+    "order_items": [
+      {
+        "id": "it_1795003696062_0",
+        "order_id": "ord_1795003696062_rrt6",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 18,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      },
+      {
+        "id": "it_1795003696062_1",
+        "order_id": "ord_1795003696062_rrt6",
+        "menu_item_id": "m3",
+        "quantity": 1,
+        "unit_price": 14.5,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795003696062",
+        "order_id": "ord_1795003696062_rrt6",
+        "amount": 35.1,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-18T12:08:16.062Z"
+      }
+    ]
+  },
+  {
     "id": "ord_1795000553219_g6rn",
     "restaurant_id": "1",
     "outlet_id": "1",

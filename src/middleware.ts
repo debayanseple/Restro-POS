@@ -30,14 +30,17 @@ export async function middleware(request: NextRequest) {
   const userRole = request.cookies.get("user_role")?.value
   const posRole = request.cookies.get("pos_role")?.value
 
-  // Root / redirect based on authentication
+  // Block unauthenticated access to any protected application route
+  if (!userRole) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = pathname.startsWith("/pos") ? "/pos/login" : "/restaurant-admin/login"
+    loginUrl.search = ""
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Root / redirect based on authenticated user role
   if (pathname === "/") {
     const url = request.nextUrl.clone()
-    if (!userRole) {
-      url.pathname = "/restaurant-admin/login"
-      return NextResponse.redirect(url)
-    }
-
     url.pathname = "/restaurant-admin"
     if (userRole === "super-admin") {
       url.searchParams.set("role", "super-admin")

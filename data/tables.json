@@ -10,8 +10,8 @@
     "id": 2,
     "name": "Table 2",
     "seats": 4,
-    "status": "occupied",
-    "isOpen": true
+    "status": "available",
+    "isOpen": false
   },
   {
     "id": 3,

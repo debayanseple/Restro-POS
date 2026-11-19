@@ -338,6 +338,22 @@ function RestaurantAdminContent() {
       }
     } catch {}
 
+    // Parse session authentication cookies
+    const roleCookie = document.cookie.replace(
+      /(?:(?:^|.*)\s*user_role\s*=\s*([^;]*).*$)|^.*$/,
+      "$1"
+    )
+    const posCookie = document.cookie.replace(
+      /(?:(?:^|.*)\s*pos_role\s*=\s*([^;]*).*$)|^.*$/,
+      "$1"
+    )
+
+    // Unauthenticated access guard: redirect to login if no active session
+    if (!roleCookie) {
+      window.location.href = "/restaurant-admin/login"
+      return
+    }
+
     const roleParam = searchParams.get("role")
     const posRoleParam = searchParams.get("posRole")
     const tabParam = searchParams.get("tab")
@@ -345,60 +361,47 @@ function RestaurantAdminContent() {
     let determinedRole: UserType = "restaurant-admin"
     let determinedPosRole: PosRole = "orders"
 
-    // Parse role from query parameters
-    if (roleParam === "super-admin") {
-      determinedRole = "super-admin"
-    } else if (roleParam === "restaurant-admin") {
-      determinedRole = "restaurant-admin"
-    } else if (roleParam === "pos-orders" || roleParam === "orders") {
-      determinedRole = "pos-staff"
-      determinedPosRole = "orders"
-    } else if (roleParam === "pos-reception" || roleParam === "reception") {
-      determinedRole = "pos-staff"
-      determinedPosRole = "reception"
-    } else if (roleParam === "pos-kitchen" || roleParam === "kitchen") {
-      determinedRole = "pos-staff"
-      determinedPosRole = "kitchen"
-    } else if (roleParam === "pos-staff") {
-      determinedRole = "pos-staff"
-      if (posRoleParam === "kitchen" || posRoleParam === "reception" || posRoleParam === "orders") {
-        determinedPosRole = posRoleParam
-      }
-    } else {
-      // Parse role from cookies
-      const roleCookie = document.cookie.replace(
-        /(?:(?:^|.*)\s*user_role\s*=\s*([^;]*).*$)|^.*$/,
-        "$1"
-      )
-      const posCookie = document.cookie.replace(
-        /(?:(?:^|.*)\s*pos_role\s*=\s*([^;]*).*$)|^.*$/,
-        "$1"
-      )
-      const restaurantIdCookie = document.cookie.replace(
-        /(?:(?:^|.*)\s*restaurant_id\s*=\s*([^;]*).*$)|^.*$/,
-        "$1"
-      )
-      const outletIdCookie = document.cookie.replace(
-        /(?:(?:^|.*)\s*outlet_id\s*=\s*([^;]*).*$)|^.*$/,
-        "$1"
-      )
-
-      if (roleCookie === "super-admin") {
-        determinedRole = "super-admin"
-      } else if (roleCookie === "restaurant-admin") {
+    // Role resolution strictly anchored to verified session cookie
+    if (roleCookie === "super-admin") {
+      if (roleParam === "restaurant-admin") {
         determinedRole = "restaurant-admin"
-      } else if (roleCookie === "pos-kitchen" || (roleCookie === "pos-staff" && posCookie === "kitchen")) {
+      } else if (roleParam === "pos-kitchen" || (roleParam === "pos-staff" && posRoleParam === "kitchen")) {
         determinedRole = "pos-staff"
         determinedPosRole = "kitchen"
-      } else if (roleCookie === "pos-reception" || (roleCookie === "pos-staff" && posCookie === "reception")) {
+      } else if (roleParam === "pos-reception" || (roleParam === "pos-staff" && posRoleParam === "reception")) {
         determinedRole = "pos-staff"
         determinedPosRole = "reception"
-      } else if (roleCookie === "pos-orders" || (roleCookie === "pos-staff" && posCookie === "orders")) {
+      } else if (roleParam === "pos-orders" || (roleParam === "pos-staff" && posRoleParam === "orders")) {
+        determinedRole = "pos-staff"
+        determinedPosRole = "orders"
+      } else {
+        determinedRole = "super-admin"
+      }
+    } else if (roleCookie === "restaurant-admin") {
+      if (roleParam === "pos-kitchen" || (roleParam === "pos-staff" && posRoleParam === "kitchen")) {
+        determinedRole = "pos-staff"
+        determinedPosRole = "kitchen"
+      } else if (roleParam === "pos-reception" || (roleParam === "pos-staff" && posRoleParam === "reception")) {
+        determinedRole = "pos-staff"
+        determinedPosRole = "reception"
+      } else if (roleParam === "pos-orders" || (roleParam === "pos-staff" && posRoleParam === "orders")) {
         determinedRole = "pos-staff"
         determinedPosRole = "orders"
       } else {
         determinedRole = "restaurant-admin"
       }
+    } else if (roleCookie === "pos-kitchen" || (roleCookie === "pos-staff" && posCookie === "kitchen")) {
+      determinedRole = "pos-staff"
+      determinedPosRole = "kitchen"
+    } else if (roleCookie === "pos-reception" || (roleCookie === "pos-staff" && posCookie === "reception")) {
+      determinedRole = "pos-staff"
+      determinedPosRole = "reception"
+    } else if (roleCookie === "pos-orders" || (roleCookie === "pos-staff" && posCookie === "orders")) {
+      determinedRole = "pos-staff"
+      determinedPosRole = "orders"
+    } else {
+      determinedRole = "pos-staff"
+      determinedPosRole = "orders"
     }
 
     setUserType(determinedRole)
