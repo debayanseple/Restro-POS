@@ -1819,13 +1819,13 @@ function RestaurantAdminContent() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col font-sans select-none antialiased transition-colors duration-200 ${
+      className={`h-screen overflow-hidden flex flex-col font-sans select-none antialiased transition-colors duration-200 ${
         isDarkMode ? "bg-[#20252B] text-[#F7F5F0]" : "bg-[#F7F5F0] text-[#20252B]"
       }`}
     >
       {/* Top Production Status Bar */}
       <div
-        className={`px-4 py-1.5 text-xs font-medium flex items-center justify-between border-b shrink-0 ${
+        className={`sticky top-0 z-40 px-4 py-1.5 text-xs font-medium flex items-center justify-between border-b shrink-0 ${
           isDarkMode
             ? "bg-[#141620] border-[#202330] text-slate-300"
             : "bg-slate-100 border-slate-200 text-slate-700"
@@ -2018,10 +2018,10 @@ function RestaurantAdminContent() {
         >
           {/* Top Bar */}
           <header
-            className={`h-14 border-b px-6 flex items-center justify-between shrink-0 gap-4 z-20 ${
+            className={`sticky top-0 h-14 border-b px-6 flex items-center justify-between shrink-0 gap-4 z-30 transition-all duration-200 ${
               isDarkMode
-                ? "bg-[#20252B] border-[#1c1e27]"
-                : "bg-white border-slate-200 shadow-xs"
+                ? "bg-[#20252B]/95 backdrop-blur-md border-[#1c1e27] shadow-sm"
+                : "bg-white/95 backdrop-blur-md border-slate-200 shadow-xs"
             }`}
           >
             <div className="flex items-center gap-3">

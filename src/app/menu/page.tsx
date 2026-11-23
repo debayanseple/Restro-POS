@@ -267,7 +267,7 @@ function CustomerMenuContent() {
   return (
     <div className="min-h-screen bg-[#F7F5F0] text-[#20252B] pb-28 font-sans selection:bg-[#C46B4E]/20 selection:text-[#C46B4E]">
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E5E1D9] px-4 py-3">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-[#E5E1D9] px-4 py-3 shadow-xs transition-shadow duration-200">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center border border-[#E5E1D9]">

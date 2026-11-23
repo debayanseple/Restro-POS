@@ -55,6 +55,7 @@ export default function LandingPage() {
   const [previewTab, setPreviewTab] = useState<"pos" | "kds" | "tables">("pos")
   const [networkUrl, setNetworkUrl] = useState("")
   const [networkCopied, setNetworkCopied] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
 
   // POS Preview Interactive State
   const [posCategory, setPosCategory] = useState<"all" | "mains" | "sides" | "drinks">("all")
@@ -127,6 +128,14 @@ export default function LandingPage() {
         }
       })
       .catch((e) => console.error("Network info fetch error:", e))
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10)
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    handleScroll()
+
+    return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   // POS Cart operations
@@ -189,32 +198,40 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#F7F5F0] text-[#20252B] selection:bg-[#C46B4E]/20 selection:text-[#C46B4E] font-sans">
-      {/* Top Session Bar (if logged in) */}
-      {mounted && activeSessionRole ? (
-        <div className="bg-[#E9E3D8] border-b border-[#E5E1D9] px-4 py-2 text-xs flex items-center justify-between text-[#20252B]">
-          <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-            </span>
-            <span className="text-[#20252B]">
-              Active session: <strong className="font-semibold capitalize">{activeSessionRole.replace("pos-", "POS ")}</strong>
-            </span>
-            <div className="ml-auto flex items-center gap-3">
-              <Link
-                href="/restaurant-admin"
-                className="inline-flex items-center gap-1 font-semibold text-[#C46B4E] hover:text-[#B25C40] transition"
-              >
-                Go to Workspace <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
+      {/* Sticky Top Navigation Bar */}
+      <div
+        className={`sticky top-0 z-50 transition-all duration-300 ${
+          isScrolled
+            ? "bg-[#F7F5F0]/95 backdrop-blur-md shadow-md shadow-[#20252B]/5 border-b border-[#E5E1D9]"
+            : "bg-[#F7F5F0] border-b border-[#E5E1D9]"
+        }`}
+      >
+        {/* Top Session Bar (if logged in) */}
+        {mounted && activeSessionRole ? (
+          <div className="bg-[#E9E3D8] border-b border-[#E5E1D9]/70 px-4 py-1.5 text-xs flex items-center justify-between text-[#20252B]">
+            <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+              </span>
+              <span className="text-[#20252B]">
+                Active session: <strong className="font-semibold capitalize">{activeSessionRole.replace("pos-", "POS ")}</strong>
+              </span>
+              <div className="ml-auto flex items-center gap-3">
+                <Link
+                  href="/restaurant-admin"
+                  className="inline-flex items-center gap-1 font-semibold text-[#C46B4E] hover:text-[#B25C40] transition"
+                >
+                  Go to Workspace <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      {/* Main Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-[#F7F5F0]/95 backdrop-blur-md border-b border-[#E5E1D9]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between gap-4">
+        {/* Main Navigation Bar */}
+        <header className="transition-all duration-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-4">
           {/* Brand Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-[#C46B4E] flex items-center justify-center text-white shadow-xs group-hover:bg-[#B25C40] transition">
@@ -300,6 +317,7 @@ export default function LandingPage() {
           </div>
         </div>
       </header>
+    </div>
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-20 overflow-hidden bg-[#F7F5F0]">
