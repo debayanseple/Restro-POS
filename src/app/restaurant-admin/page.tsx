@@ -13,6 +13,7 @@ import {
   isItemExpired,
   isItemOutOfStock,
 } from "@/lib/inventory-catalog"
+import { TeamMember, StaffRole, MASTER_TEAM_MEMBERS } from "@/lib/team-catalog"
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -74,6 +75,12 @@ import {
   Layers,
   Scale,
   Warehouse,
+  Mail,
+  Phone,
+  Key,
+  ExternalLink,
+  UserPlus,
+  Power,
 } from "lucide-react"
 
 // Types for Order data from Supabase
@@ -1094,6 +1101,349 @@ function RestaurantAdminContent() {
       return matchesCategory && matchesSearch && matchesStock
     })
   }, [inventoryItems, inventoryCategoryFilter, inventorySearch, inventoryStockFilter])
+
+  // --- TEAM & STAFF DIRECTORY STATE ---
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(MASTER_TEAM_MEMBERS)
+  const [teamSearch, setTeamSearch] = useState("")
+  const [teamRoleFilter, setTeamRoleFilter] = useState("all")
+  const [teamStatusFilter, setTeamStatusFilter] = useState<"all" | "active" | "off-duty">("all")
+  const [teamViewMode, setTeamViewMode] = useState<"table" | "card">("table")
+  const [teamToast, setTeamToast] = useState<string | null>(null)
+
+  // Add / Edit Staff Modal state
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false)
+  const [editingStaff, setEditingStaff] = useState<TeamMember | null>(null)
+  const [isSavingStaff, setIsSavingStaff] = useState(false)
+
+  // Staff Form fields
+  const [staffName, setStaffName] = useState("")
+  const [staffEmail, setStaffEmail] = useState("")
+  const [staffPhone, setStaffPhone] = useState("")
+  const [staffRole, setStaffRole] = useState<StaffRole>("pos-orders")
+  const [staffDepartment, setStaffDepartment] = useState<TeamMember["department"]>("Front of House")
+  const [staffStation, setStaffStation] = useState("Counter POS Terminal 01")
+  const [staffShift, setStaffShift] = useState<"Morning (7 AM - 3 PM)" | "Evening (3 PM - 11 PM)" | "Full Day">("Morning (7 AM - 3 PM)")
+  const [staffPin, setStaffPin] = useState("3001")
+  const [staffStatus, setStaffStatus] = useState<"active" | "off-duty">("active")
+
+  // Load Team from API
+  useEffect(() => {
+    let isMounted = true
+    const fetchTeam = async () => {
+      try {
+        const res = await fetch("/api/team")
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted && Array.isArray(data.members)) {
+            setTeamMembers(data.members)
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch team members:", err)
+      }
+    }
+
+    fetchTeam()
+    const interval = setInterval(fetchTeam, 6000)
+
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("restro_team_channel")
+      bc.onmessage = (event) => {
+        if (event.data?.type === "team_updated" && Array.isArray(event.data.members)) {
+          setTeamMembers(event.data.members)
+        }
+      }
+    }
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+      if (bc) bc.close()
+    }
+  }, [])
+
+  // Auto-fill station & department when role changes in modal
+  const handleRoleChange = (selectedRole: StaffRole) => {
+    setStaffRole(selectedRole)
+    const defaults: Record<StaffRole, { department: TeamMember["department"]; station: string }> = {
+      admin: { department: "Management", station: "Executive Office & Control Suite" },
+      manager: { department: "Management", station: "Floor Operations & Staff Roster" },
+      "pos-kitchen": { department: "Kitchen & Bar", station: "Kitchen Display Queue (KDS Rail)" },
+      "pos-orders": { department: "Front of House", station: "Counter POS Terminal 01" },
+      "pos-reception": { department: "Front of House", station: "Reception Desk & Table Waitlist" },
+      bartender: { department: "Kitchen & Bar", station: "Bar Service & Draught Taps KDS" },
+      inventory: { department: "Operations", station: "Raw Material Storage & Dry Room" },
+    }
+    const def = defaults[selectedRole]
+    if (def) {
+      setStaffDepartment(def.department)
+      setStaffStation(def.station)
+    }
+  }
+
+  // Open Add Staff Modal
+  const handleOpenAddStaff = () => {
+    setEditingStaff(null)
+    setStaffName("")
+    setStaffEmail("")
+    setStaffPhone("+91 98200 11223")
+    setStaffRole("pos-orders")
+    setStaffDepartment("Front of House")
+    setStaffStation("Counter POS Terminal 01")
+    setStaffShift("Morning (7 AM - 3 PM)")
+    setStaffPin(String(Math.floor(1000 + Math.random() * 9000)))
+    setStaffStatus("active")
+    setShowAddStaffModal(true)
+  }
+
+  // Open Edit Staff Modal
+  const handleOpenEditStaff = (member: TeamMember) => {
+    setEditingStaff(member)
+    setStaffName(member.name)
+    setStaffEmail(member.email)
+    setStaffPhone(member.phone)
+    setStaffRole(member.role)
+    setStaffDepartment(member.department)
+    setStaffStation(member.station)
+    setStaffShift(member.shift)
+    setStaffPin(member.pin)
+    setStaffStatus(member.status)
+    setShowAddStaffModal(true)
+  }
+
+  // Save Staff (Add or Edit)
+  const handleSaveStaff = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!staffName.trim()) {
+      alert("Staff member name is required.")
+      return
+    }
+
+    setIsSavingStaff(true)
+    try {
+      const roleLabels: Record<StaffRole, string> = {
+        admin: "Restaurant Admin & Owner",
+        manager: "Restaurant Operations Manager",
+        "pos-orders": "POS Cashier / Order Taker",
+        "pos-kitchen": "Chef / Kitchen Cook",
+        "pos-reception": "Front Desk & Hostess",
+        bartender: "Mixologist & Bartender",
+        inventory: "Inventory & Store Keeper",
+      }
+
+      const roleColors: Record<StaffRole, string> = {
+        admin: "bg-[#C46B4E]",
+        manager: "bg-slate-700",
+        "pos-orders": "bg-blue-600",
+        "pos-kitchen": "bg-amber-600",
+        "pos-reception": "bg-emerald-600",
+        bartender: "bg-purple-600",
+        inventory: "bg-indigo-600",
+      }
+
+      if (editingStaff) {
+        // PATCH existing
+        const updates = {
+          name: staffName.trim(),
+          email: staffEmail.trim() || `${staffName.toLowerCase().replace(/\s+/g, ".")}@nodedrbistro.com`,
+          phone: staffPhone.trim(),
+          role: staffRole,
+          roleLabel: roleLabels[staffRole] || "Staff Member",
+          department: staffDepartment,
+          station: staffStation.trim(),
+          shift: staffShift,
+          pin: staffPin.trim(),
+          status: staffStatus,
+        }
+
+        const res = await fetch("/api/team", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editingStaff.id, updates }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data.members)) {
+            setTeamMembers(data.members)
+            if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+              const bc = new BroadcastChannel("restro_team_channel")
+              bc.postMessage({ type: "team_updated", members: data.members })
+              bc.close()
+            }
+          }
+          setTeamToast(`Updated staff record for ${staffName.trim()}.`)
+          setShowAddStaffModal(false)
+          setTimeout(() => setTeamToast(null), 3500)
+        }
+      } else {
+        // POST new
+        const newMemberPayload = {
+          name: staffName.trim(),
+          email: staffEmail.trim() || `${staffName.toLowerCase().replace(/\s+/g, ".")}@nodedrbistro.com`,
+          phone: staffPhone.trim(),
+          role: staffRole,
+          roleLabel: roleLabels[staffRole] || "Staff Member",
+          department: staffDepartment,
+          station: staffStation.trim(),
+          shift: staffShift,
+          pin: staffPin.trim(),
+          status: staffStatus,
+          avatarColor: roleColors[staffRole] || "bg-[#C46B4E]",
+        }
+
+        const res = await fetch("/api/team", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ member: newMemberPayload }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data.members)) {
+            setTeamMembers(data.members)
+            if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+              const bc = new BroadcastChannel("restro_team_channel")
+              bc.postMessage({ type: "team_updated", members: data.members })
+              bc.close()
+            }
+          }
+          setTeamToast(`Added new staff member: ${staffName.trim()}.`)
+          setShowAddStaffModal(false)
+          setTimeout(() => setTeamToast(null), 3500)
+        }
+      }
+    } catch (err) {
+      console.error("Error saving staff member:", err)
+      alert("Failed to save team member details.")
+    } finally {
+      setIsSavingStaff(false)
+    }
+  }
+
+  // Toggle Staff Shift Status (Active vs Off-Duty)
+  const handleToggleStaffStatus = async (member: TeamMember) => {
+    try {
+      const res = await fetch("/api/team", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: member.id, toggleStatus: true }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.members)) {
+          setTeamMembers(data.members)
+          if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("restro_team_channel")
+            bc.postMessage({ type: "team_updated", members: data.members })
+            bc.close()
+          }
+        }
+        const updatedStatus = member.status === "active" ? "Off Duty" : "On Shift"
+        setTeamToast(`${member.name} is now ${updatedStatus}.`)
+        setTimeout(() => setTeamToast(null), 3500)
+      }
+    } catch (err) {
+      console.error("Error toggling staff status:", err)
+    }
+  }
+
+  // Delete Staff Member
+  const handleDeleteStaff = async (member: TeamMember) => {
+    if (member.role === "admin") {
+      alert("The primary restaurant administrator cannot be removed.")
+      return
+    }
+    if (!confirm(`Are you sure you want to remove "${member.name}" from the restaurant roster?`)) return
+
+    try {
+      const res = await fetch(`/api/team?id=${member.id}`, { method: "DELETE" })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.members)) {
+          setTeamMembers(data.members)
+          if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("restro_team_channel")
+            bc.postMessage({ type: "team_updated", members: data.members })
+            bc.close()
+          }
+        }
+        setTeamToast(`Removed ${member.name} from restaurant staff roster.`)
+        setTimeout(() => setTeamToast(null), 3500)
+      } else {
+        const errData = await res.json()
+        alert(errData.error || "Could not delete staff member.")
+      }
+    } catch (err) {
+      console.error("Error deleting staff member:", err)
+      alert("Failed to delete staff member.")
+    }
+  }
+
+  // Quick Launch Station
+  const handleLaunchStation = (member: TeamMember) => {
+    switch (member.role) {
+      case "pos-orders":
+        setActiveTab("pos")
+        break
+      case "pos-kitchen":
+      case "bartender":
+        setActiveTab("kds")
+        break
+      case "pos-reception":
+        setActiveTab("tables")
+        break
+      case "inventory":
+        setActiveTab("inventory")
+        break
+      case "admin":
+      case "manager":
+      default:
+        setActiveTab("dashboard")
+        break
+    }
+  }
+
+  // Filtered Team Members
+  const filteredTeamMembers = useMemo(() => {
+    return teamMembers.filter((member) => {
+      // Role filter
+      let matchesRole = true
+      if (teamRoleFilter === "admin") {
+        matchesRole = member.role === "admin" || member.role === "manager"
+      } else if (teamRoleFilter === "kitchen") {
+        matchesRole = member.role === "pos-kitchen"
+      } else if (teamRoleFilter === "pos") {
+        matchesRole = member.role === "pos-orders"
+      } else if (teamRoleFilter === "reception") {
+        matchesRole = member.role === "pos-reception"
+      } else if (teamRoleFilter === "bar") {
+        matchesRole = member.role === "bartender"
+      } else if (teamRoleFilter === "inventory") {
+        matchesRole = member.role === "inventory"
+      }
+
+      // Status filter
+      const matchesStatus =
+        teamStatusFilter === "all" || member.status === teamStatusFilter
+
+      // Search
+      const q = teamSearch.trim().toLowerCase()
+      const matchesSearch =
+        q === "" ||
+        member.name.toLowerCase().includes(q) ||
+        member.email.toLowerCase().includes(q) ||
+        member.phone.toLowerCase().includes(q) ||
+        member.roleLabel.toLowerCase().includes(q) ||
+        member.station.toLowerCase().includes(q) ||
+        member.department.toLowerCase().includes(q) ||
+        member.pin.includes(q)
+
+      return matchesRole && matchesStatus && matchesSearch
+    })
+  }, [teamMembers, teamRoleFilter, teamStatusFilter, teamSearch])
 
   const addToCart = (item: MenuItem) => {
     if (item.isAvailable === false) {
@@ -6032,6 +6382,788 @@ function RestaurantAdminContent() {
                   </div>
                 </div>
               </div>
+            ) : activeTab === "team" ? (
+              /* --- RESTAURANT TEAM & STAFF DIRECTORY --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                {/* Toast Notification Banner */}
+                {teamToast && (
+                  <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>{teamToast}</span>
+                    </div>
+                    <button
+                      onClick={() => setTeamToast(null)}
+                      className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 p-0.5 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Header Strip */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h1
+                        className={`text-2xl lg:text-3xl font-bold tracking-tight ${
+                          isDarkMode ? "text-white" : "text-[#20252B]"
+                        }`}
+                      >
+                        Team & Staff Directory
+                      </h1>
+                      <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-[#E9E3D8] text-[#C46B4E] border border-[#E5E1D9] dark:bg-[#20252B] dark:border-[#2b2f3e]">
+                        {teamMembers.length} Staff Members
+                      </span>
+                    </div>
+                    <p
+                      className={`text-xs sm:text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-[#64748B]"
+                      }`}
+                    >
+                      Operational roster across Kitchen (KDS), POS Cashiers, Administration, Reception Hostess, Bar Mixology, and Storage.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleOpenAddStaff}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold shadow-xs transition cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Add Team Member
+                    </button>
+                  </div>
+                </div>
+
+                {/* KPI Metrics Strip */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                  {/* Total Staff */}
+                  <div
+                    className={`p-4 rounded-2xl border transition ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
+                        Total Staff
+                      </span>
+                      <Users className="w-4 h-4 text-[#C46B4E]" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-[#20252B] dark:text-white">
+                      {teamMembers.length}
+                    </div>
+                    <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                      Under Nodedr Bistro
+                    </span>
+                  </div>
+
+                  {/* On Shift Now */}
+                  <div
+                    className={`p-4 rounded-2xl border transition ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
+                        On Shift Now
+                      </span>
+                      <UserCheck className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">
+                      {teamMembers.filter((m) => m.status === "active").length}
+                    </div>
+                    <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5 block font-medium">
+                      Active duty stations
+                    </span>
+                  </div>
+
+                  {/* Kitchen & Bar */}
+                  <div
+                    className={`p-4 rounded-2xl border transition ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
+                        Kitchen & Bar
+                      </span>
+                      <ChefHat className="w-4 h-4 text-amber-500" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-400">
+                      {
+                        teamMembers.filter(
+                          (m) => m.role === "pos-kitchen" || m.role === "bartender"
+                        ).length
+                      }
+                    </div>
+                    <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                      Chefs, Cooks & Mixologist
+                    </span>
+                  </div>
+
+                  {/* Front of House / POS */}
+                  <div
+                    className={`p-4 rounded-2xl border transition ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
+                        Front of House
+                      </span>
+                      <ShoppingCart className="w-4 h-4 text-blue-500" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-400">
+                      {
+                        teamMembers.filter(
+                          (m) => m.role === "pos-orders" || m.role === "pos-reception"
+                        ).length
+                      }
+                    </div>
+                    <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                      POS Cashiers & Hostess
+                    </span>
+                  </div>
+
+                  {/* Admin & Operations */}
+                  <div
+                    className={`p-4 rounded-2xl border transition ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
+                        Admin & Ops
+                      </span>
+                      <ShieldCheck className="w-4 h-4 text-purple-500" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-purple-600 dark:text-purple-400">
+                      {
+                        teamMembers.filter(
+                          (m) =>
+                            m.role === "admin" ||
+                            m.role === "manager" ||
+                            m.role === "inventory"
+                        ).length
+                      }
+                    </div>
+                    <span className="text-[11px] text-[#64748B] mt-0.5 block">
+                      Managers & Inventory
+                    </span>
+                  </div>
+                </div>
+
+                {/* Filter Tabs & Search Controls */}
+                <div
+                  className={`p-4 rounded-2xl border space-y-3.5 ${
+                    isDarkMode
+                      ? "bg-[#161822] border-[#272b3b]"
+                      : "bg-white border-[#E5E1D9] shadow-2xs"
+                  }`}
+                >
+                  {/* Role Category Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                    {[
+                      { id: "all", label: "All Staff", count: teamMembers.length },
+                      {
+                        id: "kitchen",
+                        label: "🍳 Kitchen (KDS)",
+                        count: teamMembers.filter((m) => m.role === "pos-kitchen").length,
+                      },
+                      {
+                        id: "pos",
+                        label: "💳 POS & Cashier",
+                        count: teamMembers.filter((m) => m.role === "pos-orders").length,
+                      },
+                      {
+                        id: "admin",
+                        label: "🛡️ Admin & Mgmt",
+                        count: teamMembers.filter(
+                          (m) => m.role === "admin" || m.role === "manager"
+                        ).length,
+                      },
+                      {
+                        id: "reception",
+                        label: "🛎️ Reception",
+                        count: teamMembers.filter((m) => m.role === "pos-reception").length,
+                      },
+                      {
+                        id: "bar",
+                        label: "🍸 Bar",
+                        count: teamMembers.filter((m) => m.role === "bartender").length,
+                      },
+                      {
+                        id: "inventory",
+                        label: "📦 Inventory",
+                        count: teamMembers.filter((m) => m.role === "inventory").length,
+                      },
+                    ].map((tab) => {
+                      const isSelected = teamRoleFilter === tab.id
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setTeamRoleFilter(tab.id)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 cursor-pointer ${
+                            isSelected
+                              ? "bg-[#C46B4E] text-white shadow-xs"
+                              : "bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#20252B] dark:bg-[#1f2330] dark:hover:bg-[#282d3e] dark:text-slate-200"
+                          }`}
+                        >
+                          <span>{tab.label}</span>
+                          <span
+                            className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                              isSelected
+                                ? "bg-white/20 text-white"
+                                : "bg-black/5 dark:bg-white/10 text-[#64748B] dark:text-slate-400"
+                            }`}
+                          >
+                            {tab.count}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Search and Secondary Filters */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 border-t border-[#E5E1D9] dark:border-[#272b3b]">
+                    {/* Search Bar */}
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="w-4 h-4 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search by staff name, role, station, email, phone, or PIN..."
+                        value={teamSearch}
+                        onChange={(e) => setTeamSearch(e.target.value)}
+                        className={`w-full rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                          isDarkMode
+                            ? "bg-[#12141c] border-[#2b2f3e] text-white placeholder-slate-500"
+                            : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B] placeholder-[#64748B]"
+                        }`}
+                      />
+                      {teamSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setTeamSearch("")}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#20252B] dark:hover:text-white"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Status & View Mode */}
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      {/* Status Filter */}
+                      <div className="flex items-center gap-1 bg-[#F7F5F0] dark:bg-[#12141c] p-1 rounded-xl border border-[#E5E1D9] dark:border-[#2b2f3e]">
+                        <button
+                          type="button"
+                          onClick={() => setTeamStatusFilter("all")}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                            teamStatusFilter === "all"
+                              ? "bg-white text-[#20252B] shadow-2xs dark:bg-[#20252B] dark:text-white"
+                              : "text-[#64748B] hover:text-[#20252B]"
+                          }`}
+                        >
+                          All ({teamMembers.length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTeamStatusFilter("active")}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                            teamStatusFilter === "active"
+                              ? "bg-white text-emerald-700 shadow-2xs dark:bg-[#20252B] dark:text-emerald-400"
+                              : "text-[#64748B] hover:text-emerald-700"
+                          }`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          On Shift ({teamMembers.filter((m) => m.status === "active").length})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTeamStatusFilter("off-duty")}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                            teamStatusFilter === "off-duty"
+                              ? "bg-white text-slate-700 shadow-2xs dark:bg-[#20252B] dark:text-slate-300"
+                              : "text-[#64748B] hover:text-slate-800"
+                          }`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                          Off Duty ({teamMembers.filter((m) => m.status === "off-duty").length})
+                        </button>
+                      </div>
+
+                      {/* View Switch */}
+                      <div className="flex items-center bg-[#F7F5F0] dark:bg-[#12141c] p-1 rounded-xl border border-[#E5E1D9] dark:border-[#2b2f3e]">
+                        <button
+                          type="button"
+                          onClick={() => setTeamViewMode("table")}
+                          title="Table View"
+                          className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                            teamViewMode === "table"
+                              ? "bg-white text-[#20252B] shadow-2xs dark:bg-[#20252B] dark:text-white"
+                              : "text-[#64748B]"
+                          }`}
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTeamViewMode("card")}
+                          title="Card Grid View"
+                          className={`p-1.5 rounded-lg text-xs transition cursor-pointer ${
+                            teamViewMode === "card"
+                              ? "bg-white text-[#20252B] shadow-2xs dark:bg-[#20252B] dark:text-white"
+                              : "text-[#64748B]"
+                          }`}
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Team Members List / Table */}
+                {filteredTeamMembers.length === 0 ? (
+                  <div
+                    className={`p-12 text-center rounded-2xl border space-y-3 ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <Users className="w-10 h-10 text-[#64748B] mx-auto opacity-50" />
+                    <h3 className="text-base font-bold text-[#20252B] dark:text-white">
+                      No team members found
+                    </h3>
+                    <p className="text-xs text-[#64748B] max-w-sm mx-auto">
+                      No staff members match the current filter or search criteria.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTeamSearch("")
+                        setTeamRoleFilter("all")
+                        setTeamStatusFilter("all")
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#C46B4E] text-white text-xs font-semibold hover:bg-[#B25C40] transition cursor-pointer"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
+                ) : teamViewMode === "table" ? (
+                  /* TABLE VIEW */
+                  <div
+                    className={`rounded-2xl border overflow-hidden shadow-2xs ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#272b3b]"
+                        : "bg-white border-[#E5E1D9]"
+                    }`}
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr
+                            className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                              isDarkMode
+                                ? "bg-[#12141c] text-slate-400 border-[#272b3b]"
+                                : "bg-[#F7F5F0] text-[#64748B] border-[#E5E1D9]"
+                            }`}
+                          >
+                            <th className="py-3.5 px-4 font-semibold">Staff Member</th>
+                            <th className="py-3.5 px-4 font-semibold">Role & Dept</th>
+                            <th className="py-3.5 px-4 font-semibold">Assigned Station / Workstation</th>
+                            <th className="py-3.5 px-4 font-semibold">Shift & Contact</th>
+                            <th className="py-3.5 px-4 font-semibold text-center">Status</th>
+                            <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#E5E1D9] dark:divide-[#272b3b]">
+                          {filteredTeamMembers.map((member) => {
+                            const isOnShift = member.status === "active"
+
+                            // Badge styling
+                            let roleBadgeClass =
+                              "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                            let roleIcon = <ShieldCheck className="w-3.5 h-3.5" />
+
+                            if (member.role === "admin") {
+                              roleBadgeClass =
+                                "bg-[#E9E3D8] text-[#C46B4E] border-[#E5E1D9] dark:bg-[#20252B] dark:border-[#2b2f3e]"
+                              roleIcon = <ShieldCheck className="w-3.5 h-3.5 text-[#C46B4E]" />
+                            } else if (member.role === "pos-kitchen") {
+                              roleBadgeClass =
+                                "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40"
+                              roleIcon = <ChefHat className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                            } else if (member.role === "pos-orders") {
+                              roleBadgeClass =
+                                "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40"
+                              roleIcon = <ShoppingCart className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            } else if (member.role === "pos-reception") {
+                              roleBadgeClass =
+                                "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40"
+                              roleIcon = <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            } else if (member.role === "bartender") {
+                              roleBadgeClass =
+                                "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40"
+                              roleIcon = <Utensils className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                            } else if (member.role === "inventory") {
+                              roleBadgeClass =
+                                "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40"
+                              roleIcon = <Boxes className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                            }
+
+                            // Quick station launch label
+                            let stationActionLabel = "Launch Station"
+                            if (member.role === "pos-kitchen") stationActionLabel = "Open KDS Rail"
+                            else if (member.role === "pos-orders") stationActionLabel = "Open POS"
+                            else if (member.role === "pos-reception") stationActionLabel = "Floor Tables"
+                            else if (member.role === "bartender") stationActionLabel = "Bar KDS"
+                            else if (member.role === "inventory") stationActionLabel = "Inventory"
+                            else if (member.role === "admin") stationActionLabel = "Dashboard"
+
+                            return (
+                              <tr
+                                key={member.id}
+                                className={`transition ${
+                                  isDarkMode
+                                    ? "hover:bg-[#1f2230]/70"
+                                    : "hover:bg-[#F7F5F0]/60"
+                                }`}
+                              >
+                                {/* Staff Member */}
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-3">
+                                    <div
+                                      className={`w-9 h-9 rounded-full ${member.avatarColor} text-white flex items-center justify-center font-bold text-xs uppercase shadow-2xs relative`}
+                                    >
+                                      {member.name
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .slice(0, 2)
+                                        .join("")}
+                                      {isOnShift && (
+                                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#161822]" />
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-sm text-[#20252B] dark:text-white flex items-center gap-1.5">
+                                        <span>{member.name}</span>
+                                        <span className="px-1.5 py-0.2 rounded-md bg-[#F7F5F0] dark:bg-[#1f2330] border border-[#E5E1D9] dark:border-[#272b3b] text-[10px] font-mono text-[#64748B]">
+                                          PIN: {member.pin}
+                                        </span>
+                                      </div>
+                                      <div className="text-[11px] text-[#64748B] flex items-center gap-1.5 mt-0.5">
+                                        <Mail className="w-3 h-3 text-[#64748B]" />
+                                        <span>{member.email}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Role & Dept */}
+                                <td className="py-3 px-4">
+                                  <div className="space-y-1">
+                                    <span
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold border ${roleBadgeClass}`}
+                                    >
+                                      {roleIcon}
+                                      {member.roleLabel}
+                                    </span>
+                                    <div className="text-[11px] text-[#64748B]">
+                                      {member.department}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Station / Workstation Assignment */}
+                                <td className="py-3 px-4">
+                                  <div className="space-y-0.5">
+                                    <span className="font-semibold text-xs text-[#20252B] dark:text-slate-200">
+                                      {member.station}
+                                    </span>
+                                    <div className="text-[11px] text-[#64748B]">
+                                      Last active: {member.lastActive}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Shift & Contact */}
+                                <td className="py-3 px-4">
+                                  <div className="space-y-0.5">
+                                    <div className="font-medium text-xs text-[#20252B] dark:text-slate-200">
+                                      {member.shift}
+                                    </div>
+                                    <div className="text-[11px] text-[#64748B] flex items-center gap-1">
+                                      <Phone className="w-3 h-3" />
+                                      <span>{member.phone}</span>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Status Toggle */}
+                                <td className="py-3 px-4 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleStaffStatus(member)}
+                                    title="Click to toggle Shift Status"
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                      isOnShift
+                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                        : "bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-200"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${
+                                        isOnShift ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                      }`}
+                                    />
+                                    {isOnShift ? "On Shift" : "Off Duty"}
+                                  </button>
+                                </td>
+
+                                {/* Actions */}
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {/* Quick launch to Station */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleLaunchStation(member)}
+                                      className="px-2.5 py-1 rounded-lg bg-[#E9E3D8] hover:bg-[#dfd7c9] text-[#20252B] dark:bg-[#1f2330] dark:hover:bg-[#282d3e] dark:text-white font-semibold text-[11px] transition flex items-center gap-1 border border-[#E5E1D9] dark:border-[#272b3b] cursor-pointer"
+                                      title={`Switch to ${stationActionLabel}`}
+                                    >
+                                      <span>{stationActionLabel}</span>
+                                      <ExternalLink className="w-3 h-3 text-[#C46B4E]" />
+                                    </button>
+
+                                    {/* Edit Button */}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditStaff(member)}
+                                      className="p-1.5 rounded-lg text-[#64748B] hover:text-[#20252B] hover:bg-[#F7F5F0] dark:hover:bg-[#1f2330] dark:hover:text-white transition cursor-pointer"
+                                      title="Edit Staff Member"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {/* Delete Button */}
+                                    {member.role !== "admin" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteStaff(member)}
+                                        className="p-1.5 rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer"
+                                        title="Remove Staff Member"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  /* CARD GRID VIEW */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredTeamMembers.map((member) => {
+                      const isOnShift = member.status === "active"
+
+                      let roleBadgeClass =
+                        "bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-200"
+                      let roleIcon = <ShieldCheck className="w-3.5 h-3.5" />
+
+                      if (member.role === "admin") {
+                        roleBadgeClass =
+                          "bg-[#E9E3D8] text-[#C46B4E] border-[#E5E1D9] dark:bg-[#20252B] dark:border-[#2b2f3e]"
+                        roleIcon = <ShieldCheck className="w-3.5 h-3.5 text-[#C46B4E]" />
+                      } else if (member.role === "pos-kitchen") {
+                        roleBadgeClass =
+                          "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40"
+                        roleIcon = <ChefHat className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      } else if (member.role === "pos-orders") {
+                        roleBadgeClass =
+                          "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40"
+                        roleIcon = <ShoppingCart className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      } else if (member.role === "pos-reception") {
+                        roleBadgeClass =
+                          "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40"
+                        roleIcon = <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      } else if (member.role === "bartender") {
+                        roleBadgeClass =
+                          "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40"
+                        roleIcon = <Utensils className="w-3.5 h-3.5 text-purple-600 dark:text-purple-400" />
+                      } else if (member.role === "inventory") {
+                        roleBadgeClass =
+                          "bg-indigo-50 text-indigo-800 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800/40"
+                        roleIcon = <Boxes className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      }
+
+                      let stationActionLabel = "Open Station"
+                      if (member.role === "pos-kitchen") stationActionLabel = "Kitchen KDS"
+                      else if (member.role === "pos-orders") stationActionLabel = "POS Cashier"
+                      else if (member.role === "pos-reception") stationActionLabel = "Table Plan"
+                      else if (member.role === "bartender") stationActionLabel = "Bar KDS"
+                      else if (member.role === "inventory") stationActionLabel = "Inventory"
+                      else if (member.role === "admin") stationActionLabel = "Dashboard"
+
+                      return (
+                        <div
+                          key={member.id}
+                          className={`p-5 rounded-2xl border transition shadow-2xs space-y-4 ${
+                            isDarkMode
+                              ? "bg-[#161822] border-[#272b3b]"
+                              : "bg-white border-[#E5E1D9]"
+                          }`}
+                        >
+                          {/* Top Row: Avatar & Details */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-11 h-11 rounded-2xl ${member.avatarColor} text-white flex items-center justify-center font-bold text-sm uppercase shadow-xs relative`}
+                              >
+                                {member.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .slice(0, 2)
+                                  .join("")}
+                                {isOnShift && (
+                                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#161822]" />
+                                )}
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-sm text-[#20252B] dark:text-white">
+                                  {member.name}
+                                </h3>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="px-1.5 py-0.2 rounded-md bg-[#F7F5F0] dark:bg-[#1f2330] border border-[#E5E1D9] dark:border-[#272b3b] text-[10px] font-mono text-[#64748B]">
+                                    PIN: {member.pin}
+                                  </span>
+                                  <span className="text-[10px] text-[#64748B]">
+                                    {member.department}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Status badge */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleStaffStatus(member)}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer flex items-center gap-1 ${
+                                isOnShift
+                                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                                  : "bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  isOnShift ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                }`}
+                              />
+                              {isOnShift ? "On Shift" : "Off Duty"}
+                            </button>
+                          </div>
+
+                          {/* Role Badge */}
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${roleBadgeClass}`}
+                            >
+                              {roleIcon}
+                              {member.roleLabel}
+                            </span>
+                          </div>
+
+                          {/* Station Location Box */}
+                          <div
+                            className={`p-2.5 rounded-xl text-xs space-y-1 ${
+                              isDarkMode ? "bg-[#12141c]" : "bg-[#F7F5F0]"
+                            }`}
+                          >
+                            <div className="text-[10px] uppercase font-bold text-[#64748B] tracking-wider">
+                              Assigned Station
+                            </div>
+                            <div className="font-semibold text-xs text-[#20252B] dark:text-white truncate">
+                              {member.station}
+                            </div>
+                          </div>
+
+                          {/* Shift & Contact Info */}
+                          <div className="text-xs space-y-1.5 text-[#64748B] pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px]">Shift Hours:</span>
+                              <span className="font-medium text-[#20252B] dark:text-slate-200 text-[11px]">
+                                {member.shift}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px]">Email:</span>
+                              <span className="font-mono text-[11px] text-[#20252B] dark:text-slate-300 truncate max-w-[170px]">
+                                {member.email}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px]">Phone:</span>
+                              <span className="text-[11px] text-[#20252B] dark:text-slate-300">
+                                {member.phone}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Action Footer */}
+                          <div className="pt-3 border-t border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleLaunchStation(member)}
+                              className="flex-1 py-1.5 px-2.5 rounded-xl bg-[#E9E3D8] hover:bg-[#dfd7c9] text-[#20252B] dark:bg-[#1f2330] dark:hover:bg-[#282d3e] dark:text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 border border-[#E5E1D9] dark:border-[#272b3b] cursor-pointer"
+                            >
+                              <span>{stationActionLabel}</span>
+                              <ExternalLink className="w-3.5 h-3.5 text-[#C46B4E]" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditStaff(member)}
+                              className="p-2 rounded-xl text-[#64748B] hover:text-[#20252B] hover:bg-[#F7F5F0] dark:hover:bg-[#1f2330] dark:hover:text-white transition cursor-pointer border border-[#E5E1D9] dark:border-[#272b3b]"
+                              title="Edit Staff Member"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {member.role !== "admin" && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteStaff(member)}
+                                className="p-2 rounded-xl text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer border border-red-200 dark:border-red-900/40"
+                                title="Remove Staff Member"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             ) : (
               /* --- GENERIC RELEVANT MODULE --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
@@ -7000,6 +8132,250 @@ function RestaurantAdminContent() {
                 Close Audit Log
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT TEAM MEMBER MODAL */}
+      {showAddStaffModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-lg rounded-2xl border p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto ${
+              isDarkMode
+                ? "bg-[#161822] border-[#292c3c] text-white"
+                : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-[#E5E1D9] dark:border-[#272b3b]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">
+                    {editingStaff ? "Edit Staff Member" : "Add New Team Member"}
+                  </h3>
+                  <p className="text-xs text-[#64748B]">
+                    {editingStaff
+                      ? `Update role, station, and access for ${editingStaff.name}`
+                      : "Create user credentials and station assignment for Nodedr Bistro"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddStaffModal(false)}
+                className="p-1 rounded-lg text-[#64748B] hover:text-[#20252B] dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStaff} className="space-y-4">
+              {/* Full Name */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Vikram Sen"
+                  value={staffName}
+                  onChange={(e) => setStaffName(e.target.value)}
+                  className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                    isDarkMode
+                      ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                      : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              {/* Role & Department */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Staff Role *</label>
+                  <select
+                    value={staffRole}
+                    onChange={(e) => handleRoleChange(e.target.value as StaffRole)}
+                    className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                      isDarkMode
+                        ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="pos-kitchen">Kitchen - Head Chef / Cook (KDS)</option>
+                    <option value="pos-orders">POS - Cashier / Order Taker</option>
+                    <option value="pos-reception">Reception - Front Desk & Hostess</option>
+                    <option value="admin">Admin - Restaurant Owner & Admin</option>
+                    <option value="manager">Management - Operations Manager</option>
+                    <option value="bartender">Bar - Mixologist / Bartender</option>
+                    <option value="inventory">Store - Inventory & Raw Materials</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Department</label>
+                  <select
+                    value={staffDepartment}
+                    onChange={(e) =>
+                      setStaffDepartment(e.target.value as TeamMember["department"])
+                    }
+                    className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                      isDarkMode
+                        ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="Kitchen & Bar">Kitchen & Bar</option>
+                    <option value="Front of House">Front of House</option>
+                    <option value="Management">Management</option>
+                    <option value="Operations">Operations</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Station Assignment */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Assigned Station / Location *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Kitchen Display Queue (KDS Rail 1)"
+                  value={staffStation}
+                  onChange={(e) => setStaffStation(e.target.value)}
+                  className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                    isDarkMode
+                      ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                      : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              {/* Shift Schedule & 4-Digit PIN */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Shift Schedule</label>
+                  <select
+                    value={staffShift}
+                    onChange={(e) =>
+                      setStaffShift(
+                        e.target.value as "Morning (7 AM - 3 PM)" | "Evening (3 PM - 11 PM)" | "Full Day"
+                      )
+                    }
+                    className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                      isDarkMode
+                        ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="Morning (7 AM - 3 PM)">Morning (7 AM - 3 PM)</option>
+                    <option value="Evening (3 PM - 11 PM)">Evening (3 PM - 11 PM)</option>
+                    <option value="Full Day">Full Day (10 AM - 11 PM)</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">4-Digit Terminal PIN</label>
+                  <input
+                    type="text"
+                    maxLength={4}
+                    placeholder="e.g. 2001"
+                    value={staffPin}
+                    onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, ""))}
+                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono tracking-widest focus:outline-none focus:border-[#C46B4E] border ${
+                      isDarkMode
+                        ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Email & Phone */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Work Email</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. chef@nodedrbistro.com"
+                    value={staffEmail}
+                    onChange={(e) => setStaffEmail(e.target.value)}
+                    className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                      isDarkMode
+                        ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Contact Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="+91 98200 11223"
+                    value={staffPhone}
+                    onChange={(e) => setStaffPhone(e.target.value)}
+                    className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
+                      isDarkMode
+                        ? "bg-[#12141c] border-[#2b2f3e] text-white"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Initial Shift Status */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Initial Shift Status</label>
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setStaffStatus("active")}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      staffStatus === "active"
+                        ? "bg-emerald-600 text-white border-emerald-600"
+                        : "bg-[#F7F5F0] dark:bg-[#12141c] text-[#64748B] border-[#E5E1D9] dark:border-[#272b3b]"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    On Shift (Active)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStaffStatus("off-duty")}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      staffStatus === "off-duty"
+                        ? "bg-slate-700 text-white border-slate-700"
+                        : "bg-[#F7F5F0] dark:bg-[#12141c] text-[#64748B] border-[#E5E1D9] dark:border-[#272b3b]"
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                    Off Duty
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-3 border-t border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStaffModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-[#E5E1D9] dark:border-[#272b3b] text-[#64748B] hover:text-[#20252B] dark:hover:text-white transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingStaff}
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#C46B4E] hover:bg-[#B25C40] text-white transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingStaff
+                    ? "Saving..."
+                    : editingStaff
+                    ? "Update Staff Member"
+                    : "Add Staff Member"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
