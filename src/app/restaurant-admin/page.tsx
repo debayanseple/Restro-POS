@@ -10,6 +10,8 @@ import {
   MASTER_STOCK_MOVEMENTS,
   InventoryItem,
   StockMovement,
+  isItemExpired,
+  isItemOutOfStock,
 } from "@/lib/inventory-catalog"
 import {
   LayoutDashboard,
@@ -992,6 +994,11 @@ function RestaurantAdminContent() {
     const target = inventoryItems.find((i) => i.id === adjItemId)
     if (!target) return
 
+    if (adjType === "USAGE" && isItemExpired(target.expiryDate)) {
+      alert(`Cannot log kitchen usage for expired stock! "${target.name}" expired on ${target.expiryDate} and is marked as Out of Stock / Unusable. Please record as Spoilage / Waste instead.`)
+      return
+    }
+
     const qty = Number(adjQty)
     if (isNaN(qty) || qty <= 0) {
       alert("Please enter a valid positive quantity.")
@@ -1075,11 +1082,14 @@ function RestaurantAdminContent() {
         item.storageLocation.toLowerCase().includes(inventorySearch.toLowerCase()) ||
         (item.notes && item.notes.toLowerCase().includes(inventorySearch.toLowerCase()))
 
+      const isOut = isItemOutOfStock(item)
+      const isLow = !isOut && item.currentStock <= item.minimumStock
+
       const matchesStock =
         inventoryStockFilter === "all" ||
-        (inventoryStockFilter === "low" && item.currentStock <= item.minimumStock && item.currentStock > 0) ||
-        (inventoryStockFilter === "out" && item.currentStock === 0) ||
-        (inventoryStockFilter === "healthy" && item.currentStock > item.minimumStock)
+        (inventoryStockFilter === "low" && isLow) ||
+        (inventoryStockFilter === "out" && isOut) ||
+        (inventoryStockFilter === "healthy" && !isOut && !isLow)
 
       return matchesCategory && matchesSearch && matchesStock
     })
@@ -4257,7 +4267,7 @@ function RestaurantAdminContent() {
                       </span>
                     </div>
                     <div className="text-xl font-bold">
-                      {inventoryItems.filter((i) => i.currentStock <= i.minimumStock && i.currentStock > 0).length} materials
+                      {inventoryItems.filter((i) => !isItemOutOfStock(i) && i.currentStock <= i.minimumStock && i.currentStock > 0).length} materials
                     </div>
                     <p className="text-[11px] opacity-80 mt-1">Below minimum threshold safety levels</p>
                   </div>
@@ -4280,9 +4290,9 @@ function RestaurantAdminContent() {
                       </span>
                     </div>
                     <div className="text-xl font-bold">
-                      {inventoryItems.filter((i) => i.currentStock === 0).length} materials
+                      {inventoryItems.filter((i) => isItemOutOfStock(i)).length} materials
                     </div>
-                    <p className="text-[11px] opacity-80 mt-1">Zero stock balance in storage</p>
+                    <p className="text-[11px] opacity-80 mt-1">Zero stock balance or expired/unusable</p>
                   </div>
                 </div>
 
@@ -4334,7 +4344,7 @@ function RestaurantAdminContent() {
                         }`}
                       >
                         <AlertTriangle className="w-3 h-3" />
-                        <span>Low Stock ({inventoryItems.filter((i) => i.currentStock <= i.minimumStock && i.currentStock > 0).length})</span>
+                        <span>Low Stock ({inventoryItems.filter((i) => !isItemOutOfStock(i) && i.currentStock <= i.minimumStock && i.currentStock > 0).length})</span>
                       </button>
                       <button
                         onClick={() => setInventoryStockFilter("out")}
@@ -4347,7 +4357,7 @@ function RestaurantAdminContent() {
                         }`}
                       >
                         <AlertOctagon className="w-3 h-3" />
-                        <span>Out of Stock ({inventoryItems.filter((i) => i.currentStock === 0).length})</span>
+                        <span>Out of Stock ({inventoryItems.filter((i) => isItemOutOfStock(i)).length})</span>
                       </button>
                       <button
                         onClick={() => setInventoryStockFilter("healthy")}
@@ -4360,7 +4370,7 @@ function RestaurantAdminContent() {
                         }`}
                       >
                         <Check className="w-3 h-3" />
-                        <span>Adequate ({inventoryItems.filter((i) => i.currentStock > i.minimumStock).length})</span>
+                        <span>Adequate ({inventoryItems.filter((i) => !isItemOutOfStock(i) && i.currentStock > i.minimumStock).length})</span>
                       </button>
                     </div>
 
@@ -4462,7 +4472,8 @@ function RestaurantAdminContent() {
                         </thead>
                         <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
                           {filteredInventoryItems.map((item) => {
-                            const isOut = item.currentStock === 0
+                            const isExpired = isItemExpired(item.expiryDate)
+                            const isOut = item.currentStock === 0 || isExpired
                             const isLow = !isOut && item.currentStock <= item.minimumStock
                             const pct = Math.min(
                               100,
@@ -4521,22 +4532,32 @@ function RestaurantAdminContent() {
                                           : "text-[#20252B] dark:text-white"
                                       }`}
                                     >
-                                      {item.currentStock} {item.unit}
+                                      {isExpired ? (
+                                        <span>
+                                          0 <span className="text-[10px] font-normal text-slate-500">usable ({item.currentStock} {item.unit} expired)</span>
+                                        </span>
+                                      ) : (
+                                        <>{item.currentStock} {item.unit}</>
+                                      )}
                                     </span>
                                     <span className="text-[10px] text-[#64748B]">
-                                      {pct}% of {item.optimalStock}
+                                      {isExpired ? (
+                                        <span className="text-red-500 font-bold uppercase tracking-wider text-[9px]">Unusable</span>
+                                      ) : (
+                                        <>{pct}% of {item.optimalStock}</>
+                                      )}
                                     </span>
                                   </div>
                                   <div className="w-full bg-[#E5E1D9] dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                                     <div
                                       className={`h-full rounded-full transition-all duration-300 ${
                                         isOut
-                                          ? "bg-red-500 w-0"
+                                          ? "bg-red-500"
                                           : isLow
                                           ? "bg-amber-500"
                                           : "bg-emerald-500"
                                       }`}
-                                      style={{ width: `${Math.max(5, pct)}%` }}
+                                      style={{ width: `${isExpired ? 100 : Math.max(5, pct)}%` }}
                                     />
                                   </div>
                                 </td>
@@ -4580,7 +4601,7 @@ function RestaurantAdminContent() {
                                       const today = new Date()
                                       const diffTime = exp.getTime() - today.getTime()
                                       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-                                      const isExpired = diffDays < 0
+                                      const isExpired = isItemExpired(item.expiryDate)
                                       const isSoon = !isExpired && diffDays <= 5
 
                                       return (
@@ -4613,7 +4634,12 @@ function RestaurantAdminContent() {
 
                                 {/* Status Badge */}
                                 <td className="py-3.5 px-4">
-                                  {isOut ? (
+                                  {isExpired ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1">
+                                      <AlertOctagon className="w-2.5 h-2.5" />
+                                      Out of Stock (Expired)
+                                    </span>
+                                  ) : isOut ? (
                                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1">
                                       <AlertOctagon className="w-2.5 h-2.5" />
                                       Out of Stock
@@ -4668,7 +4694,8 @@ function RestaurantAdminContent() {
                   /* --- CARD GRID VIEW --- */
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {filteredInventoryItems.map((item) => {
-                      const isOut = item.currentStock === 0
+                      const isExpired = isItemExpired(item.expiryDate)
+                      const isOut = item.currentStock === 0 || isExpired
                       const isLow = !isOut && item.currentStock <= item.minimumStock
                       const pct = Math.min(
                         100,
@@ -4699,7 +4726,12 @@ function RestaurantAdminContent() {
                                 {item.category}
                               </span>
 
-                              {isOut ? (
+                              {isExpired ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 flex items-center gap-1">
+                                  <AlertOctagon className="w-2.5 h-2.5" />
+                                  Out of Stock (Expired)
+                                </span>
+                              ) : isOut ? (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 flex items-center gap-1">
                                   <AlertOctagon className="w-2.5 h-2.5" />
                                   Out of Stock
@@ -4731,19 +4763,25 @@ function RestaurantAdminContent() {
                               <div className="flex items-center justify-between text-xs mb-1.5">
                                 <span className="text-[#64748B]">Current Stock:</span>
                                 <span className="font-bold text-sm text-[#20252B] dark:text-white">
-                                  {item.currentStock} {item.unit}
+                                  {isExpired ? (
+                                    <span className="text-red-600 dark:text-red-400">
+                                      0 usable <span className="text-[10px] text-slate-500 font-normal">({item.currentStock} {item.unit} expired)</span>
+                                    </span>
+                                  ) : (
+                                    <>{item.currentStock} {item.unit}</>
+                                  )}
                                 </span>
                               </div>
                               <div className="w-full bg-[#E5E1D9] dark:bg-slate-800 rounded-full h-2 overflow-hidden mb-1">
                                 <div
                                   className={`h-full rounded-full transition-all duration-300 ${
                                     isOut
-                                      ? "bg-red-500 w-0"
+                                      ? "bg-red-500"
                                       : isLow
                                       ? "bg-amber-500"
                                       : "bg-emerald-500"
                                   }`}
-                                  style={{ width: `${Math.max(5, pct)}%` }}
+                                  style={{ width: `${isExpired ? 100 : Math.max(5, pct)}%` }}
                                 />
                               </div>
                               <div className="flex items-center justify-between text-[10px] text-[#64748B]">
@@ -4766,7 +4804,18 @@ function RestaurantAdminContent() {
 
                             <div className="text-[10px] text-[#64748B] mt-2 flex items-center justify-between">
                               <span className="truncate max-w-[140px]">Supplier: {item.supplier}</span>
-                              <span>Expiry: <strong className="font-semibold text-[#20252B] dark:text-slate-200">{item.expiryDate || "NA"}</strong></span>
+                              <span>
+                                Expiry:{" "}
+                                <strong
+                                  className={`font-semibold ${
+                                    isExpired
+                                      ? "text-red-600 dark:text-red-400"
+                                      : "text-[#20252B] dark:text-slate-200"
+                                  }`}
+                                >
+                                  {item.expiryDate || "NA"} {isExpired && "• Unusable"}
+                                </strong>
+                              </span>
                             </div>
                           </div>
 
@@ -6651,6 +6700,19 @@ function RestaurantAdminContent() {
                   ))}
                 </select>
               </div>
+
+              {/* Expired Warning Alert */}
+              {adjustmentTargetItem && isItemExpired(adjustmentTargetItem.expiryDate) && (
+                <div className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-300 text-xs flex items-start gap-2">
+                  <AlertOctagon className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">This Raw Material is Expired ({adjustmentTargetItem.expiryDate})</div>
+                    <div className="text-[11px] mt-0.5 opacity-90">
+                      Marked as <strong>Out of Stock</strong> and unusable for food prep. Please log as <strong>Spoilage / Waste (-)</strong> or restock fresh inventory.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Adjustment Type Tabs */}
               <div className="space-y-1">

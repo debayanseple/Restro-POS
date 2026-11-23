@@ -28,6 +28,24 @@ export interface StockMovement {
   date: string // ISO timestamp
 }
 
+export function isItemExpired(expiryDate?: string): boolean {
+  if (!expiryDate || !expiryDate.trim()) return false
+  const parts = expiryDate.trim().split("-").map(Number)
+  if (parts.length !== 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+    const exp = new Date(expiryDate)
+    const today = new Date()
+    return exp.getTime() < today.setHours(0, 0, 0, 0)
+  }
+  const [year, month, day] = parts
+  const expDate = new Date(year, month - 1, day, 23, 59, 59, 999)
+  const today = new Date()
+  return expDate.getTime() < today.getTime()
+}
+
+export function isItemOutOfStock(item: InventoryItem): boolean {
+  return item.currentStock === 0 || isItemExpired(item.expiryDate)
+}
+
 export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
   {
     id: "inv_1",
