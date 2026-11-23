@@ -40,10 +40,18 @@ function saveMenuItems(items: MenuItem[]) {
   }
 }
 
-// GET: Return all menu items
+function sortMenuItems(items: MenuItem[]): MenuItem[] {
+  return [...items].sort((a, b) => {
+    const aOut = a.isAvailable === false ? 1 : 0
+    const bOut = b.isAvailable === false ? 1 : 0
+    return aOut - bOut
+  })
+}
+
+// GET: Return all menu items (in-stock items first, out-of-stock items at the end)
 export async function GET() {
   const items = getMenuItems()
-  return NextResponse.json({ success: true, items })
+  return NextResponse.json({ success: true, items: sortMenuItems(items) })
 }
 
 // POST: Add a new item or replace items list
@@ -53,8 +61,9 @@ export async function POST(request: Request) {
 
     // If batch replace
     if (Array.isArray(body.items)) {
-      saveMenuItems(body.items)
-      return NextResponse.json({ success: true, items: body.items })
+      const sorted = sortMenuItems(body.items)
+      saveMenuItems(sorted)
+      return NextResponse.json({ success: true, items: sorted })
     }
 
     // Add single item
@@ -73,7 +82,7 @@ export async function POST(request: Request) {
       station: itemData.station || (itemData.category === "drinks" ? "bar" : "kitchen"),
     }
 
-    const updated = [newItem, ...items]
+    const updated = sortMenuItems([newItem, ...items])
     saveMenuItems(updated)
 
     return NextResponse.json({ success: true, item: newItem, items: updated })
@@ -111,8 +120,9 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Item not found" }, { status: 404 })
     }
 
-    saveMenuItems(updated)
-    return NextResponse.json({ success: true, item: updatedItem, items: updated })
+    const sorted = sortMenuItems(updated)
+    saveMenuItems(sorted)
+    return NextResponse.json({ success: true, item: updatedItem, items: sorted })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
@@ -138,7 +148,7 @@ export async function DELETE(request: Request) {
     }
 
     const items = getMenuItems()
-    const updated = items.filter((item) => item.id !== id)
+    const updated = sortMenuItems(items.filter((item) => item.id !== id))
     saveMenuItems(updated)
 
     return NextResponse.json({ success: true, deletedId: id, items: updated })

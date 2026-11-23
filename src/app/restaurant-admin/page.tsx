@@ -2431,6 +2431,11 @@ function RestaurantAdminContent() {
                             (posCategory === "all" || item.category === posCategory) &&
                             item.name.toLowerCase().includes(posSearch.toLowerCase())
                         )
+                        .sort((a, b) => {
+                          const aOut = a.isAvailable === false ? 1 : 0
+                          const bOut = b.isAvailable === false ? 1 : 0
+                          return aOut - bOut
+                        })
                         .map((item) => {
                           const isOutOfStock = item.isAvailable === false
                           return (
@@ -3604,6 +3609,11 @@ function RestaurantAdminContent() {
                         (menuStockFilter === "in-stock" && item.isAvailable !== false) ||
                         (menuStockFilter === "out-of-stock" && item.isAvailable === false)
                       return matchesCategory && matchesSearch && matchesStock
+                    })
+                    .sort((a, b) => {
+                      const aOut = a.isAvailable === false ? 1 : 0
+                      const bOut = b.isAvailable === false ? 1 : 0
+                      return aOut - bOut
                     })
                     .map((item) => {
                       const isOutOfStock = item.isAvailable === false

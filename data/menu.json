@@ -1,17 +1,5 @@
 [
   {
-    "id": "m1",
-    "name": "Classic Wagyu Burger",
-    "price": 349,
-    "category": "mains",
-    "icon": "🍔",
-    "tag": "Popular",
-    "description": "Flame-grilled wagyu patty, toasted brioche bun, caramelized onions, smoked cheddar & house secret sauce.",
-    "isVeg": false,
-    "isAvailable": true,
-    "station": "kitchen"
-  },
-  {
     "id": "m2",
     "name": "Truffle Mushroom Pasta",
     "price": 379,
@@ -142,5 +130,29 @@
     "isVeg": true,
     "isAvailable": true,
     "station": "kitchen"
+  },
+  {
+    "id": "m1",
+    "name": "Classic Wagyu Burger",
+    "price": 349,
+    "category": "mains",
+    "icon": "🍔",
+    "tag": "Popular",
+    "description": "Flame-grilled wagyu patty, toasted brioche bun, caramelized onions, smoked cheddar & house secret sauce.",
+    "isVeg": false,
+    "isAvailable": true,
+    "station": "kitchen"
+  },
+  {
+    "id": "m_1795424037400",
+    "name": "Black Coffee",
+    "price": 200,
+    "category": "drinks",
+    "icon": "☕",
+    "tag": "Without Sugar",
+    "description": "",
+    "isVeg": true,
+    "isAvailable": false,
+    "station": "bar"
   }
 ]

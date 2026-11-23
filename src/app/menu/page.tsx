@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, Suspense } from "react"
+import React, { useState, useEffect, useMemo, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Utensils,
@@ -159,9 +159,9 @@ function CustomerMenuContent() {
   const gst = subtotal * 0.05
   const grandTotal = subtotal + gst
 
-  // Filter menu catalog
+  // Filter and sort menu catalog: In-stock items first, Out-of-stock items at the end
   const filteredItems = useMemo(() => {
-    return menuItems.filter((item) => {
+    const list = menuItems.filter((item) => {
       const matchesCategory = selectedCategory === "all" || item.category === selectedCategory
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -172,6 +172,12 @@ function CustomerMenuContent() {
         (dietaryFilter === "non-veg" && !item.isVeg)
 
       return matchesCategory && matchesSearch && matchesDiet
+    })
+
+    return [...list].sort((a, b) => {
+      const aOut = a.isAvailable === false ? 1 : 0
+      const bOut = b.isAvailable === false ? 1 : 0
+      return aOut - bOut
     })
   }, [menuItems, selectedCategory, searchQuery, dietaryFilter])
 
@@ -467,17 +473,29 @@ function CustomerMenuContent() {
               No menu items match your search. Try adjusting filters.
             </div>
           ) : (
-            filteredItems.map((item) => {
+            filteredItems.map((item, index) => {
               const inCart = cart.find((i) => i.id === item.id)
               const isOutOfStock = item.isAvailable === false
+              const isFirstOutOfStock =
+                isOutOfStock && (index === 0 || filteredItems[index - 1]?.isAvailable !== false)
 
               return (
-                <div
-                  key={item.id}
-                  className={`p-3.5 rounded-xl bg-white border border-[#E5E1D9] flex gap-3.5 transition shadow-2xs ${
-                    isOutOfStock ? "opacity-75 bg-[#FAF9F6]" : "hover:border-[#C46B4E]"
-                  }`}
-                >
+                <React.Fragment key={item.id}>
+                  {isFirstOutOfStock && index > 0 && (
+                    <div className="pt-4 pb-1.5 flex items-center gap-3">
+                      <div className="h-px bg-[#E5E1D9] flex-1" />
+                      <span className="text-[11px] font-semibold tracking-wider text-[#64748B] uppercase flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        Out of Stock ({filteredItems.filter((i) => i.isAvailable === false).length})
+                      </span>
+                      <div className="h-px bg-[#E5E1D9] flex-1" />
+                    </div>
+                  )}
+                  <div
+                    className={`p-3.5 rounded-xl bg-white border border-[#E5E1D9] flex gap-3.5 transition shadow-2xs ${
+                      isOutOfStock ? "opacity-75 bg-[#FAF9F6]" : "hover:border-[#C46B4E]"
+                    }`}
+                  >
                   {/* Dish Icon / Visual */}
                   <div className={`w-16 h-16 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-center text-3xl shrink-0 ${isOutOfStock ? "grayscale-50" : ""}`}>
                     {item.icon}
@@ -566,8 +584,9 @@ function CustomerMenuContent() {
                     </div>
                   </div>
                 </div>
-              )
-            })
+              </React.Fragment>
+            )
+          })
           )}
         </div>
       </main>

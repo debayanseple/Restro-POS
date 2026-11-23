@@ -1,5 +1,53 @@
 [
   {
+    "id": "ord_1795423937050_ondp",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "delivery",
+    "table_id": "Table Delivery",
+    "total_amount": 313.95,
+    "tax_amount": 14.950000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-6955",
+    "notes": null,
+    "created_at": "2026-11-23T08:52:17.050Z",
+    "updated_at": "2026-11-23T08:52:17.050Z",
+    "order_items": [
+      {
+        "id": "it_1795423937050_0",
+        "order_id": "ord_1795423937050_ondp",
+        "menu_item_id": "m3",
+        "quantity": 1,
+        "unit_price": 299,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "new",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795423937050",
+        "order_id": "ord_1795423937050_ondp",
+        "amount": 313.95,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T08:52:17.050Z"
+      }
+    ]
+  },
+  {
     "id": "ord_1795417903569_oy7r",
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": "demo-outlet-1",
