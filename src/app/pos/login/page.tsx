@@ -60,7 +60,6 @@ export default function PosLogin() {
     restaurantId = "demo-restaurant-1",
     outletId = "demo-outlet-1"
   ) => {
-    // Clear old pos_role first
     document.cookie = "pos_role=; path=/; max-age=0"
     document.cookie = `restaurant_id=${restaurantId}; path=/; max-age=86400`
     document.cookie = `outlet_id=${outletId}; path=/; max-age=86400`
@@ -119,7 +118,7 @@ export default function PosLogin() {
           }
         }
       } catch (err: unknown) {
-        // Fall through to local fallback
+        // Fallback
       }
     }
 
@@ -144,34 +143,34 @@ export default function PosLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0f12] text-slate-100 flex flex-col font-sans select-none antialiased">
+    <div className="min-h-screen bg-[#F7F5F0] text-[#20252B] flex flex-col font-sans select-none antialiased">
       {/* Top Production Brand Banner */}
-      <div className="bg-[#181a24] border-b border-[#242738] text-slate-300 px-4 py-2 text-xs font-medium flex items-center justify-between">
+      <div className="bg-[#E9E3D8] border-b border-[#E5E1D9] text-[#20252B] px-4 py-2.5 text-xs font-medium flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <ShoppingCart className="w-4 h-4 text-purple-400" />
-          <span className="font-bold text-white tracking-wide">POS Staff Terminal Access</span>
+          <ShoppingCart className="w-4 h-4 text-[#C46B4E]" />
+          <span className="font-bold tracking-tight">Staff POS Terminal Login</span>
         </div>
-        <div className="flex items-center gap-2 text-[11px] text-slate-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+        <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
+          <span className="w-2 h-2 rounded-full bg-emerald-600" />
           <span>Terminal Online</span>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#14161f] rounded-2xl border border-[#202330] p-8 space-y-6 shadow-2xl">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-[#E5E1D9] p-8 space-y-6 shadow-xs">
           {/* Header */}
           <div className="text-center space-y-2">
-            <div className="inline-flex w-12 h-12 rounded-2xl bg-[#2d224d] text-[#c4b5fd] items-center justify-center border border-[#3f2e6b] mb-1">
+            <div className="inline-flex w-12 h-12 rounded-xl bg-[#E9E3D8] text-[#C46B4E] items-center justify-center border border-[#E5E1D9] mb-1">
               <ShoppingCart className="w-6 h-6" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">POS Terminal Login</h1>
-            <p className="text-xs text-slate-400">
-              Sign in with your assigned staff credentials
+            <h1 className="text-2xl font-bold tracking-tight text-[#20252B]">Staff POS Login</h1>
+            <p className="text-xs text-[#64748B]">
+              Authenticate cashier, reception, or kitchen screen
             </p>
           </div>
 
           {/* Mode Switcher */}
-          <div className="grid grid-cols-2 p-1 rounded-xl bg-[#0e0f12] border border-[#202330]">
+          <div className="grid grid-cols-2 p-1 rounded-xl bg-[#E9E3D8] border border-[#E5E1D9]">
             <button
               type="button"
               onClick={() => {
@@ -179,10 +178,10 @@ export default function PosLogin() {
                 setError(null)
                 setSuccess(null)
               }}
-              className={`py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              className={`py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 mode === "signin"
-                  ? "bg-[#202330] text-white shadow-xs"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-white text-[#20252B] shadow-2xs"
+                  : "text-[#64748B] hover:text-[#20252B]"
               }`}
             >
               <LogIn className="w-3.5 h-3.5" />
@@ -195,10 +194,10 @@ export default function PosLogin() {
                 setError(null)
                 setSuccess(null)
               }}
-              className={`py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
+              className={`py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                 mode === "signup"
-                  ? "bg-[#202330] text-white shadow-xs"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? "bg-white text-[#20252B] shadow-2xs"
+                  : "text-[#64748B] hover:text-[#20252B]"
               }`}
             >
               <UserPlus className="w-3.5 h-3.5" />
@@ -207,14 +206,14 @@ export default function PosLogin() {
           </div>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded-xl flex items-start gap-2">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3 rounded-xl flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
 
           {success && (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs p-3 rounded-xl flex items-start gap-2">
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-xl flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{success}</span>
             </div>
@@ -222,36 +221,36 @@ export default function PosLogin() {
 
           <form onSubmit={handleAuth} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Staff Email</label>
+              <label className="text-xs font-semibold text-[#20252B]">Staff Email Address</label>
               <div className="relative">
-                <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Mail className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. staff@restaurant.com"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#0e0f12] border border-[#242738] text-white text-xs focus:outline-hidden focus:border-purple-500 transition"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-[#20252B] placeholder-[#64748B] text-xs focus:outline-none focus:border-[#C46B4E] transition"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300">Password</label>
+              <label className="text-xs font-semibold text-[#20252B]">Password</label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-[#64748B] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-[#0e0f12] border border-[#242738] text-white text-xs focus:outline-hidden focus:border-purple-500 transition"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-[#20252B] placeholder-[#64748B] text-xs focus:outline-none focus:border-[#C46B4E] transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition p-0.5 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64748B] hover:text-[#20252B] transition p-0.5 cursor-pointer"
                   title={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -265,17 +264,15 @@ export default function PosLogin() {
 
             {mode === "signup" && (
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">Staff Station</label>
+                <label className="text-xs font-semibold text-[#20252B]">Staff Role Assignment</label>
                 <select
                   value={roleSelection}
                   onChange={(e) => setRoleSelection(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#0e0f12] border border-[#242738] text-white text-xs focus:outline-hidden focus:border-purple-500 transition"
+                  className="w-full px-3 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-[#20252B] text-xs focus:outline-none focus:border-[#C46B4E] transition cursor-pointer"
                 >
-                  <option value="pos-orders">POS Staff — Orders (Point of Sale)</option>
-                  <option value="pos-reception">POS Staff — Reception (Floor & Waitlist)</option>
-                  <option value="pos-kitchen">POS Staff — Kitchen (KDS Queue)</option>
-                  <option value="restaurant-admin">Restaurant Admin</option>
-                  <option value="super-admin">Super Admin</option>
+                  <option value="pos-orders">POS Cashier / Waiter (Orders & Billing)</option>
+                  <option value="pos-reception">Reception / Host (Table Floor & Waitlist)</option>
+                  <option value="pos-kitchen">Kitchen Chef / Cook (KDS Ticket Rails)</option>
                 </select>
               </div>
             )}
@@ -283,16 +280,16 @@ export default function PosLogin() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white font-semibold text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
+              className="w-full py-2.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white font-semibold text-xs flex items-center justify-center gap-2 transition shadow-xs cursor-pointer disabled:opacity-50"
             >
               <span>
                 {loading
                   ? mode === "signup"
-                    ? "Registering..."
+                    ? "Creating Account..."
                     : "Signing in..."
                   : mode === "signup"
                   ? "Create Staff Account"
-                  : "Sign In"}
+                  : "Sign In to Terminal"}
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>

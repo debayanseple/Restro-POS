@@ -1,13 +1,413 @@
 [
   {
+    "id": "ord_1795417903569_oy7r",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 2",
+    "total_amount": 784.35,
+    "tax_amount": 37.35,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "qr_menu",
+    "order_number": "ORD-3440",
+    "notes": null,
+    "created_at": "2026-11-23T07:11:43.570Z",
+    "updated_at": "2026-11-23T07:24:45.449Z",
+    "order_items": [
+      {
+        "id": "it_1795417903570_0",
+        "order_id": "ord_1795417903569_oy7r",
+        "menu_item_id": "m1",
+        "quantity": 1,
+        "unit_price": 349,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      },
+      {
+        "id": "it_1795417903570_1",
+        "order_id": "ord_1795417903569_oy7r",
+        "menu_item_id": "m7",
+        "quantity": 1,
+        "unit_price": 249,
+        "special_instructions": null,
+        "name": "Craft IPA Beer",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer"
+        }
+      },
+      {
+        "id": "it_1795417903570_2",
+        "order_id": "ord_1795417903569_oy7r",
+        "menu_item_id": "m9",
+        "quantity": 1,
+        "unit_price": 149,
+        "special_instructions": null,
+        "name": "Sparkling Berry Fizz",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Sparkling Berry Fizz"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795417903570",
+        "order_id": "ord_1795417903569_oy7r",
+        "amount": 784.35,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T07:11:43.570Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795417655928_eu1g",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 366.45,
+    "tax_amount": 17.45,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "qr_menu",
+    "order_number": "ORD-5718",
+    "notes": null,
+    "created_at": "2026-11-23T07:07:35.928Z",
+    "updated_at": "2026-11-23T07:07:54.671Z",
+    "order_items": [
+      {
+        "id": "it_1795417655928_0",
+        "order_id": "ord_1795417655928_eu1g",
+        "menu_item_id": "m1",
+        "quantity": 1,
+        "unit_price": 349,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795417655928",
+        "order_id": "ord_1795417655928_eu1g",
+        "amount": 366.45,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T07:07:35.928Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795417559868_arvm",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 764.4,
+    "tax_amount": 36.4,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "qr_menu",
+    "order_number": "ORD-3760",
+    "notes": null,
+    "created_at": "2026-11-23T07:05:59.868Z",
+    "updated_at": "2026-11-23T07:06:50.245Z",
+    "order_items": [
+      {
+        "id": "it_1795417559868_0",
+        "order_id": "ord_1795417559868_arvm",
+        "menu_item_id": "m1",
+        "quantity": 1,
+        "unit_price": 349,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      },
+      {
+        "id": "it_1795417559868_1",
+        "order_id": "ord_1795417559868_arvm",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 379,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795417559868",
+        "order_id": "ord_1795417559868_arvm",
+        "amount": 764.4,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T07:05:59.868Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795417439386_ymk2",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 764.4,
+    "tax_amount": 36.4,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "qr_menu",
+    "order_number": "ORD-4858",
+    "notes": null,
+    "created_at": "2026-11-23T07:03:59.386Z",
+    "updated_at": "2026-11-23T07:05:43.153Z",
+    "order_items": [
+      {
+        "id": "it_1795417439386_0",
+        "order_id": "ord_1795417439386_ymk2",
+        "menu_item_id": "m1",
+        "quantity": 1,
+        "unit_price": 349,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      },
+      {
+        "id": "it_1795417439386_1",
+        "order_id": "ord_1795417439386_ymk2",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 379,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795417439386",
+        "order_id": "ord_1795417439386_ymk2",
+        "amount": 764.4,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T07:03:59.386Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795417366276_5vmf",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 972.3,
+    "tax_amount": 46.300000000000004,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "qr_menu",
+    "order_number": "ORD-1357",
+    "notes": null,
+    "created_at": "2026-11-23T07:02:46.276Z",
+    "updated_at": "2026-11-23T07:07:20.580Z",
+    "order_items": [
+      {
+        "id": "it_1795417366276_0",
+        "order_id": "ord_1795417366276_5vmf",
+        "menu_item_id": "m1",
+        "quantity": 1,
+        "unit_price": 349,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      },
+      {
+        "id": "it_1795417366276_1",
+        "order_id": "ord_1795417366276_5vmf",
+        "menu_item_id": "m4",
+        "quantity": 1,
+        "unit_price": 179,
+        "special_instructions": null,
+        "name": "Crispy Truffle Fries",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Crispy Truffle Fries"
+        }
+      },
+      {
+        "id": "it_1795417366276_2",
+        "order_id": "ord_1795417366276_5vmf",
+        "menu_item_id": "m7",
+        "quantity": 1,
+        "unit_price": 249,
+        "special_instructions": null,
+        "name": "Craft IPA Beer",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer"
+        }
+      },
+      {
+        "id": "it_1795417366276_3",
+        "order_id": "ord_1795417366276_5vmf",
+        "menu_item_id": "m9",
+        "quantity": 1,
+        "unit_price": 149,
+        "special_instructions": null,
+        "name": "Sparkling Berry Fizz",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Sparkling Berry Fizz"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795417366276",
+        "order_id": "ord_1795417366276_5vmf",
+        "amount": 972.3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T07:02:46.276Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795416960205_lehf",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 03",
+    "total_amount": 648,
+    "tax_amount": 30.86,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "qr_menu",
+    "order_number": "ORD-5193",
+    "notes": "Less spicy please, customer scanned QR",
+    "created_at": "2026-11-23T06:56:00.205Z",
+    "updated_at": "2026-11-23T07:05:44.157Z",
+    "order_items": [
+      {
+        "id": "it_1795416960205_0",
+        "order_id": "ord_1795416960205_lehf",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 349,
+        "special_instructions": null,
+        "name": "Classic Wagyu Burger",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Classic Wagyu Burger"
+        }
+      },
+      {
+        "id": "it_1795416960205_1",
+        "order_id": "ord_1795416960205_lehf",
+        "menu_item_id": "m_1",
+        "quantity": 1,
+        "unit_price": 299,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795416960205",
+        "order_id": "ord_1795416960205_lehf",
+        "amount": 648,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-23T06:56:00.205Z"
+      }
+    ]
+  },
+  {
     "id": "ord_1795151728545_xqp7",
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -19,7 +419,7 @@
     "order_number": "ORD-8618",
     "notes": null,
     "created_at": "2026-11-20T05:15:28.545Z",
-    "updated_at": "2026-11-20T05:15:28.545Z",
+    "updated_at": "2026-11-23T07:07:21.264Z",
     "order_items": [
       {
         "id": "it_1795151728545_0",
@@ -30,7 +430,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -52,10 +452,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -67,7 +467,7 @@
     "order_number": "ORD-7521",
     "notes": null,
     "created_at": "2026-11-20T05:15:28.135Z",
-    "updated_at": "2026-11-20T05:15:28.135Z",
+    "updated_at": "2026-11-23T07:07:21.764Z",
     "order_items": [
       {
         "id": "it_1795151728135_0",
@@ -78,7 +478,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -100,10 +500,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -115,7 +515,7 @@
     "order_number": "ORD-5025",
     "notes": null,
     "created_at": "2026-11-20T05:15:27.671Z",
-    "updated_at": "2026-11-20T05:15:27.671Z",
+    "updated_at": "2026-11-23T07:07:21.947Z",
     "order_items": [
       {
         "id": "it_1795151727671_0",
@@ -126,7 +526,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -148,10 +548,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -163,7 +563,7 @@
     "order_number": "ORD-1961",
     "notes": null,
     "created_at": "2026-11-20T05:15:27.279Z",
-    "updated_at": "2026-11-20T05:15:27.279Z",
+    "updated_at": "2026-11-23T07:07:22.137Z",
     "order_items": [
       {
         "id": "it_1795151727279_0",
@@ -174,7 +574,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -196,10 +596,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -211,7 +611,7 @@
     "order_number": "ORD-7824",
     "notes": null,
     "created_at": "2026-11-20T05:15:26.843Z",
-    "updated_at": "2026-11-20T05:15:26.843Z",
+    "updated_at": "2026-11-23T07:07:22.297Z",
     "order_items": [
       {
         "id": "it_1795151726843_0",
@@ -222,7 +622,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -244,10 +644,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -259,7 +659,7 @@
     "order_number": "ORD-8675",
     "notes": null,
     "created_at": "2026-11-20T05:15:26.459Z",
-    "updated_at": "2026-11-20T05:15:26.459Z",
+    "updated_at": "2026-11-23T07:07:23.536Z",
     "order_items": [
       {
         "id": "it_1795151726459_0",
@@ -270,7 +670,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -292,10 +692,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -307,7 +707,7 @@
     "order_number": "ORD-7603",
     "notes": null,
     "created_at": "2026-11-20T05:15:26.072Z",
-    "updated_at": "2026-11-20T05:15:26.072Z",
+    "updated_at": "2026-11-23T07:07:23.128Z",
     "order_items": [
       {
         "id": "it_1795151726072_0",
@@ -318,7 +718,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -340,10 +740,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -355,7 +755,7 @@
     "order_number": "ORD-4193",
     "notes": null,
     "created_at": "2026-11-20T05:15:25.696Z",
-    "updated_at": "2026-11-20T05:15:25.696Z",
+    "updated_at": "2026-11-23T07:07:23.295Z",
     "order_items": [
       {
         "id": "it_1795151725696_0",
@@ -366,7 +766,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -388,10 +788,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -403,7 +803,7 @@
     "order_number": "ORD-6851",
     "notes": null,
     "created_at": "2026-11-20T05:15:25.208Z",
-    "updated_at": "2026-11-20T05:15:25.208Z",
+    "updated_at": "2026-11-23T07:07:23.468Z",
     "order_items": [
       {
         "id": "it_1795151725208_0",
@@ -414,7 +814,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -436,10 +836,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -451,7 +851,7 @@
     "order_number": "ORD-9324",
     "notes": null,
     "created_at": "2026-11-20T05:15:24.768Z",
-    "updated_at": "2026-11-20T05:15:24.768Z",
+    "updated_at": "2026-11-23T07:07:23.621Z",
     "order_items": [
       {
         "id": "it_1795151724768_0",
@@ -462,7 +862,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -484,10 +884,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -499,7 +899,7 @@
     "order_number": "ORD-6317",
     "notes": null,
     "created_at": "2026-11-20T05:15:24.384Z",
-    "updated_at": "2026-11-20T05:15:24.384Z",
+    "updated_at": "2026-11-23T07:07:23.790Z",
     "order_items": [
       {
         "id": "it_1795151724384_0",
@@ -510,7 +910,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -532,10 +932,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -547,7 +947,7 @@
     "order_number": "ORD-7311",
     "notes": null,
     "created_at": "2026-11-20T05:15:23.952Z",
-    "updated_at": "2026-11-20T05:15:23.952Z",
+    "updated_at": "2026-11-23T07:07:23.949Z",
     "order_items": [
       {
         "id": "it_1795151723952_0",
@@ -558,7 +958,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -580,10 +980,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -595,7 +995,7 @@
     "order_number": "ORD-7280",
     "notes": null,
     "created_at": "2026-11-20T05:15:23.436Z",
-    "updated_at": "2026-11-20T05:15:23.436Z",
+    "updated_at": "2026-11-23T07:07:24.123Z",
     "order_items": [
       {
         "id": "it_1795151723436_0",
@@ -606,7 +1006,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -628,10 +1028,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -643,7 +1043,7 @@
     "order_number": "ORD-4228",
     "notes": null,
     "created_at": "2026-11-20T05:15:22.959Z",
-    "updated_at": "2026-11-20T05:15:22.959Z",
+    "updated_at": "2026-11-23T07:07:24.583Z",
     "order_items": [
       {
         "id": "it_1795151722959_0",
@@ -654,7 +1054,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -676,10 +1076,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -691,7 +1091,7 @@
     "order_number": "ORD-8575",
     "notes": null,
     "created_at": "2026-11-20T05:15:22.558Z",
-    "updated_at": "2026-11-20T05:15:22.558Z",
+    "updated_at": "2026-11-23T07:07:24.958Z",
     "order_items": [
       {
         "id": "it_1795151722558_0",
@@ -702,7 +1102,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -724,10 +1124,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -739,7 +1139,7 @@
     "order_number": "ORD-4620",
     "notes": null,
     "created_at": "2026-11-20T05:15:22.120Z",
-    "updated_at": "2026-11-20T05:15:22.120Z",
+    "updated_at": "2026-11-23T07:07:25.319Z",
     "order_items": [
       {
         "id": "it_1795151722120_0",
@@ -750,7 +1150,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -772,10 +1172,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -787,7 +1187,7 @@
     "order_number": "ORD-8164",
     "notes": null,
     "created_at": "2026-11-20T05:15:21.716Z",
-    "updated_at": "2026-11-20T05:15:21.716Z",
+    "updated_at": "2026-11-23T07:07:26.369Z",
     "order_items": [
       {
         "id": "it_1795151721716_0",
@@ -798,7 +1198,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -820,10 +1220,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -835,7 +1235,7 @@
     "order_number": "ORD-2687",
     "notes": null,
     "created_at": "2026-11-20T05:15:21.289Z",
-    "updated_at": "2026-11-20T05:15:21.289Z",
+    "updated_at": "2026-11-23T07:07:26.781Z",
     "order_items": [
       {
         "id": "it_1795151721289_0",
@@ -846,7 +1246,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -868,10 +1268,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -883,7 +1283,7 @@
     "order_number": "ORD-6005",
     "notes": null,
     "created_at": "2026-11-20T05:15:20.624Z",
-    "updated_at": "2026-11-20T05:15:20.624Z",
+    "updated_at": "2026-11-23T07:07:25.104Z",
     "order_items": [
       {
         "id": "it_1795151720624_0",
@@ -894,7 +1294,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -916,10 +1316,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 3,
@@ -931,7 +1331,7 @@
     "order_number": "ORD-4839",
     "notes": null,
     "created_at": "2026-11-20T05:15:20.148Z",
-    "updated_at": "2026-11-20T05:15:20.148Z",
+    "updated_at": "2026-11-23T07:07:25.277Z",
     "order_items": [
       {
         "id": "it_1795151720148_0",
@@ -942,7 +1342,7 @@
         "special_instructions": null,
         "name": "Tea",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Tea"
         }
@@ -964,10 +1364,10 @@
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": null,
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
     "kitchen_stage": "new",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Counter",
     "total_amount": 0,
@@ -979,7 +1379,7 @@
     "order_number": "ORD-5146",
     "notes": null,
     "created_at": "2026-11-20T05:15:19.026Z",
-    "updated_at": "2026-11-20T05:15:19.026Z",
+    "updated_at": "2026-11-23T07:07:26.575Z",
     "order_items": [
       {
         "id": "it_1795151719026_0",
@@ -990,7 +1390,7 @@
         "special_instructions": null,
         "name": "<script>alert(1)</script> Beer",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "<script>alert(1)</script> Beer"
         }
@@ -1012,10 +1412,10 @@
     "restaurant_id": "1",
     "outlet_id": "1",
     "user_id": "user-default",
-    "status": "OPEN",
+    "status": "CLOSED",
     "kds_stage": "new",
-    "kitchen_stage": "new",
-    "bar_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 1",
     "total_amount": 16.74,
@@ -1027,7 +1427,7 @@
     "order_number": "ORD-3164",
     "notes": null,
     "created_at": "2026-11-19T08:26:18.165Z",
-    "updated_at": "2026-11-19T08:26:18.165Z",
+    "updated_at": "2026-11-23T07:07:27.064Z",
     "order_items": [
       {
         "id": "it_1795076778165_0",
@@ -1038,7 +1438,7 @@
         "special_instructions": null,
         "name": "Craft IPA Beer",
         "station": "bar",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Craft IPA Beer"
         }
@@ -1052,7 +1452,7 @@
         "special_instructions": null,
         "name": "Crispy Truffle Fries",
         "station": "kitchen",
-        "status": "new",
+        "status": "completed",
         "MenuItem": {
           "name": "Crispy Truffle Fries"
         }

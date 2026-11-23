@@ -1306,9 +1306,9 @@ function RestaurantAdminContent() {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#0e0f12] flex items-center justify-center text-slate-400">
+      <div className="min-h-screen bg-[#20252B] flex items-center justify-center text-slate-400">
         <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-[#8b5cf6] border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-[#C46B4E] border-t-transparent rounded-full animate-spin" />
           <span className="text-sm font-medium">Loading POS...</span>
         </div>
       </div>
@@ -1318,7 +1318,7 @@ function RestaurantAdminContent() {
   return (
     <div
       className={`min-h-screen flex flex-col font-sans select-none antialiased transition-colors duration-200 ${
-        isDarkMode ? "bg-[#0e0f12] text-slate-100" : "bg-slate-100 text-slate-900"
+        isDarkMode ? "bg-[#20252B] text-[#F7F5F0]" : "bg-[#F7F5F0] text-[#20252B]"
       }`}
     >
       {/* Top Production Status Bar */}
@@ -1341,7 +1341,7 @@ function RestaurantAdminContent() {
               userType === "super-admin"
                 ? "bg-red-500/20 text-red-300 border border-red-500/30"
                 : userType === "restaurant-admin"
-                ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                ? "bg-[#C46B4E]/15 text-[#E8C2B5] border border-[#C46B4E]/30"
                 : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
             }`}
           >
@@ -1381,14 +1381,14 @@ function RestaurantAdminContent() {
             <div
               className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
                 isDarkMode
-                  ? "bg-[#1e202b] border-[#2e3240]"
-                  : "bg-purple-50 border-purple-200"
+                  ? "bg-[#2B323B] border-[#353D47]"
+                  : "bg-[#E9E3D8] border-[#E5E1D9]"
               }`}
             >
               {userType === "super-admin" ? (
                 <ShieldCheck className="w-4 h-4 text-red-400" />
               ) : (
-                <Utensils className="w-4 h-4 text-purple-600" />
+                <Utensils className="w-4 h-4 text-[#C46B4E]" />
               )}
             </div>
             {sidebarOpen && (
@@ -1455,9 +1455,7 @@ function RestaurantAdminContent() {
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     isActive
-                      ? isDarkMode
-                        ? "bg-[#2d224d] text-[#c4b5fd] font-semibold shadow-xs"
-                        : "bg-purple-100 text-purple-900 font-semibold shadow-xs border border-purple-200"
+                      ? "bg-[#C46B4E] text-white font-semibold shadow-xs"
                       : isDarkMode
                       ? "text-slate-400 hover:text-slate-200 hover:bg-[#181a22]"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
@@ -1467,9 +1465,7 @@ function RestaurantAdminContent() {
                     <Icon
                       className={`w-4 h-4 shrink-0 ${
                         isActive
-                          ? isDarkMode
-                            ? "text-[#a78bfa]"
-                            : "text-purple-700"
+                          ? "text-white"
                           : "text-slate-400"
                       }`}
                     />
@@ -1515,14 +1511,14 @@ function RestaurantAdminContent() {
         {/* Main Content Workspace */}
         <div
           className={`flex-1 flex flex-col overflow-hidden transition-colors duration-200 ${
-            isDarkMode ? "bg-[#0e0f12]" : "bg-slate-50"
+            isDarkMode ? "bg-[#20252B]" : "bg-[#F7F5F0]"
           }`}
         >
           {/* Top Bar */}
           <header
             className={`h-14 border-b px-6 flex items-center justify-between shrink-0 gap-4 z-20 ${
               isDarkMode
-                ? "bg-[#0e0f12] border-[#1c1e27]"
+                ? "bg-[#20252B] border-[#1c1e27]"
                 : "bg-white border-slate-200 shadow-xs"
             }`}
           >
@@ -1557,10 +1553,10 @@ function RestaurantAdminContent() {
             {/* Authenticated Role & Station Badge */}
             <div className="flex items-center gap-2">
               {userType === "restaurant-admin" && (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-purple-950/40 border border-purple-800/40 text-purple-300 text-xs font-semibold">
-                  <Utensils className="w-3.5 h-3.5 text-purple-400" />
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#E9E3D8] border border-[#E5E1D9] text-[#20252B] text-xs font-semibold">
+                  <Utensils className="w-3.5 h-3.5 text-[#C46B4E]" />
                   <span>Restaurant Admin</span>
-                  <span className="text-[10px] text-purple-400/80 font-normal hidden sm:inline">• Full Management</span>
+                  <span className="text-[10px] text-[#64748B] font-normal hidden sm:inline">• Full Management</span>
                 </div>
               )}
               {userType === "super-admin" && (
@@ -1627,7 +1623,7 @@ function RestaurantAdminContent() {
                 >
                   <Bell className="w-4 h-4" />
                 </button>
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#8b5cf6] text-white text-[10px] font-bold flex items-center justify-center">
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#C46B4E] text-white text-[10px] font-bold flex items-center justify-center">
                   4
                 </span>
               </div>
@@ -1668,7 +1664,7 @@ function RestaurantAdminContent() {
                           : posRole === "reception"
                           ? "bg-emerald-600"
                           : "bg-amber-600"
-                        : "bg-[#8b5cf6]"
+                        : "bg-[#C46B4E]"
                     }`}
                   >
                     {userType === "super-admin"
@@ -1767,7 +1763,7 @@ function RestaurantAdminContent() {
                   <div className="flex flex-wrap items-center gap-2">
                     <button
                       onClick={() => setShowAllQrModal(true)}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-900/30 transition cursor-pointer"
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold shadow-md shadow-2xs transition cursor-pointer"
                     >
                       <QrCode className="w-3.5 h-3.5" />
                       <span>Print Table QR Stands</span>
@@ -1778,11 +1774,11 @@ function RestaurantAdminContent() {
                       rel="noreferrer"
                       className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium transition cursor-pointer ${
                         isDarkMode
-                          ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-purple-300"
-                          : "border-slate-200 bg-white hover:bg-slate-50 text-purple-700 shadow-xs"
+                          ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-[#E8C2B5]"
+                          : "border-slate-200 bg-white hover:bg-slate-50 text-[#C46B4E] shadow-xs"
                       }`}
                     >
-                      <Utensils className="w-3.5 h-3.5 text-purple-400" />
+                      <Utensils className="w-3.5 h-3.5 text-[#C46B4E]" />
                       <span>Preview QR Menu</span>
                     </a>
                     <button
@@ -1824,7 +1820,7 @@ function RestaurantAdminContent() {
                                   setShowQrModal(table)
                                   setSelectedTableId(null)
                                 }}
-                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 hover:bg-purple-600 text-white/70 hover:text-white transition cursor-pointer z-10"
+                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 hover:bg-[#C46B4E] text-white/70 hover:text-white transition cursor-pointer z-10"
                                 title={`View ${table.name} QR Code`}
                               >
                                 <QrCode className="w-3 h-3" />
@@ -1849,7 +1845,7 @@ function RestaurantAdminContent() {
                                     : isDarkMode
                                     ? "bg-[#20222b] border-[#4b5563]/50 text-slate-400"
                                     : "bg-slate-100 border-slate-300 text-slate-600"
-                                } ${isSelected ? "ring-2 ring-purple-500 scale-102" : ""}`}
+                                } ${isSelected ? "ring-2 ring-[#C46B4E] scale-102" : ""}`}
                               >
                                 <div className="w-6 h-6 flex items-center justify-center relative">
                                   <div className="absolute -top-0.5 w-2 h-0.5 bg-current rounded-xs opacity-70" />
@@ -1976,7 +1972,7 @@ function RestaurantAdminContent() {
                                           : "text-slate-700 hover:bg-slate-50"
                                       }`}
                                     >
-                                      <QrCode className="w-3.5 h-3.5 text-purple-600" />
+                                      <QrCode className="w-3.5 h-3.5 text-[#C46B4E]" />
                                       <span>View QR code</span>
                                     </button>
                                     <button
@@ -2174,7 +2170,7 @@ function RestaurantAdminContent() {
                                     ? isDarkMode
                                       ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
                                       : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                                    : "bg-[#9333ea] hover:bg-[#8b5cf6] text-white shadow-xs"
+                                    : "bg-[#C46B4E] hover:bg-[#C46B4E] text-white shadow-xs"
                                 }`}
                               >
                                 {isOpen ? "Close" : "Open"}
@@ -2234,7 +2230,7 @@ function RestaurantAdminContent() {
                           placeholder="Search items, beverages..."
                           value={posSearch}
                           onChange={(e) => setPosSearch(e.target.value)}
-                          className={`w-full rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-purple-500 border ${
+                          className={`w-full rounded-xl pl-10 pr-4 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
                             isDarkMode
                               ? "bg-[#1b1d28] border-[#262938] text-white"
                               : "bg-slate-50 border-slate-200 text-slate-900"
@@ -2255,7 +2251,7 @@ function RestaurantAdminContent() {
                             onClick={() => setPosCategory(cat.id)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
                               posCategory === cat.id
-                                ? "bg-[#8b5cf6] text-white"
+                                ? "bg-[#C46B4E] text-white"
                                 : isDarkMode
                                 ? "bg-[#1b1d28] text-slate-400 hover:text-white"
                                 : "bg-slate-100 text-slate-600 hover:text-slate-900"
@@ -2280,15 +2276,15 @@ function RestaurantAdminContent() {
                             onClick={() => addToCart(item)}
                             className={`p-3.5 rounded-xl transition-all text-left flex flex-col justify-between group h-32 border ${
                               isDarkMode
-                                ? "bg-[#1a1c26] border-[#262938] hover:border-purple-500 hover:shadow-lg"
-                                : "bg-slate-50 border-slate-200 hover:border-purple-500 hover:shadow-md"
+                                ? "bg-[#1a1c26] border-[#262938] hover:border-[#C46B4E] hover:shadow-lg"
+                                : "bg-slate-50 border-slate-200 hover:border-[#C46B4E] hover:shadow-md"
                             }`}
                           >
                             <div>
                               <div className="flex justify-between items-start">
                                 <span className="text-2xl">{item.icon}</span>
                                 {item.tag && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-950/80 dark:text-purple-300 font-bold border border-purple-300 dark:border-purple-800">
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E9E3D8] text-[#20252B] font-semibold border border-[#E5E1D9]">
                                     {item.tag}
                                   </span>
                                 )}
@@ -2306,10 +2302,10 @@ function RestaurantAdminContent() {
                                 isDarkMode ? "border-[#232635]" : "border-slate-200"
                               }`}
                             >
-                              <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                              <span className="text-sm font-bold text-[#C46B4E]">
                                 ₹{item.price.toFixed(2)}
                               </span>
-                              <span className="w-5 h-5 rounded-md bg-purple-600 text-white flex items-center justify-center text-xs">
+                              <span className="w-5 h-5 rounded-md bg-[#C46B4E] text-white flex items-center justify-center text-xs">
                                 +
                               </span>
                             </div>
@@ -2332,7 +2328,7 @@ function RestaurantAdminContent() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <Receipt className="w-4 h-4 text-purple-600" />
+                        <Receipt className="w-4 h-4 text-[#C46B4E]" />
                         <h3
                           className={`font-bold text-sm ${
                             isDarkMode ? "text-white" : "text-slate-900"
@@ -2364,7 +2360,7 @@ function RestaurantAdminContent() {
                           }}
                           className={`py-1 rounded-lg capitalize transition ${
                             posOrderType === type
-                              ? "bg-[#8b5cf6] text-white"
+                              ? "bg-[#C46B4E] text-white"
                               : "text-slate-500 hover:text-slate-900"
                           }`}
                         >
@@ -2394,7 +2390,7 @@ function RestaurantAdminContent() {
                                 : "text-slate-700"
                             }`}
                           >
-                            <LayoutGrid className="w-3.5 h-3.5 text-purple-400" />
+                            <LayoutGrid className="w-3.5 h-3.5 text-[#C46B4E]" />
                             <span>Table Number</span>
                             <span className="text-red-400">*</span>
                           </label>
@@ -2422,8 +2418,8 @@ function RestaurantAdminContent() {
                               tableValidationError && !selectedTableId
                                 ? "border-red-500 bg-red-500/10 text-red-300 focus:ring-1 focus:ring-red-500"
                                 : isDarkMode
-                                ? "bg-[#14161f] border-[#292c3c] text-white hover:border-purple-500/50"
-                                : "bg-white border-slate-300 text-slate-900 hover:border-purple-500/50"
+                                ? "bg-[#14161f] border-[#292c3c] text-white hover:border-[#C46B4E]/50"
+                                : "bg-white border-slate-300 text-slate-900 hover:border-[#C46B4E]/50"
                             }`}
                           >
                             <option value="" disabled className="text-slate-400">
@@ -2479,7 +2475,7 @@ function RestaurantAdminContent() {
                               >
                                 {i.name}
                               </div>
-                              <span className="text-purple-600 dark:text-purple-400 font-bold">
+                              <span className="text-[#C46B4E] font-bold">
                                 ₹{(i.price * i.quantity).toFixed(2)}
                               </span>
                             </div>
@@ -2557,7 +2553,7 @@ function RestaurantAdminContent() {
                         }`}
                       >
                         <span>Total Due</span>
-                        <span className="text-purple-600 dark:text-[#a78bfa]">
+                        <span className="text-[#C46B4E]">
                           ₹{total.toFixed(2)}
                         </span>
                       </div>
@@ -2927,7 +2923,7 @@ function RestaurantAdminContent() {
                       onClick={() => setOrdersFilter(f)}
                       className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold capitalize transition ${
                         ordersFilter === f
-                          ? "bg-[#8b5cf6] text-white"
+                          ? "bg-[#C46B4E] text-white"
                           : isDarkMode
                           ? "bg-[#161822] text-slate-400 hover:text-white border border-[#232635]"
                           : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
@@ -3015,12 +3011,12 @@ function RestaurantAdminContent() {
                                   {o.order_type?.replace(/[-_]/g, " ")}
                                 </span>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <span className="text-[10px] text-purple-400 font-bold">
+                                  <span className="text-[10px] text-[#C46B4E] font-bold">
                                     {o.table_id || "Counter"}
                                   </span>
                                   {o.source === "qr_menu" && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
-                                      <QrCode className="w-2.5 h-2.5 text-purple-400" />
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-[#C46B4E]/15 text-[#E8C2B5] border border-[#C46B4E]/30 flex items-center gap-1">
+                                      <QrCode className="w-2.5 h-2.5 text-[#C46B4E]" />
                                       <span>QR Mobile</span>
                                     </span>
                                   )}
@@ -3033,7 +3029,7 @@ function RestaurantAdminContent() {
                               >
                                 {((o.order_items || []).map((item: any) => `${item.quantity}x ${item.MenuItem?.name || item.name || "Item"}`).join(", ") || "No items")}
                               </td>
-                              <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
+                              <td className="py-3.5 px-4 text-right font-extrabold text-[#C46B4E]">
                                 ₹{(typeof o.total_amount === "number" ? o.total_amount : Number(o.total_amount || 0)).toFixed(2)}
                               </td>
                               <td className="py-3.5 px-4">
@@ -3071,7 +3067,7 @@ function RestaurantAdminContent() {
                                             ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                                             : bStage === "completed"
                                             ? "bg-slate-500/20 text-slate-400 border border-slate-500/30"
-                                            : "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                                            : "bg-[#E9E3D8] text-[#20252B] border border-[#C46B4E]/30"
                                         }`}
                                       >
                                         {bStage === "new" ? "Bar Queue" : bStage === "preparing" ? "Mixing" : bStage === "ready" ? "Drinks Ready" : "Served"}
@@ -3120,7 +3116,7 @@ function RestaurantAdminContent() {
                                     }}
                                     className={`p-1.5 rounded-lg border transition cursor-pointer ${
                                       activeOrderMenuId === o.id
-                                        ? "bg-purple-600 text-white border-purple-500"
+                                        ? "bg-[#C46B4E] text-white border-[#C46B4E]"
                                         : isDarkMode
                                         ? "bg-[#1e212d] text-slate-300 border-[#2b2f42] hover:bg-slate-700 hover:text-white"
                                         : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900"
@@ -3168,7 +3164,7 @@ function RestaurantAdminContent() {
                                           isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
                                         }`}
                                       >
-                                        <Receipt className="w-4 h-4 text-purple-400" />
+                                        <Receipt className="w-4 h-4 text-[#C46B4E]" />
                                         <span>Print Receipt</span>
                                       </button>
 
@@ -3338,7 +3334,7 @@ function RestaurantAdminContent() {
                             {r.outlets} Outlets Connected
                           </span>
                         </div>
-                        <span className="text-purple-600 dark:text-purple-400 font-semibold">
+                        <span className="text-[#C46B4E] font-semibold">
                           {r.plan}
                         </span>
                         <span className="text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800 font-bold">
@@ -3507,7 +3503,7 @@ function RestaurantAdminContent() {
                                 </span>
                                 <span className="text-[11px] text-slate-400">{r.phone}</span>
                                 {r.notes && (
-                                  <span className="text-[10px] text-purple-400 block italic">
+                                  <span className="text-[10px] text-[#C46B4E] block italic">
                                     "{r.notes}"
                                   </span>
                                 )}
@@ -3520,7 +3516,7 @@ function RestaurantAdminContent() {
                                 {r.guests} guests
                               </td>
                               <td className="py-3.5 px-4">
-                                <span className="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">
+                                <span className="px-2 py-1 rounded-lg bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] font-bold">
                                   {r.table}
                                 </span>
                               </td>
@@ -3615,7 +3611,7 @@ function RestaurantAdminContent() {
                                 setWaitlist((prev) => prev.filter((_, i) => i !== idx))
                                 setActiveTab("tables")
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-semibold"
+                              className="px-2.5 py-1 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-[11px] font-semibold"
                             >
                               Assign Table
                             </button>
@@ -3795,8 +3791,8 @@ function RestaurantAdminContent() {
                     onChange={(e) => setCustomersSearch(e.target.value)}
                     className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs border outline-hidden transition ${
                       isDarkMode
-                        ? "bg-[#14161f] border-[#252838] text-white placeholder-slate-500 focus:border-purple-500"
-                        : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-500 shadow-xs"
+                        ? "bg-[#14161f] border-[#252838] text-white placeholder-slate-500 focus:border-[#C46B4E]"
+                        : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-[#C46B4E] shadow-xs"
                     }`}
                   />
                 </div>
@@ -3866,7 +3862,7 @@ function RestaurantAdminContent() {
                                 <span
                                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                     c.loyalty.includes("Platinum")
-                                      ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-300 dark:border-purple-800"
+                                      ? "bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9]"
                                       : c.loyalty.includes("Gold")
                                       ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400 border border-amber-300 dark:border-amber-800"
                                       : "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-400 border border-blue-300 dark:border-blue-800"
@@ -3876,7 +3872,7 @@ function RestaurantAdminContent() {
                                 </span>
                               </td>
                               <td className="py-3.5 px-4">
-                                <span className="font-bold text-purple-600 dark:text-purple-400">
+                                <span className="font-bold text-[#C46B4E]">
                                   {c.totalSpend}
                                 </span>
                                 <div className="text-[10px] text-slate-400">
@@ -3900,7 +3896,7 @@ function RestaurantAdminContent() {
                                     setNewResPhone(c.phone)
                                     setShowAddResModal(true)
                                   }}
-                                  className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-medium text-[11px] transition shadow-xs"
+                                  className="px-2.5 py-1 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white font-medium text-[11px] transition shadow-xs"
                                 >
                                   Book Table
                                 </button>
@@ -4018,7 +4014,7 @@ function RestaurantAdminContent() {
                                 <span
                                   className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     t.station === "bar"
-                                      ? "bg-purple-500/20 text-purple-400"
+                                      ? "bg-[#E9E3D8] text-[#20252B]"
                                       : "bg-amber-500/20 text-amber-400"
                                   }`}
                                 >
@@ -4073,7 +4069,7 @@ function RestaurantAdminContent() {
                               onClick={() => advanceKdsTicket(t.id)}
                               className={`w-full py-1.5 rounded-xl text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5 ${
                                 t.station === "bar"
-                                  ? "bg-purple-600 hover:bg-purple-500"
+                                  ? "bg-[#C46B4E] hover:bg-[#B25C40]"
                                   : "bg-blue-600 hover:bg-blue-500"
                               }`}
                             >
@@ -4128,7 +4124,7 @@ function RestaurantAdminContent() {
                                 <span
                                   className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     t.station === "bar"
-                                      ? "bg-purple-500/20 text-purple-400"
+                                      ? "bg-[#E9E3D8] text-[#20252B]"
                                       : "bg-amber-500/20 text-amber-400"
                                   }`}
                                 >
@@ -4234,7 +4230,7 @@ function RestaurantAdminContent() {
                                 <span
                                   className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     t.station === "bar"
-                                      ? "bg-purple-500/20 text-purple-400"
+                                      ? "bg-[#E9E3D8] text-[#20252B]"
                                       : "bg-amber-500/20 text-amber-400"
                                   }`}
                                 >
@@ -4374,7 +4370,7 @@ function RestaurantAdminContent() {
                     >
                       6 / 12
                     </div>
-                    <span className="text-xs text-purple-500 mt-1 block">50% Occupancy</span>
+                    <span className="text-xs text-[#C46B4E] mt-1 block">50% Occupancy</span>
                   </div>
                   <div
                     className={`p-5 rounded-2xl border ${
@@ -4419,7 +4415,7 @@ function RestaurantAdminContent() {
                     onClick={() =>
                       setActiveTab(userType === "pos-staff" ? "pos" : userType === "super-admin" ? "tenants" : "tables")
                     }
-                    className="px-3.5 py-2 rounded-xl bg-[#8b5cf6] text-white font-medium text-xs hover:bg-[#7c3aed] transition"
+                    className="px-3.5 py-2 rounded-xl bg-[#C46B4E] text-white font-medium text-xs hover:bg-[#B25C40] transition"
                   >
                     Return to Home
                   </button>
@@ -4514,7 +4510,7 @@ function RestaurantAdminContent() {
                 placeholder="e.g. John Doe"
                 value={waitlistName}
                 onChange={(e) => setWaitlistName(e.target.value)}
-                className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500 border ${
+                className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-[#C46B4E] border ${
                   isDarkMode
                     ? "bg-[#1e202c] border-[#2b2f3e] text-white"
                     : "bg-slate-50 border-slate-200 text-slate-900"
@@ -4561,7 +4557,7 @@ function RestaurantAdminContent() {
 
             <button
               type="submit"
-              className="w-full py-2.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-xs font-semibold transition shadow-xs"
+              className="w-full py-2.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold transition shadow-xs"
             >
               Add Guest
             </button>
@@ -4574,7 +4570,7 @@ function RestaurantAdminContent() {
 
 export default function RestaurantAdminHome() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#0e0f12]" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#20252B]" />}>
       <RestaurantAdminContent />
     </Suspense>
   )

@@ -16,7 +16,7 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-xl border bg-card text-card-foreground shadow-sm",
+          "rounded-xl border border-[#E5E1D9] bg-white text-[#20252B] shadow-xs",
           bordered && "border-2",
           className
         )}
@@ -24,8 +24,8 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
       >
         {title && (
           <div className="flex flex-col p-6 pb-2">
-            <h3 className="font-semibold text-lg leading-none tracking-tight">{title}</h3>
-            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+            <h3 className="font-semibold text-lg leading-none tracking-tight text-[#20252B]">{title}</h3>
+            {subtitle && <p className="text-sm text-[#64748B] mt-1">{subtitle}</p>}
           </div>
         )}
         {children}
@@ -54,7 +54,7 @@ export const CardTitle = React.forwardRef<
   <h3
     ref={ref}
     className={cn(
-      "text-2xl font-semibold leading-none tracking-tight",
+      "text-2xl font-semibold leading-none tracking-tight text-[#20252B]",
       className
     )}
     {...props}
@@ -68,7 +68,7 @@ export const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <p
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-[#64748B]", className)}
     {...props}
   />
 ))

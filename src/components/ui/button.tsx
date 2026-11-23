@@ -23,15 +23,15 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "default", size = "default", loading, square, children, ...props }, ref) => {
     const variantClasses: Record<string, string> = {
-      default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
-      primary: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-      ghost: "hover:bg-accent hover:text-accent-foreground",
-      danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-sm",
-      success: "bg-emerald-600 text-white hover:bg-emerald-500 shadow-sm",
-      link: "text-primary underline-offset-4 hover:underline",
+      default: "bg-[#C46B4E] text-white hover:bg-[#B25C40] shadow-sm transition-colors",
+      primary: "bg-[#C46B4E] text-white hover:bg-[#B25C40] shadow-sm transition-colors",
+      secondary: "bg-white text-[#20252B] border border-[#20252B] hover:bg-[#20252B]/5 transition-colors",
+      outline: "border border-[#E5E1D9] bg-transparent text-[#20252B] hover:bg-[#E9E3D8]/50 hover:text-[#20252B] transition-colors",
+      ghost: "hover:bg-[#E9E3D8]/50 text-[#20252B] transition-colors",
+      danger: "bg-red-700 text-white hover:bg-red-800 shadow-sm transition-colors",
+      destructive: "bg-red-700 text-white hover:bg-red-800 shadow-sm transition-colors",
+      success: "bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm transition-colors",
+      link: "text-[#C46B4E] underline-offset-4 hover:underline",
     }
 
     const sizeClasses = {
@@ -45,7 +45,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center cursor-pointer",
+          "transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C46B4E] focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none inline-flex items-center justify-center cursor-pointer font-medium",
           square && "rounded-none",
           variantClasses[variant] || variantClasses.default,
           sizeClasses[size] || sizeClasses.default,

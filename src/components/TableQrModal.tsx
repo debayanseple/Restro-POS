@@ -10,8 +10,6 @@ import {
   Copy,
   Check,
   X,
-  Sparkles,
-  Utensils,
   Smartphone,
 } from "lucide-react"
 
@@ -46,7 +44,7 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
         width: 360,
         margin: 2,
         color: {
-          dark: "#141624",
+          dark: "#20252B",
           light: "#ffffff",
         },
       })
@@ -93,11 +91,12 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
               justify-content: center;
               min-height: 90vh;
               margin: 0;
-              background: #fff;
-              color: #111;
+              background: #F7F5F0;
+              color: #20252B;
             }
             .stand-card {
-              border: 2px solid #000;
+              background: #ffffff;
+              border: 2px solid #E5E1D9;
               border-radius: 20px;
               padding: 40px;
               text-align: center;
@@ -110,20 +109,20 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
               font-weight: 700;
               text-transform: uppercase;
               letter-spacing: 2px;
-              color: #6b21a8;
+              color: #C46B4E;
               margin-bottom: 6px;
             }
             .outlet {
               font-size: 14px;
-              color: #666;
+              color: #64748B;
               margin-bottom: 24px;
             }
             .table-badge {
               display: inline-block;
-              background: #000;
-              color: #fff;
-              font-size: 26px;
-              font-weight: 900;
+              background: #20252B;
+              color: #ffffff;
+              font-size: 24px;
+              font-weight: 800;
               padding: 8px 24px;
               border-radius: 12px;
               margin-bottom: 20px;
@@ -134,21 +133,23 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
               height: 240px;
               margin: 0 auto 20px auto;
               display: block;
+              border-radius: 12px;
             }
             .instruction {
               font-size: 16px;
               font-weight: 700;
               margin-bottom: 6px;
+              color: #20252B;
             }
             .sub {
               font-size: 12px;
-              color: #666;
+              color: #64748B;
               line-height: 1.4;
             }
             .url-text {
               margin-top: 18px;
               font-size: 10px;
-              color: #888;
+              color: #94A3B8;
               word-break: break-all;
             }
           </style>
@@ -176,22 +177,22 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-[#131522] border border-[#262a3f] rounded-3xl p-6 space-y-5 shadow-2xl animate-in zoom-in-95">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white border border-[#E5E1D9] rounded-2xl p-6 space-y-5 shadow-lg animate-in zoom-in-95 text-[#20252B]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#22263a] pb-3">
+        <div className="flex items-center justify-between border-b border-[#E5E1D9] pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[#E9E3D8] text-[#C46B4E] border border-[#E5E1D9] flex items-center justify-center">
               <QrCode className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white flex items-center gap-2">
+              <h3 className="font-bold text-sm text-[#20252B] flex items-center gap-2">
                 <span>{table.name} QR Code</span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                   {table.seats} Seats
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[#64748B]">
                 Customers scan this to order directly to {table.name}
               </p>
             </div>
@@ -199,19 +200,19 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#1b1e2e] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition"
+            className="w-8 h-8 rounded-full bg-[#F7F5F0] text-[#64748B] hover:text-[#20252B] border border-[#E5E1D9] flex items-center justify-center cursor-pointer transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* QR Code Presentation Stand Card */}
-        <div className="p-5 rounded-2xl bg-white text-slate-900 text-center shadow-lg border-2 border-purple-500/30 space-y-3">
+        <div className="p-5 rounded-xl bg-[#F7F5F0] text-[#20252B] text-center border border-[#E5E1D9] space-y-3">
           <div>
-            <span className="text-[10px] font-bold tracking-widest text-purple-700 uppercase block">
+            <span className="text-[10px] font-bold tracking-widest text-[#C46B4E] uppercase block">
               Downtown Main Outlet
             </span>
-            <div className="inline-block bg-slate-950 text-white font-extrabold text-sm px-3 py-1 rounded-lg mt-1 tracking-wider uppercase">
+            <div className="inline-block bg-[#20252B] text-white font-bold text-sm px-3.5 py-1 rounded-lg mt-1 tracking-wider uppercase">
               {table.name}
             </div>
           </div>
@@ -221,43 +222,43 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
               <img
                 src={qrDataUrl}
                 alt={`${table.name} QR Code`}
-                className="w-48 h-48 rounded-xl shadow-inner border border-slate-200"
+                className="w-48 h-48 rounded-xl bg-white p-2 border border-[#E5E1D9] shadow-2xs"
               />
             ) : (
-              <div className="w-48 h-48 rounded-xl bg-slate-100 flex items-center justify-center text-xs text-slate-400 animate-pulse">
+              <div className="w-48 h-48 rounded-xl bg-white flex items-center justify-center text-xs text-[#64748B] animate-pulse">
                 Generating QR...
               </div>
             )}
           </div>
 
           <div>
-            <div className="text-xs font-bold text-slate-900 flex items-center justify-center gap-1.5">
-              <Smartphone className="w-3.5 h-3.5 text-purple-600" />
+            <div className="text-xs font-semibold text-[#20252B] flex items-center justify-center gap-1.5">
+              <Smartphone className="w-3.5 h-3.5 text-[#C46B4E]" />
               <span>Scan with camera to order</span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-0.5">
+            <p className="text-[10px] text-[#64748B] mt-0.5">
               Orders automatically pin to this table on POS & KDS
             </p>
           </div>
         </div>
 
         {/* Menu Link Box */}
-        <div className="p-2.5 rounded-xl bg-[#191c2b] border border-[#272b3e] flex items-center justify-between text-xs gap-2">
-          <span className="text-slate-400 truncate text-[11px] font-mono flex-1">
+        <div className="p-2.5 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-between text-xs gap-2">
+          <span className="text-[#64748B] truncate text-[11px] font-mono flex-1">
             {menuUrl}
           </span>
           <button
             onClick={handleCopy}
-            className="px-2.5 py-1 rounded-lg bg-[#24293f] hover:bg-slate-700 text-purple-300 text-xs font-semibold flex items-center gap-1 shrink-0 transition cursor-pointer"
+            className="px-2.5 py-1 rounded-lg bg-white border border-[#E5E1D9] hover:bg-[#E9E3D8] text-[#20252B] text-xs font-semibold flex items-center gap-1 shrink-0 transition cursor-pointer"
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-emerald-400" />
-                <span className="text-emerald-400">Copied</span>
+                <Check className="w-3 h-3 text-emerald-700" />
+                <span className="text-emerald-700">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3 h-3" />
+                <Copy className="w-3 h-3 text-[#64748B]" />
                 <span>Copy</span>
               </>
             )}
@@ -270,25 +271,25 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
             href={menuUrl}
             target="_blank"
             rel="noreferrer"
-            className="py-2.5 rounded-xl bg-[#1b1e2e] hover:bg-[#23273c] text-slate-200 text-xs font-semibold border border-[#292e44] transition flex items-center justify-center gap-1.5 text-center cursor-pointer"
+            className="py-2.5 rounded-lg bg-white hover:bg-[#F7F5F0] text-[#20252B] text-xs font-semibold border border-[#20252B] transition flex items-center justify-center gap-1.5 text-center cursor-pointer"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-purple-400" />
+            <ExternalLink className="w-3.5 h-3.5 text-[#64748B]" />
             <span>Test Menu</span>
           </a>
 
           <button
             onClick={handleDownload}
             disabled={!qrDataUrl}
-            className="py-2.5 rounded-xl bg-[#1b1e2e] hover:bg-[#23273c] text-slate-200 text-xs font-semibold border border-[#292e44] transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+            className="py-2.5 rounded-lg bg-white hover:bg-[#F7F5F0] text-[#20252B] text-xs font-semibold border border-[#E5E1D9] transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
           >
-            <Download className="w-3.5 h-3.5 text-blue-400" />
+            <Download className="w-3.5 h-3.5 text-[#64748B]" />
             <span>Save PNG</span>
           </button>
 
           <button
             onClick={handlePrint}
             disabled={!qrDataUrl}
-            className="py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-900/30 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+            className="py-2.5 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 shadow-2xs"
           >
             <Printer className="w-3.5 h-3.5" />
             <span>Print Stand</span>
@@ -318,21 +319,21 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
     if (!origin || tables.length === 0) return
 
     const generateAll = async () => {
-      const result: Record<string, string> = {}
+      const results: Record<string, string> = {}
       for (const t of tables) {
         try {
           const url = `${origin}/menu?table=${encodeURIComponent(t.name)}`
-          const dataUrl = await QRCode.toDataURL(url, {
-            width: 300,
-            margin: 2,
-            color: { dark: "#000000", light: "#ffffff" },
+          const qr = await QRCode.toDataURL(url, {
+            width: 260,
+            margin: 1,
+            color: { dark: "#20252B", light: "#ffffff" },
           })
-          result[t.name] = dataUrl
+          results[t.name] = qr
         } catch (e) {
-          console.error("Failed to generate QR for", t.name, e)
+          console.error(e)
         }
       }
-      setQrMap(result)
+      setQrMap(results)
     }
 
     generateAll()
@@ -345,16 +346,16 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
     const cardsHtml = tables
       .map((t) => {
         const qr = qrMap[t.name] || ""
-        const menuUrl = `${origin}/menu?table=${encodeURIComponent(t.name)}`
+        const url = `${origin}/menu?table=${encodeURIComponent(t.name)}`
         return `
           <div class="tent-card">
-            <div class="tent-header">RESTRO POS • DINE IN MENU</div>
+            <div class="tent-brand">RESTRO POS • DINE IN</div>
             <div class="tent-outlet">Downtown Main Outlet</div>
             <div class="tent-table">${t.name.toUpperCase()}</div>
             <img src="${qr}" class="tent-qr" />
             <div class="tent-title">Scan Camera to Order</div>
-            <div class="tent-sub">Browse menu, select items & order directly to this table</div>
-            <div class="tent-url">${menuUrl}</div>
+            <div class="tent-sub">Order directly from your phone.</div>
+            <div class="tent-url">${url}</div>
           </div>
         `
       })
@@ -364,46 +365,46 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Print All Table QR Stands</title>
+          <title>All Tables — QR Stand Tent Cards</title>
           <style>
-            @page { size: A4 portrait; margin: 10mm; }
+            @page { size: A4; margin: 10mm; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
               margin: 0;
               background: #fff;
-              color: #111;
+              color: #20252B;
             }
             .grid-container {
               display: grid;
               grid-template-columns: repeat(2, 1fr);
-              gap: 20px;
-              page-break-inside: avoid;
+              gap: 16px;
             }
             .tent-card {
-              border: 2px dashed #333;
-              border-radius: 16px;
+              border: 1.5px dashed #E5E1D9;
+              border-radius: 14px;
               padding: 24px;
               text-align: center;
               box-sizing: border-box;
               page-break-inside: avoid;
             }
-            .tent-header {
+            .tent-brand {
               font-size: 11px;
-              font-weight: 800;
+              font-weight: 700;
               letter-spacing: 1.5px;
-              color: #6b21a8;
+              color: #C46B4E;
+              margin-bottom: 3px;
             }
             .tent-outlet {
-              font-size: 11px;
-              color: #666;
+              font-size: 12px;
+              color: #64748B;
               margin-bottom: 12px;
             }
             .tent-table {
               display: inline-block;
-              background: #000;
+              background: #20252B;
               color: #fff;
               font-size: 18px;
-              font-weight: 900;
+              font-weight: 800;
               padding: 4px 16px;
               border-radius: 8px;
               margin-bottom: 12px;
@@ -418,15 +419,16 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
               font-size: 13px;
               font-weight: 700;
               margin-bottom: 4px;
+              color: #20252B;
             }
             .tent-sub {
               font-size: 10px;
-              color: #555;
+              color: #64748B;
               line-height: 1.3;
             }
             .tent-url {
               font-size: 8px;
-              color: #999;
+              color: #94A3B8;
               margin-top: 8px;
               word-break: break-all;
             }
@@ -449,19 +451,19 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-[#131522] border border-[#262a3f] rounded-3xl p-6 space-y-5 shadow-2xl max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="w-full max-w-2xl bg-white border border-[#E5E1D9] rounded-2xl p-6 space-y-5 shadow-lg max-h-[90vh] flex flex-col text-[#20252B]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#22263a] pb-3">
+        <div className="flex items-center justify-between border-b border-[#E5E1D9] pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-purple-600/20 text-purple-400 border border-purple-500/30 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[#E9E3D8] text-[#C46B4E] border border-[#E5E1D9] flex items-center justify-center">
               <Printer className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white">
+              <h3 className="font-bold text-sm text-[#20252B]">
                 Table QR Tent Stand Cards ({tables.length} Tables)
               </h3>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[#64748B]">
                 Print ready stand cards for each table in your dining floor
               </p>
             </div>
@@ -469,7 +471,7 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[#1b1e2e] text-slate-400 hover:text-white flex items-center justify-center cursor-pointer transition"
+            className="w-8 h-8 rounded-full bg-[#F7F5F0] text-[#64748B] hover:text-[#20252B] border border-[#E5E1D9] flex items-center justify-center cursor-pointer transition"
           >
             <X className="w-4 h-4" />
           </button>
@@ -480,9 +482,9 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
           {tables.map((t) => (
             <div
               key={t.id}
-              className="p-3 rounded-2xl bg-white text-slate-900 text-center space-y-1.5 shadow-md border border-slate-200"
+              className="p-3 rounded-xl bg-[#F7F5F0] text-[#20252B] text-center space-y-1.5 border border-[#E5E1D9]"
             >
-              <div className="text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+              <div className="text-[10px] font-bold text-[#C46B4E] uppercase tracking-wider">
                 {t.name}
               </div>
               <div className="flex justify-center">
@@ -490,35 +492,35 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
                   <img
                     src={qrMap[t.name]}
                     alt={t.name}
-                    className="w-24 h-24 rounded-lg border border-slate-200"
+                    className="w-24 h-24 rounded-lg bg-white p-1 border border-[#E5E1D9]"
                   />
                 ) : (
-                  <div className="w-24 h-24 rounded-lg bg-slate-100 flex items-center justify-center text-[10px] text-slate-400">
+                  <div className="w-24 h-24 rounded-lg bg-white flex items-center justify-center text-[10px] text-[#64748B]">
                     Generating...
                   </div>
                 )}
               </div>
-              <div className="text-[10px] font-bold text-slate-800">Scan to Order</div>
-              <div className="text-[9px] text-slate-500">{t.seats} Seats</div>
+              <div className="text-[10px] font-semibold text-[#20252B]">Scan to Order</div>
+              <div className="text-[9px] text-[#64748B]">{t.seats} Seats</div>
             </div>
           ))}
         </div>
 
         {/* Actions Footer */}
-        <div className="pt-3 border-t border-[#22263a] flex items-center justify-between gap-3">
-          <p className="text-xs text-slate-400">
+        <div className="pt-3 border-t border-[#E5E1D9] flex items-center justify-between gap-3">
+          <p className="text-xs text-[#64748B]">
             Formatted for 2-column or 4-column table stand printing with cut lines.
           </p>
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-[#1b1e2e] hover:bg-[#23273c] text-xs font-semibold text-slate-300 border border-[#2a2f44] cursor-pointer"
+              className="px-4 py-2 rounded-lg bg-white hover:bg-[#F7F5F0] text-xs font-semibold text-[#20252B] border border-[#E5E1D9] cursor-pointer"
             >
               Cancel
             </button>
             <button
               onClick={handlePrintAll}
-              className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs font-bold text-white shadow-lg shadow-purple-900/40 flex items-center gap-1.5 cursor-pointer"
+              className="px-5 py-2 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-xs font-semibold text-white shadow-2xs flex items-center gap-1.5 cursor-pointer"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print All Stands</span>

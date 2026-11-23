@@ -17,13 +17,13 @@ export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
   ({ className, variant = "default", children, ...props }, ref) => {
     const variantStyles = {
-      default: "bg-primary text-primary-foreground",
-      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-      destructive: "bg-destructive text-destructive-foreground",
-      outline: "border border-border text-foreground",
-      success: "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-800",
-      warning: "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800",
-      info: "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800",
+      default: "bg-[#C46B4E] text-white",
+      secondary: "bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9]",
+      destructive: "bg-red-700 text-white",
+      outline: "border border-[#E5E1D9] text-[#20252B] bg-white",
+      success: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+      warning: "bg-amber-50 text-amber-800 border border-amber-200",
+      info: "bg-[#F7F5F0] text-[#20252B] border border-[#E5E1D9]",
     }
 
     return (
