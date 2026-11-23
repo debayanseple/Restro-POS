@@ -36,15 +36,15 @@ interface PreviewMenuItem {
 }
 
 const PREVIEW_CATALOG: PreviewMenuItem[] = [
-  { id: "p1", name: "Classic Wagyu Burger", price: 16.50, category: "mains", icon: "🍔", station: "kitchen", tag: "Popular" },
-  { id: "p2", name: "Margherita Artisan Pizza", price: 14.50, category: "mains", icon: "🍕", station: "kitchen", tag: "Chef Special" },
-  { id: "p3", name: "Truffle Mushroom Pasta", price: 18.00, category: "mains", icon: "🍝", station: "kitchen" },
-  { id: "p4", name: "Crispy Truffle Fries", price: 8.00, category: "sides", icon: "🍟", station: "kitchen", tag: "Crispy" },
-  { id: "p5", name: "Caesar Salad Bowl", price: 9.50, category: "sides", icon: "🥗", station: "kitchen", tag: "Fresh" },
-  { id: "p6", name: "Grilled Chicken Wings", price: 11.00, category: "sides", icon: "🍗", station: "kitchen", tag: "Spicy" },
-  { id: "p7", name: "Craft IPA Beer", price: 7.50, category: "drinks", icon: "🍺", station: "bar", tag: "Cold" },
-  { id: "p8", name: "Sparkling Berry Fizz", price: 4.50, category: "drinks", icon: "🍹", station: "bar" },
-  { id: "p9", name: "Iced Caramel Macchiato", price: 5.50, category: "drinks", icon: "☕", station: "bar" },
+  { id: "p1", name: "Classic Wagyu Burger", price: 349, category: "mains", icon: "🍔", station: "kitchen", tag: "Popular" },
+  { id: "p2", name: "Margherita Artisan Pizza", price: 299, category: "mains", icon: "🍕", station: "kitchen", tag: "Chef Special" },
+  { id: "p3", name: "Truffle Mushroom Pasta", price: 379, category: "mains", icon: "🍝", station: "kitchen" },
+  { id: "p4", name: "Crispy Truffle Fries", price: 179, category: "sides", icon: "🍟", station: "kitchen", tag: "Crispy" },
+  { id: "p5", name: "Caesar Salad Bowl", price: 219, category: "sides", icon: "🥗", station: "kitchen", tag: "Fresh" },
+  { id: "p6", name: "Grilled Chicken Wings", price: 289, category: "sides", icon: "🍗", station: "kitchen", tag: "Spicy" },
+  { id: "p7", name: "Craft IPA Beer", price: 249, category: "drinks", icon: "🍺", station: "bar", tag: "Cold" },
+  { id: "p8", name: "Sparkling Berry Fizz", price: 149, category: "drinks", icon: "🍹", station: "bar" },
+  { id: "p9", name: "Iced Caramel Macchiato", price: 169, category: "drinks", icon: "☕", station: "bar" },
 ]
 
 export default function LandingPage() {
@@ -58,8 +58,8 @@ export default function LandingPage() {
   const [selectedTable, setSelectedTable] = useState("Table 01")
   const [posNotification, setPosNotification] = useState<string | null>(null)
   const [posCart, setPosCart] = useState<Array<{ id: string; name: string; price: number; quantity: number; station: "kitchen" | "bar" }>>([
-    { id: "p1", name: "Classic Wagyu Burger", price: 16.50, quantity: 1, station: "kitchen" },
-    { id: "p7", name: "Craft IPA Beer", price: 7.50, quantity: 1, station: "bar" },
+    { id: "p1", name: "Classic Wagyu Burger", price: 349, quantity: 1, station: "kitchen" },
+    { id: "p7", name: "Craft IPA Beer", price: 249, quantity: 1, station: "bar" },
   ])
 
   // KDS Preview Interactive State
@@ -122,7 +122,7 @@ export default function LandingPage() {
     : PREVIEW_CATALOG.filter((i) => i.category === posCategory)
 
   const cartSubtotal = posCart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const cartTax = cartSubtotal * 0.08
+  const cartTax = cartSubtotal * 0.05
   const cartTotal = cartSubtotal + cartTax
 
   const addToCart = (item: PreviewMenuItem) => {
@@ -463,7 +463,7 @@ export default function LandingPage() {
                               {item.name}
                             </div>
                             <div className="text-[11px] text-purple-400 font-semibold mt-0.5">
-                              ${item.price.toFixed(2)}
+                              ₹{item.price.toFixed(2)}
                             </div>
                           </div>
 
@@ -586,7 +586,7 @@ export default function LandingPage() {
                               <div>
                                 <div className="font-semibold text-slate-200">{item.name}</div>
                                 <div className="text-[10px] text-purple-400">
-                                  ${item.price.toFixed(2)} each · {item.station.toUpperCase()}
+                                  ₹{item.price.toFixed(2)} each · {item.station.toUpperCase()}
                                 </div>
                               </div>
                               <div className="flex items-center gap-1.5">
@@ -617,15 +617,15 @@ export default function LandingPage() {
                       <div className="space-y-1 text-xs text-slate-400">
                         <div className="flex justify-between">
                           <span>Subtotal</span>
-                          <span className="text-slate-200">${cartSubtotal.toFixed(2)}</span>
+                          <span className="text-slate-200">₹{cartSubtotal.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span>Tax (8%)</span>
-                          <span className="text-slate-200">${cartTax.toFixed(2)}</span>
+                          <span>GST (5%)</span>
+                          <span className="text-slate-200">₹{cartTax.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm font-bold text-white pt-1 border-t border-[#222535]">
                           <span>Total Due</span>
-                          <span className="text-purple-400">${cartTotal.toFixed(2)}</span>
+                          <span className="text-purple-400">₹{cartTotal.toFixed(2)}</span>
                         </div>
                       </div>
 
@@ -643,7 +643,7 @@ export default function LandingPage() {
                         <button
                           disabled={posCart.length === 0}
                           onClick={() => {
-                            setPosNotification(`Paid $${cartTotal.toFixed(2)}! Order Completed.`)
+                            setPosNotification(`Paid ₹${cartTotal.toFixed(2)}! Order Completed.`)
                             setTimeout(() => setPosNotification(null), 3000)
                           }}
                           className="py-2.5 text-center rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs disabled:opacity-40 cursor-pointer"

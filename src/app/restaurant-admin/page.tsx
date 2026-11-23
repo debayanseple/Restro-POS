@@ -582,18 +582,18 @@ function RestaurantAdminContent() {
   const [orderSentToast, setOrderSentToast] = useState(false)
 
   const menuCatalog = [
-    { id: "m1", name: "Classic Wagyu Burger", price: 16.50, category: "mains", icon: "🍔", tag: "Popular" },
-    { id: "m2", name: "Truffle Mushroom Pasta", price: 18.00, category: "mains", icon: "🍝", tag: "Chef Special" },
-    { id: "m3", name: "Margherita Artisan Pizza", price: 14.50, category: "mains", icon: "🍕", tag: "" },
-    { id: "m4", name: "Crispy Truffle Fries", price: 8.00, category: "sides", icon: "🍟", tag: "Crispy" },
-    { id: "m5", name: "Caesar Salad Bowl", price: 9.50, category: "sides", icon: "🥗", tag: "Fresh" },
-    { id: "m6", name: "Grilled Chicken Wings", price: 11.00, category: "sides", icon: "🍗", tag: "Spicy" },
-    { id: "m7", name: "Craft IPA Beer", price: 7.50, category: "drinks", icon: "🍺", tag: "Cold" },
-    { id: "m8", name: "Iced Caramel Macchiato", price: 5.50, category: "drinks", icon: "☕", tag: "" },
-    { id: "m9", name: "Sparkling Berry Fizz", price: 4.50, category: "drinks", icon: "🍹", tag: "" },
-    { id: "m10", name: "Molten Lava Cake", price: 8.50, category: "desserts", icon: "🍰", tag: "Warm" },
-    { id: "m11", name: "Artisan Tiramisu", price: 7.50, category: "desserts", icon: "🧁", tag: "" },
-    { id: "m12", name: "Gelato Trio", price: 6.00, category: "desserts", icon: "🍨", tag: "" },
+    { id: "m1", name: "Classic Wagyu Burger", price: 349, category: "mains", icon: "🍔", tag: "Popular" },
+    { id: "m2", name: "Truffle Mushroom Pasta", price: 379, category: "mains", icon: "🍝", tag: "Chef Special" },
+    { id: "m3", name: "Margherita Artisan Pizza", price: 299, category: "mains", icon: "🍕", tag: "" },
+    { id: "m4", name: "Crispy Truffle Fries", price: 179, category: "sides", icon: "🍟", tag: "Crispy" },
+    { id: "m5", name: "Caesar Salad Bowl", price: 219, category: "sides", icon: "🥗", tag: "Fresh" },
+    { id: "m6", name: "Grilled Chicken Wings", price: 289, category: "sides", icon: "🍗", tag: "Spicy" },
+    { id: "m7", name: "Craft IPA Beer", price: 249, category: "drinks", icon: "🍺", tag: "Cold" },
+    { id: "m8", name: "Iced Caramel Macchiato", price: 169, category: "drinks", icon: "☕", tag: "" },
+    { id: "m9", name: "Sparkling Berry Fizz", price: 149, category: "drinks", icon: "🍹", tag: "" },
+    { id: "m10", name: "Molten Lava Cake", price: 229, category: "desserts", icon: "🍰", tag: "Warm" },
+    { id: "m11", name: "Artisan Tiramisu", price: 219, category: "desserts", icon: "🧁", tag: "" },
+    { id: "m12", name: "Gelato Trio", price: 189, category: "desserts", icon: "🍨", tag: "" },
   ]
 
   const addToCart = (item: typeof menuCatalog[0]) => {
@@ -617,7 +617,7 @@ function RestaurantAdminContent() {
   }
 
   const subtotal = cart.reduce((acc, i) => acc + i.price * i.quantity, 0)
-  const tax = subtotal * 0.08
+  const tax = subtotal * 0.05
   const total = subtotal + tax
 
   // --- ORDERS STATE ---
@@ -1186,7 +1186,7 @@ function RestaurantAdminContent() {
       phone: "+1 (555) 234-8891",
       email: "a.wright@corp.com",
       visits: 14,
-      totalSpend: "$1,420.50",
+      totalSpend: "₹14,250.00",
       loyalty: "VIP Platinum",
       lastVisit: "Yesterday",
       prefTable: "Table 3 (Booth)",
@@ -1198,7 +1198,7 @@ function RestaurantAdminContent() {
       phone: "+1 (555) 412-9903",
       email: "sophia.m@design.org",
       visits: 4,
-      totalSpend: "$298.00",
+      totalSpend: "₹3,980.00",
       loyalty: "Silver",
       lastVisit: "3 days ago",
       prefTable: "Table 1",
@@ -1210,7 +1210,7 @@ function RestaurantAdminContent() {
       phone: "+1 (555) 872-3310",
       email: "m.sterling@capital.com",
       visits: 22,
-      totalSpend: "$3,180.00",
+      totalSpend: "₹31,800.00",
       loyalty: "VIP Gold",
       lastVisit: "Oct 28",
       prefTable: "Table 6 (Executive)",
@@ -1222,7 +1222,7 @@ function RestaurantAdminContent() {
       phone: "+1 (555) 901-2244",
       email: "dchen@tech.io",
       visits: 8,
-      totalSpend: "$760.00",
+      totalSpend: "₹7,600.00",
       loyalty: "Gold",
       lastVisit: "Nov 02",
       prefTable: "Table 4",
@@ -1234,7 +1234,7 @@ function RestaurantAdminContent() {
       phone: "+1 (555) 345-6671",
       email: "olivia.b@studio.net",
       visits: 5,
-      totalSpend: "$390.00",
+      totalSpend: "₹3,900.00",
       loyalty: "Silver",
       lastVisit: "Last week",
       prefTable: "Table 7",
@@ -2272,7 +2272,7 @@ function RestaurantAdminContent() {
                               }`}
                             >
                               <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
-                                ${item.price.toFixed(2)}
+                                ₹{item.price.toFixed(2)}
                               </span>
                               <span className="w-5 h-5 rounded-md bg-purple-600 text-white flex items-center justify-center text-xs">
                                 +
@@ -2445,7 +2445,7 @@ function RestaurantAdminContent() {
                                 {i.name}
                               </div>
                               <span className="text-purple-600 dark:text-purple-400 font-bold">
-                                ${(i.price * i.quantity).toFixed(2)}
+                                ₹{(i.price * i.quantity).toFixed(2)}
                               </span>
                             </div>
 
@@ -2501,17 +2501,17 @@ function RestaurantAdminContent() {
                             isDarkMode ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          ${subtotal.toFixed(2)}
+                          ₹{subtotal.toFixed(2)}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Tax (8%)</span>
+                        <span>GST (5%)</span>
                         <span
                           className={`font-medium ${
                             isDarkMode ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          ${tax.toFixed(2)}
+                          ₹{tax.toFixed(2)}
                         </span>
                       </div>
                       <div
@@ -2523,7 +2523,7 @@ function RestaurantAdminContent() {
                       >
                         <span>Total Due</span>
                         <span className="text-purple-600 dark:text-[#a78bfa]">
-                          ${total.toFixed(2)}
+                          ₹{total.toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -2991,7 +2991,7 @@ function RestaurantAdminContent() {
                                 {((o.order_items || []).map((item: any) => `${item.quantity}x ${item.MenuItem?.name || item.name || "Item"}`).join(", ") || "No items")}
                               </td>
                               <td className="py-3.5 px-4 text-right font-extrabold text-purple-600 dark:text-purple-400">
-                                ${(typeof o.total_amount === "number" ? o.total_amount : Number(o.total_amount || 0)).toFixed(2)}
+                                ₹{(typeof o.total_amount === "number" ? o.total_amount : Number(o.total_amount || 0)).toFixed(2)}
                               </td>
                               <td className="py-3.5 px-4">
                                 <div className="flex flex-col gap-1.5 items-start">
@@ -3237,7 +3237,7 @@ function RestaurantAdminContent() {
                     }`}
                   >
                     <span className="text-xs font-semibold uppercase text-slate-400">Platform MRR</span>
-                    <div className="text-3xl font-bold text-emerald-500 mt-2">$4,850</div>
+                    <div className="text-3xl font-bold text-emerald-500 mt-2">₹3,95,000</div>
                     <span className="text-xs text-emerald-500 mt-1 block">+18.4% MoM</span>
                   </div>
                   <div
@@ -3269,11 +3269,11 @@ function RestaurantAdminContent() {
                   </h3>
                   <div className="space-y-2">
                     {[
-                      { name: "Nodedr Bistro", outlets: 1, plan: "Enterprise ($199/mo)", status: "Active" },
-                      { name: "Bella Italia Trattoria", outlets: 3, plan: "Pro ($99/mo)", status: "Active" },
-                      { name: "Tokyo Ramen Bar", outlets: 2, plan: "Enterprise ($199/mo)", status: "Active" },
-                      { name: "Downtown Smokehouse", outlets: 1, plan: "Starter ($49/mo)", status: "Active" },
-                      { name: "Green Leaf Organics", outlets: 1, plan: "Starter ($49/mo)", status: "Trial" },
+                      { name: "Nodedr Bistro", outlets: 1, plan: "Enterprise (₹14,999/mo)", status: "Active" },
+                      { name: "Bella Italia Trattoria", outlets: 3, plan: "Pro (₹7,999/mo)", status: "Active" },
+                      { name: "Tokyo Ramen Bar", outlets: 2, plan: "Enterprise (₹14,999/mo)", status: "Active" },
+                      { name: "Downtown Smokehouse", outlets: 1, plan: "Starter (₹3,999/mo)", status: "Active" },
+                      { name: "Green Leaf Organics", outlets: 1, plan: "Starter (₹3,999/mo)", status: "Trial" },
                     ].map((r, i) => (
                       <div
                         key={i}
@@ -4289,7 +4289,7 @@ function RestaurantAdminContent() {
                         isDarkMode ? "text-white" : "text-slate-900"
                       }`}
                     >
-                      $1,245.80
+                      ₹84,250.00
                     </div>
                     <span className="text-xs text-emerald-500 mt-1 block">+12% vs yesterday</span>
                   </div>
