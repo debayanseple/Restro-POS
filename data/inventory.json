@@ -1,5 +1,33 @@
 [
   {
+    "id": "inv_1795429106503",
+    "name": "Fresh Greek Feta Cheese",
+    "category": "Dairy",
+    "currentStock": 8,
+    "unit": "kg",
+    "minimumStock": 3,
+    "optimalStock": 15,
+    "costPerUnit": 420,
+    "supplier": "Hellenic Delights",
+    "storageLocation": "Walk-in Chiller",
+    "lastRestocked": "2026-11-23",
+    "expiryDate": "2026-11-29",
+    "notes": "Brined sheep-milk feta"
+  },
+  {
+    "id": "inv_1795429094500",
+    "name": "Himalayan Pink Rock Salt",
+    "category": "Spices & Seasoning",
+    "currentStock": 20,
+    "unit": "kg",
+    "minimumStock": 5,
+    "optimalStock": 30,
+    "costPerUnit": 85,
+    "supplier": "Mountain Organics",
+    "storageLocation": "Dry Store Rack C",
+    "lastRestocked": "2026-11-23"
+  },
+  {
     "id": "inv_1",
     "name": "Wagyu Beef Patties (Frozen)",
     "category": "Meat & Poultry",
@@ -11,6 +39,7 @@
     "supplier": "Prime Meats Co.",
     "storageLocation": "Deep Freezer 1",
     "lastRestocked": "2026-11-20",
+    "expiryDate": "2026-12-20",
     "notes": "150g portioned patties for signature burgers"
   },
   {
@@ -25,6 +54,7 @@
     "supplier": "Fresh Farms Poultry",
     "storageLocation": "Walk-in Chiller",
     "lastRestocked": "2026-11-22",
+    "expiryDate": "2026-11-26",
     "notes": "Grade-A antibiotic-free chicken for mains & grill"
   },
   {
@@ -65,6 +95,7 @@
     "supplier": "Artisan Crust Bakery",
     "storageLocation": "Bakery Counter",
     "lastRestocked": "2026-11-23",
+    "expiryDate": "2026-11-25",
     "notes": "Fresh daily delivery with golden egg wash"
   },
   {
@@ -93,6 +124,7 @@
     "supplier": "Valley Dairy Farms",
     "storageLocation": "Walk-in Chiller",
     "lastRestocked": "2026-11-21",
+    "expiryDate": "2026-11-28",
     "notes": "Water-packed fresh curd balls — reorder needed"
   },
   {
@@ -119,7 +151,8 @@
     "costPerUnit": 540,
     "supplier": "Valley Dairy Farms",
     "storageLocation": "Walk-in Chiller",
-    "lastRestocked": "2026-11-19"
+    "lastRestocked": "2026-11-19",
+    "expiryDate": "2026-12-15"
   },
   {
     "id": "inv_10",
@@ -159,7 +192,8 @@
     "costPerUnit": 190,
     "supplier": "Organic Greens Farm",
     "storageLocation": "Vegetable Chiller",
-    "lastRestocked": "2026-11-22"
+    "lastRestocked": "2026-11-22",
+    "expiryDate": "2026-11-27"
   },
   {
     "id": "inv_13",
@@ -172,7 +206,8 @@
     "costPerUnit": 110,
     "supplier": "Organic Greens Farm",
     "storageLocation": "Vegetable Chiller",
-    "lastRestocked": "2026-11-23"
+    "lastRestocked": "2026-11-23",
+    "expiryDate": "2026-11-26"
   },
   {
     "id": "inv_14",
@@ -186,6 +221,7 @@
     "supplier": "Amul Fresh Daily",
     "storageLocation": "Dairy Chiller",
     "lastRestocked": "2026-11-23",
+    "expiryDate": "2026-11-25",
     "notes": "Barista grade for coffee & desserts"
   },
   {
@@ -213,6 +249,7 @@
     "supplier": "Bavaria Brewhouse Ltd.",
     "storageLocation": "Keg Cold Room",
     "lastRestocked": "2026-11-12",
+    "expiryDate": "2026-12-15",
     "notes": "Only 1 keg remaining — immediate reorder recommended"
   },
   {
@@ -240,6 +277,7 @@
     "supplier": "Valley Dairy Farms",
     "storageLocation": "Dairy Chiller",
     "lastRestocked": "2026-11-19",
+    "expiryDate": "2026-11-24",
     "notes": "Out of stock! Kitchen dessert prep affected"
   }
 ]

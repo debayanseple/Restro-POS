@@ -102,6 +102,7 @@ export async function POST(request: Request) {
       supplier: itemData.supplier ? itemData.supplier.trim() : "Local Supplier",
       storageLocation: itemData.storageLocation ? itemData.storageLocation.trim() : "Main Store",
       lastRestocked: itemData.lastRestocked || todayStr,
+      expiryDate: itemData.expiryDate ? itemData.expiryDate.trim() : undefined,
       notes: itemData.notes || undefined,
     }
 
@@ -210,6 +211,7 @@ export async function PATCH(request: Request) {
           supplier: details.supplier !== undefined ? details.supplier.trim() : item.supplier,
           storageLocation: details.storageLocation !== undefined ? details.storageLocation.trim() : item.storageLocation,
           lastRestocked: details.lastRestocked !== undefined ? details.lastRestocked : item.lastRestocked,
+          expiryDate: details.expiryDate !== undefined ? (details.expiryDate ? details.expiryDate.trim() : undefined) : item.expiryDate,
           notes: details.notes !== undefined ? details.notes : item.notes,
         }
         return updatedItem

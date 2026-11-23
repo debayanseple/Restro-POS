@@ -1,5 +1,31 @@
 [
   {
+    "id": "mov_1795429106503",
+    "itemId": "inv_1795429106503",
+    "itemName": "Fresh Greek Feta Cheese",
+    "type": "RESTOCK",
+    "quantity": 8,
+    "previousStock": 0,
+    "newStock": 8,
+    "unit": "kg",
+    "reason": "Initial raw material intake / stock opening balance",
+    "performedBy": "Admin",
+    "date": "2026-11-23T10:18:26.503Z"
+  },
+  {
+    "id": "mov_1795429094501",
+    "itemId": "inv_1795429094500",
+    "itemName": "Himalayan Pink Rock Salt",
+    "type": "RESTOCK",
+    "quantity": 20,
+    "previousStock": 0,
+    "newStock": 20,
+    "unit": "kg",
+    "reason": "Initial raw material intake / stock opening balance",
+    "performedBy": "Admin",
+    "date": "2026-11-23T10:18:14.501Z"
+  },
+  {
     "id": "mov_1795427883459",
     "itemId": "inv_1795427883439",
     "itemName": "Kashmiri Saffron Grade A",

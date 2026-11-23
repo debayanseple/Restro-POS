@@ -41,6 +41,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Prime Meats Co.",
     storageLocation: "Deep Freezer 1",
     lastRestocked: "2026-11-20",
+    expiryDate: "2026-12-20",
     notes: "150g portioned patties for signature burgers",
   },
   {
@@ -55,6 +56,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Fresh Farms Poultry",
     storageLocation: "Walk-in Chiller",
     lastRestocked: "2026-11-22",
+    expiryDate: "2026-11-26",
     notes: "Grade-A antibiotic-free chicken for mains & grill",
   },
   {
@@ -95,6 +97,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Artisan Crust Bakery",
     storageLocation: "Bakery Counter",
     lastRestocked: "2026-11-23",
+    expiryDate: "2026-11-25",
     notes: "Fresh daily delivery with golden egg wash",
   },
   {
@@ -123,6 +126,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Valley Dairy Farms",
     storageLocation: "Walk-in Chiller",
     lastRestocked: "2026-11-21",
+    expiryDate: "2026-11-28",
     notes: "Water-packed fresh curd balls — reorder needed",
   },
   {
@@ -150,6 +154,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Valley Dairy Farms",
     storageLocation: "Walk-in Chiller",
     lastRestocked: "2026-11-19",
+    expiryDate: "2026-12-15",
   },
   {
     id: "inv_10",
@@ -190,6 +195,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Organic Greens Farm",
     storageLocation: "Vegetable Chiller",
     lastRestocked: "2026-11-22",
+    expiryDate: "2026-11-27",
   },
   {
     id: "inv_13",
@@ -203,6 +209,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Organic Greens Farm",
     storageLocation: "Vegetable Chiller",
     lastRestocked: "2026-11-23",
+    expiryDate: "2026-11-26",
   },
   {
     id: "inv_14",
@@ -216,6 +223,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Amul Fresh Daily",
     storageLocation: "Dairy Chiller",
     lastRestocked: "2026-11-23",
+    expiryDate: "2026-11-25",
     notes: "Barista grade for coffee & desserts",
   },
   {
@@ -243,6 +251,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Bavaria Brewhouse Ltd.",
     storageLocation: "Keg Cold Room",
     lastRestocked: "2026-11-12",
+    expiryDate: "2026-12-15",
     notes: "Only 1 keg remaining — immediate reorder recommended",
   },
   {
@@ -270,6 +279,7 @@ export const MASTER_INVENTORY_CATALOG: InventoryItem[] = [
     supplier: "Valley Dairy Farms",
     storageLocation: "Dairy Chiller",
     lastRestocked: "2026-11-19",
+    expiryDate: "2026-11-24",
     notes: "Out of stock! Kitchen dessert prep affected",
   },
 ]

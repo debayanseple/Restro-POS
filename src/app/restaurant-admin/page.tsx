@@ -799,6 +799,7 @@ function RestaurantAdminContent() {
   const [matCost, setMatCost] = useState("120")
   const [matSupplier, setMatSupplier] = useState("")
   const [matLocation, setMatLocation] = useState("Walk-in Chiller")
+  const [matExpiryDate, setMatExpiryDate] = useState("")
   const [matNotes, setMatNotes] = useState("")
 
   // Adjustment Modal Form
@@ -859,6 +860,7 @@ function RestaurantAdminContent() {
     setMatCost("120")
     setMatSupplier("")
     setMatLocation("Walk-in Chiller")
+    setMatExpiryDate("")
     setMatNotes("")
     setShowAddMaterialModal(true)
   }
@@ -875,6 +877,7 @@ function RestaurantAdminContent() {
     setMatCost(String(item.costPerUnit))
     setMatSupplier(item.supplier)
     setMatLocation(item.storageLocation)
+    setMatExpiryDate(item.expiryDate || "")
     setMatNotes(item.notes || "")
     setShowAddMaterialModal(true)
   }
@@ -899,6 +902,7 @@ function RestaurantAdminContent() {
         costPerUnit: Number(matCost) || 0,
         supplier: matSupplier.trim() || "General Supplier",
         storageLocation: matLocation.trim() || "Main Storage",
+        expiryDate: matExpiryDate ? matExpiryDate.trim() : undefined,
         notes: matNotes.trim() || undefined,
       }
 
@@ -4404,6 +4408,7 @@ function RestaurantAdminContent() {
                             <th className="py-3.5 px-4 font-semibold">Unit Cost</th>
                             <th className="py-3.5 px-4 font-semibold">Holding Value</th>
                             <th className="py-3.5 px-4 font-semibold">Supplier & Source</th>
+                            <th className="py-3.5 px-4 font-semibold">Expiry Date</th>
                             <th className="py-3.5 px-4 font-semibold">Status</th>
                             <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
                           </tr>
@@ -4518,6 +4523,45 @@ function RestaurantAdminContent() {
                                     <Clock className="w-2.5 h-2.5" />
                                     <span>{item.lastRestocked}</span>
                                   </div>
+                                </td>
+
+                                {/* Expiry Date (if not applicable then NA) */}
+                                <td className="py-3.5 px-4 text-[11px]">
+                                  {item.expiryDate && item.expiryDate.trim() ? (
+                                    (() => {
+                                      const exp = new Date(item.expiryDate)
+                                      const today = new Date()
+                                      const diffTime = exp.getTime() - today.getTime()
+                                      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+                                      const isExpired = diffDays < 0
+                                      const isSoon = !isExpired && diffDays <= 5
+
+                                      return (
+                                        <div>
+                                          <span
+                                            className={`font-semibold ${
+                                              isExpired
+                                                ? "text-red-600 dark:text-red-400"
+                                                : isSoon
+                                                ? "text-amber-600 dark:text-amber-400"
+                                                : "text-[#20252B] dark:text-slate-200"
+                                            }`}
+                                          >
+                                            {item.expiryDate}
+                                          </span>
+                                          {isExpired ? (
+                                            <div className="text-[10px] text-red-500 font-bold">Expired</div>
+                                          ) : isSoon ? (
+                                            <div className="text-[10px] text-amber-500 font-medium">In {diffDays} {diffDays === 1 ? "day" : "days"}</div>
+                                          ) : null}
+                                        </div>
+                                      )
+                                    })()
+                                  ) : (
+                                    <span className="text-[#64748B] font-semibold px-2 py-0.5 rounded-md bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#262a3b] text-[10px]">
+                                      NA
+                                    </span>
+                                  )}
                                 </td>
 
                                 {/* Status Badge */}
@@ -4674,8 +4718,8 @@ function RestaurantAdminContent() {
                             </div>
 
                             <div className="text-[10px] text-[#64748B] mt-2 flex items-center justify-between">
-                              <span className="truncate max-w-[150px]">Supplier: {item.supplier}</span>
-                              <span>Restocked: {item.lastRestocked}</span>
+                              <span className="truncate max-w-[140px]">Supplier: {item.supplier}</span>
+                              <span>Expiry: <strong className="font-semibold text-[#20252B] dark:text-slate-200">{item.expiryDate || "NA"}</strong></span>
                             </div>
                           </div>
 
@@ -6451,7 +6495,7 @@ function RestaurantAdminContent() {
                 </div>
               </div>
 
-              {/* Storage Location & Notes */}
+              {/* Storage Location & Expiry Date */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold">Storage Location</label>
@@ -6467,17 +6511,31 @@ function RestaurantAdminContent() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold">Notes / Batch Spec</label>
+                  <label className="text-xs font-semibold">Expiry Date (Optional)</label>
                   <input
-                    type="text"
-                    placeholder="e.g. Grade A antibiotic-free"
-                    value={matNotes}
-                    onChange={(e) => setMatNotes(e.target.value)}
+                    type="date"
+                    value={matExpiryDate}
+                    onChange={(e) => setMatExpiryDate(e.target.value)}
                     className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
                       isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
                     }`}
                   />
+                  <div className="text-[10px] text-[#64748B]">Leave empty if not applicable (NA)</div>
                 </div>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Notes / Batch Spec</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Grade A antibiotic-free"
+                  value={matNotes}
+                  onChange={(e) => setMatNotes(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
               </div>
 
               {/* Action Buttons */}
