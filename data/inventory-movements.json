@@ -1,0 +1,80 @@
+[
+  {
+    "id": "mov_1795427883459",
+    "itemId": "inv_1795427883439",
+    "itemName": "Kashmiri Saffron Grade A",
+    "type": "RESTOCK",
+    "quantity": 100,
+    "previousStock": 250,
+    "newStock": 350,
+    "unit": "g",
+    "reason": "Bulk festival procurement PO-771",
+    "performedBy": "Head Chef Vikram",
+    "date": "2026-11-23T09:58:03.459Z"
+  },
+  {
+    "id": "mov_1795427883440",
+    "itemId": "inv_1795427883439",
+    "itemName": "Kashmiri Saffron Grade A",
+    "type": "RESTOCK",
+    "quantity": 250,
+    "previousStock": 0,
+    "newStock": 250,
+    "unit": "g",
+    "reason": "Initial raw material intake / stock opening balance",
+    "performedBy": "Admin",
+    "date": "2026-11-23T09:58:03.441Z"
+  },
+  {
+    "id": "mov_1",
+    "itemId": "inv_5",
+    "itemName": "Brioche Burger Buns (Artisan)",
+    "type": "RESTOCK",
+    "quantity": 40,
+    "previousStock": 25,
+    "newStock": 65,
+    "unit": "pcs",
+    "reason": "Morning daily fresh bakery intake (PO-1092)",
+    "performedBy": "Manager Vikram",
+    "date": "2026-11-23T06:30:00.000Z"
+  },
+  {
+    "id": "mov_2",
+    "itemId": "inv_14",
+    "itemName": "Pasteurized Whole Milk",
+    "type": "RESTOCK",
+    "quantity": 20,
+    "previousStock": 12,
+    "newStock": 32,
+    "unit": "L",
+    "reason": "Daily dairy intake delivery",
+    "performedBy": "Manager Vikram",
+    "date": "2026-11-23T07:15:00.000Z"
+  },
+  {
+    "id": "mov_3",
+    "itemId": "inv_18",
+    "itemName": "Heavy Whipping Cream 35%",
+    "type": "USAGE",
+    "quantity": 3.5,
+    "previousStock": 3.5,
+    "newStock": 0,
+    "unit": "L",
+    "reason": "Dessert prep: Tiramisu and Molten lava batch",
+    "performedBy": "Chef Rahul",
+    "date": "2026-11-23T11:00:00.000Z"
+  },
+  {
+    "id": "mov_4",
+    "itemId": "inv_1",
+    "itemName": "Wagyu Beef Patties (Frozen)",
+    "type": "USAGE",
+    "quantity": 12,
+    "previousStock": 60,
+    "newStock": 48,
+    "unit": "pcs",
+    "reason": "Lunch rush grill station consumption",
+    "performedBy": "Sous Chef Amit",
+    "date": "2026-11-23T13:45:00.000Z"
+  }
+]

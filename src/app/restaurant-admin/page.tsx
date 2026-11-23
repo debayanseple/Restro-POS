@@ -1,10 +1,16 @@
 "use client"
 
-import { useState, useEffect, Suspense } from "react"
+import React, { useState, useEffect, useMemo, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { TableQrModal, AllTablesQrModal } from "@/components/TableQrModal"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
+import {
+  MASTER_INVENTORY_CATALOG,
+  MASTER_STOCK_MOVEMENTS,
+  InventoryItem,
+  StockMovement,
+} from "@/lib/inventory-catalog"
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -35,6 +41,7 @@ import {
   Receipt,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   Building2,
   ShieldCheck,
   CreditCard,
@@ -44,6 +51,7 @@ import {
   Truck,
   Megaphone,
   Sliders,
+  SlidersHorizontal,
   Clock,
   LogOut,
   MoreVertical,
@@ -51,8 +59,17 @@ import {
   Eye,
   EyeOff,
   AlertTriangle,
+  AlertOctagon,
   Sparkles,
   Filter,
+  Package,
+  History,
+  ArrowDownRight,
+  ArrowUpRight,
+  Edit3,
+  Layers,
+  Scale,
+  Warehouse,
 } from "lucide-react"
 
 // Types for Order data from Supabase
@@ -753,6 +770,299 @@ function RestaurantAdminContent() {
       setIsSavingMenuItem(false)
     }
   }
+
+  // --- INVENTORY / RAW MATERIALS STATE ---
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>(MASTER_INVENTORY_CATALOG)
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>(MASTER_STOCK_MOVEMENTS)
+  const [inventoryLoading, setInventoryLoading] = useState(false)
+  const [inventorySearch, setInventorySearch] = useState("")
+  const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState("all")
+  const [inventoryStockFilter, setInventoryStockFilter] = useState<"all" | "low" | "out" | "healthy">("all")
+  const [inventoryViewMode, setInventoryViewMode] = useState<"table" | "card">("table")
+  const [inventoryToast, setInventoryToast] = useState<string | null>(null)
+
+  // Modals state
+  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false)
+  const [editingMaterial, setEditingMaterial] = useState<InventoryItem | null>(null)
+  const [showAdjustmentModal, setShowAdjustmentModal] = useState(false)
+  const [adjustmentTargetItem, setAdjustmentTargetItem] = useState<InventoryItem | null>(null)
+  const [showMovementsLogModal, setShowMovementsLogModal] = useState(false)
+  const [isSavingInventory, setIsSavingInventory] = useState(false)
+
+  // Add / Edit Material Form
+  const [matName, setMatName] = useState("")
+  const [matCategory, setMatCategory] = useState("Produce")
+  const [matStock, setMatStock] = useState("10")
+  const [matUnit, setMatUnit] = useState("kg")
+  const [matMinStock, setMatMinStock] = useState("5")
+  const [matOptimalStock, setMatOptimalStock] = useState("20")
+  const [matCost, setMatCost] = useState("120")
+  const [matSupplier, setMatSupplier] = useState("")
+  const [matLocation, setMatLocation] = useState("Walk-in Chiller")
+  const [matNotes, setMatNotes] = useState("")
+
+  // Adjustment Modal Form
+  const [adjItemId, setAdjItemId] = useState("")
+  const [adjType, setAdjType] = useState<"RESTOCK" | "USAGE" | "WASTE" | "AUDIT">("RESTOCK")
+  const [adjQty, setAdjQty] = useState("5")
+  const [adjReason, setAdjReason] = useState("")
+  const [adjStaff, setAdjStaff] = useState("Manager Vikram")
+
+  // Load Inventory from API & Subscribe to broadcast
+  useEffect(() => {
+    let isMounted = true
+    const fetchInventory = async () => {
+      try {
+        const res = await fetch("/api/inventory")
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted) {
+            if (Array.isArray(data.items)) setInventoryItems(data.items)
+            if (Array.isArray(data.movements)) setStockMovements(data.movements)
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch inventory:", err)
+      }
+    }
+
+    fetchInventory()
+    const interval = setInterval(fetchInventory, 5000)
+
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("restro_sync_channel")
+      bc.onmessage = (event) => {
+        if (event.data?.type === "inventory_updated") {
+          if (Array.isArray(event.data.items)) setInventoryItems(event.data.items)
+          if (Array.isArray(event.data.movements)) setStockMovements(event.data.movements)
+        }
+      }
+    }
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+      if (bc) bc.close()
+    }
+  }, [])
+
+  // Open Add Material Modal
+  const handleOpenAddMaterial = () => {
+    setEditingMaterial(null)
+    setMatName("")
+    setMatCategory("Produce")
+    setMatStock("10")
+    setMatUnit("kg")
+    setMatMinStock("5")
+    setMatOptimalStock("20")
+    setMatCost("120")
+    setMatSupplier("")
+    setMatLocation("Walk-in Chiller")
+    setMatNotes("")
+    setShowAddMaterialModal(true)
+  }
+
+  // Open Edit Material Modal
+  const handleOpenEditMaterial = (item: InventoryItem) => {
+    setEditingMaterial(item)
+    setMatName(item.name)
+    setMatCategory(item.category)
+    setMatStock(String(item.currentStock))
+    setMatUnit(item.unit)
+    setMatMinStock(String(item.minimumStock))
+    setMatOptimalStock(String(item.optimalStock))
+    setMatCost(String(item.costPerUnit))
+    setMatSupplier(item.supplier)
+    setMatLocation(item.storageLocation)
+    setMatNotes(item.notes || "")
+    setShowAddMaterialModal(true)
+  }
+
+  // Save Material (Create or Update)
+  const handleSaveMaterial = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!matName.trim()) {
+      alert("Please enter a raw material name.")
+      return
+    }
+
+    setIsSavingInventory(true)
+    try {
+      const payload = {
+        name: matName.trim(),
+        category: matCategory,
+        currentStock: Number(matStock) || 0,
+        unit: matUnit,
+        minimumStock: Number(matMinStock) || 0,
+        optimalStock: Number(matOptimalStock) || 0,
+        costPerUnit: Number(matCost) || 0,
+        supplier: matSupplier.trim() || "General Supplier",
+        storageLocation: matLocation.trim() || "Main Storage",
+        notes: matNotes.trim() || undefined,
+      }
+
+      if (editingMaterial) {
+        // PATCH
+        const res = await fetch("/api/inventory", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: editingMaterial.id, ...payload }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setInventoryItems(data.items)
+          if (data.movements) setStockMovements(data.movements)
+          if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("restro_sync_channel")
+            bc.postMessage({ type: "inventory_updated", items: data.items, movements: data.movements })
+            bc.close()
+          }
+          setInventoryToast(`Updated material "${matName}"`)
+        }
+      } else {
+        // POST
+        const res = await fetch("/api/inventory", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setInventoryItems(data.items)
+          if (data.movements) setStockMovements(data.movements)
+          if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("restro_sync_channel")
+            bc.postMessage({ type: "inventory_updated", items: data.items, movements: data.movements })
+            bc.close()
+          }
+          setInventoryToast(`Added new raw material "${matName}"`)
+        }
+      }
+
+      setShowAddMaterialModal(false)
+      setTimeout(() => setInventoryToast(null), 3500)
+    } catch (err) {
+      console.error("Error saving material:", err)
+      alert("Failed to save raw material. Please try again.")
+    } finally {
+      setIsSavingInventory(false)
+    }
+  }
+
+  // Open Quick Adjustment Modal
+  const handleOpenAdjustment = (item?: InventoryItem) => {
+    const target = item || inventoryItems[0]
+    setAdjustmentTargetItem(target || null)
+    setAdjItemId(target ? target.id : "")
+    setAdjType("RESTOCK")
+    setAdjQty("5")
+    setAdjReason("")
+    setShowAdjustmentModal(true)
+  }
+
+  // Execute Stock Adjustment (Restock, Kitchen Usage, Spoilage/Waste, Audit)
+  const handleExecuteAdjustment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!adjItemId) {
+      alert("Please select an item to adjust.")
+      return
+    }
+    const target = inventoryItems.find((i) => i.id === adjItemId)
+    if (!target) return
+
+    const qty = Number(adjQty)
+    if (isNaN(qty) || qty <= 0) {
+      alert("Please enter a valid positive quantity.")
+      return
+    }
+
+    setIsSavingInventory(true)
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: adjItemId,
+          adjustmentQty: qty,
+          type: adjType,
+          reason: adjReason.trim() || undefined,
+          performedBy: adjStaff.trim() || "Staff",
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setInventoryItems(data.items)
+        if (data.movements) setStockMovements(data.movements)
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel("restro_sync_channel")
+          bc.postMessage({ type: "inventory_updated", items: data.items, movements: data.movements })
+          bc.close()
+        }
+        const actionLabel =
+          adjType === "RESTOCK"
+            ? "Restocked"
+            : adjType === "USAGE"
+            ? "Logged usage for"
+            : adjType === "WASTE"
+            ? "Deducted waste for"
+            : "Reconciled audit for"
+        setInventoryToast(`${actionLabel} ${target.name} (${qty} ${target.unit})`)
+        setShowAdjustmentModal(false)
+        setTimeout(() => setInventoryToast(null), 3500)
+      }
+    } catch (err) {
+      console.error("Error adjusting stock:", err)
+      alert("Failed to adjust stock. Please try again.")
+    } finally {
+      setIsSavingInventory(false)
+    }
+  }
+
+  // Delete Raw Material
+  const handleDeleteMaterial = async (item: InventoryItem) => {
+    if (!confirm(`Are you sure you want to remove "${item.name}" from inventory records?`)) return
+    try {
+      const res = await fetch(`/api/inventory?id=${item.id}`, { method: "DELETE" })
+      if (res.ok) {
+        const updated = inventoryItems.filter((i) => i.id !== item.id)
+        setInventoryItems(updated)
+        if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+          const bc = new BroadcastChannel("restro_sync_channel")
+          bc.postMessage({ type: "inventory_updated", items: updated })
+          bc.close()
+        }
+        setInventoryToast(`Removed "${item.name}" from inventory records.`)
+        setTimeout(() => setInventoryToast(null), 3500)
+      }
+    } catch (err) {
+      console.error("Error deleting material:", err)
+      alert("Could not remove material.")
+    }
+  }
+
+  // Filtered Inventory items
+  const filteredInventoryItems = useMemo(() => {
+    return inventoryItems.filter((item) => {
+      const matchesCategory =
+        inventoryCategoryFilter === "all" || item.category === inventoryCategoryFilter
+      const matchesSearch =
+        inventorySearch.trim() === "" ||
+        item.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        item.supplier.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        item.storageLocation.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+        (item.notes && item.notes.toLowerCase().includes(inventorySearch.toLowerCase()))
+
+      const matchesStock =
+        inventoryStockFilter === "all" ||
+        (inventoryStockFilter === "low" && item.currentStock <= item.minimumStock && item.currentStock > 0) ||
+        (inventoryStockFilter === "out" && item.currentStock === 0) ||
+        (inventoryStockFilter === "healthy" && item.currentStock > item.minimumStock)
+
+      return matchesCategory && matchesSearch && matchesStock
+    })
+  }, [inventoryItems, inventoryCategoryFilter, inventorySearch, inventoryStockFilter])
 
   const addToCart = (item: MenuItem) => {
     if (item.isAvailable === false) {
@@ -3752,6 +4062,653 @@ function RestaurantAdminContent() {
                     })}
                 </div>
               </div>
+            ) : activeTab === "inventory" ? (
+              /* --- INVENTORY & RAW MATERIALS MANAGEMENT --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                {/* Toast Notification Banner */}
+                {inventoryToast && (
+                  <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>{inventoryToast}</span>
+                    </div>
+                    <button
+                      onClick={() => setInventoryToast(null)}
+                      className="text-xs hover:opacity-70 transition cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                )}
+
+                {/* Header Strip & Action Buttons */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-[#C46B4E]/15 border border-[#C46B4E]/30 flex items-center justify-center text-[#C46B4E]">
+                        <Boxes className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h1
+                          className={`text-2xl font-bold tracking-tight ${
+                            isDarkMode ? "text-white" : "text-[#20252B]"
+                          }`}
+                        >
+                          Raw Materials & Inventory
+                        </h1>
+                        <p className="text-xs text-[#64748B] mt-0.5">
+                          Track raw ingredients, stock levels, unit costs, supplier sources, and log consumption/restock movements.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <button
+                      onClick={() => setShowMovementsLogModal(true)}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 cursor-pointer ${
+                        isDarkMode
+                          ? "bg-[#161822] border-[#262a3b] text-slate-300 hover:bg-[#1f2230]"
+                          : "bg-white border-[#E5E1D9] text-[#20252B] hover:bg-[#F7F5F0]"
+                      }`}
+                    >
+                      <History className="w-4 h-4 text-[#64748B]" />
+                      <span>Stock Movement Log</span>
+                      {stockMovements.length > 0 && (
+                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#E9E3D8] text-[#20252B] font-bold">
+                          {stockMovements.length}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => handleOpenAdjustment()}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 cursor-pointer ${
+                        isDarkMode
+                          ? "bg-[#161822] border-[#262a3b] text-slate-300 hover:bg-[#1f2230]"
+                          : "bg-white border-[#E5E1D9] text-[#20252B] hover:bg-[#F7F5F0]"
+                      }`}
+                    >
+                      <SlidersHorizontal className="w-4 h-4 text-[#C46B4E]" />
+                      <span>Quick Adjust / Restock</span>
+                    </button>
+
+                    <button
+                      onClick={handleOpenAddMaterial}
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#C46B4E] hover:bg-[#B25C40] text-white transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Raw Material</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metrics Summary Strip */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+                  {/* Valuation */}
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode ? "bg-[#161822] border-[#262a3b]" : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs text-[#64748B] mb-1">
+                      <span>Total Holding Value</span>
+                      <DollarSign className="w-4 h-4 text-[#C46B4E]" />
+                    </div>
+                    <div
+                      className={`text-xl font-bold ${
+                        isDarkMode ? "text-white" : "text-[#20252B]"
+                      }`}
+                    >
+                      ₹
+                      {inventoryItems
+                        .reduce((sum, item) => sum + item.currentStock * item.costPerUnit, 0)
+                        .toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                    </div>
+                    <p className="text-[11px] text-[#64748B] mt-1">Calculated across all stored batches</p>
+                  </div>
+
+                  {/* Tracked Materials */}
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode ? "bg-[#161822] border-[#262a3b]" : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs text-[#64748B] mb-1">
+                      <span>Tracked Ingredients</span>
+                      <Package className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div
+                      className={`text-xl font-bold ${
+                        isDarkMode ? "text-white" : "text-[#20252B]"
+                      }`}
+                    >
+                      {inventoryItems.length} items
+                    </div>
+                    <p className="text-[11px] text-[#64748B] mt-1">In {new Set(inventoryItems.map((i) => i.category)).size} unique categories</p>
+                  </div>
+
+                  {/* Low Stock Alerts */}
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#1e1c18] border-amber-500/30 text-amber-300"
+                        : "bg-amber-50/60 border-amber-200 text-amber-900 shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                      <span className="flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                        Low Stock Alerts
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20 font-bold">
+                        Reorder Needed
+                      </span>
+                    </div>
+                    <div className="text-xl font-bold">
+                      {inventoryItems.filter((i) => i.currentStock <= i.minimumStock && i.currentStock > 0).length} materials
+                    </div>
+                    <p className="text-[11px] opacity-80 mt-1">Below minimum threshold safety levels</p>
+                  </div>
+
+                  {/* Out of Stock */}
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#1f1618] border-red-500/30 text-red-300"
+                        : "bg-red-50/60 border-red-200 text-red-900 shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs font-semibold mb-1">
+                      <span className="flex items-center gap-1.5">
+                        <AlertOctagon className="w-3.5 h-3.5 text-red-600" />
+                        Out of Stock
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-red-500/20 font-bold">
+                        Critical
+                      </span>
+                    </div>
+                    <div className="text-xl font-bold">
+                      {inventoryItems.filter((i) => i.currentStock === 0).length} materials
+                    </div>
+                    <p className="text-[11px] opacity-80 mt-1">Zero stock balance in storage</p>
+                  </div>
+                </div>
+
+                {/* Filter & Search Bar */}
+                <div
+                  className={`p-4 rounded-2xl border space-y-3 ${
+                    isDarkMode ? "bg-[#161822] border-[#262a3b]" : "bg-white border-[#E5E1D9] shadow-2xs"
+                  }`}
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    {/* Search Input */}
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B]" />
+                      <input
+                        type="text"
+                        value={inventorySearch}
+                        onChange={(e) => setInventorySearch(e.target.value)}
+                        placeholder="Search by ingredient, supplier, storage location..."
+                        className={`w-full pl-9.5 pr-4 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] transition ${
+                          isDarkMode
+                            ? "bg-[#12141c] border-[#262a3b] text-white placeholder-slate-500"
+                            : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B] placeholder-[#64748B]"
+                        }`}
+                      />
+                    </div>
+
+                    {/* Stock Status Filter Pills */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        onClick={() => setInventoryStockFilter("all")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer ${
+                          inventoryStockFilter === "all"
+                            ? "bg-[#C46B4E] text-white"
+                            : isDarkMode
+                            ? "bg-[#12141c] text-slate-300 hover:bg-[#1a1d29]"
+                            : "bg-[#F7F5F0] text-[#20252B] hover:bg-[#E9E3D8]"
+                        }`}
+                      >
+                        All Stock ({inventoryItems.length})
+                      </button>
+                      <button
+                        onClick={() => setInventoryStockFilter("low")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
+                          inventoryStockFilter === "low"
+                            ? "bg-amber-600 text-white"
+                            : isDarkMode
+                            ? "bg-[#12141c] text-amber-400 hover:bg-[#1a1d29]"
+                            : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100/60"
+                        }`}
+                      >
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>Low Stock ({inventoryItems.filter((i) => i.currentStock <= i.minimumStock && i.currentStock > 0).length})</span>
+                      </button>
+                      <button
+                        onClick={() => setInventoryStockFilter("out")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
+                          inventoryStockFilter === "out"
+                            ? "bg-red-600 text-white"
+                            : isDarkMode
+                            ? "bg-[#12141c] text-red-400 hover:bg-[#1a1d29]"
+                            : "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100/60"
+                        }`}
+                      >
+                        <AlertOctagon className="w-3 h-3" />
+                        <span>Out of Stock ({inventoryItems.filter((i) => i.currentStock === 0).length})</span>
+                      </button>
+                      <button
+                        onClick={() => setInventoryStockFilter("healthy")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
+                          inventoryStockFilter === "healthy"
+                            ? "bg-emerald-600 text-white"
+                            : isDarkMode
+                            ? "bg-[#12141c] text-emerald-400 hover:bg-[#1a1d29]"
+                            : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/60"
+                        }`}
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Adequate ({inventoryItems.filter((i) => i.currentStock > i.minimumStock).length})</span>
+                      </button>
+                    </div>
+
+                    {/* View Switcher: Table vs Card */}
+                    <div className={`flex items-center p-0.5 rounded-xl border ${isDarkMode ? "bg-[#12141c] border-[#262a3b]" : "bg-[#F7F5F0] border-[#E5E1D9]"}`}>
+                      <button
+                        onClick={() => setInventoryViewMode("table")}
+                        title="Table View"
+                        className={`p-1.5 rounded-lg transition cursor-pointer ${
+                          inventoryViewMode === "table"
+                            ? isDarkMode ? "bg-[#262a3b] text-white" : "bg-white text-[#20252B] shadow-2xs"
+                            : "text-[#64748B] hover:text-[#20252B]"
+                        }`}
+                      >
+                        <LayoutGrid className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setInventoryViewMode("card")}
+                        title="Card Grid View"
+                        className={`p-1.5 rounded-lg transition cursor-pointer ${
+                          inventoryViewMode === "card"
+                            ? isDarkMode ? "bg-[#262a3b] text-white" : "bg-white text-[#20252B] shadow-2xs"
+                            : "text-[#64748B] hover:text-[#20252B]"
+                        }`}
+                      >
+                        <Layers className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Category Pills Strip */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-1">
+                    {[
+                      { id: "all", label: "All Categories", count: inventoryItems.length },
+                      { id: "Dairy", label: "Dairy", count: inventoryItems.filter((i) => i.category === "Dairy").length },
+                      { id: "Meat & Poultry", label: "Meat & Poultry", count: inventoryItems.filter((i) => i.category === "Meat & Poultry").length },
+                      { id: "Produce", label: "Produce", count: inventoryItems.filter((i) => i.category === "Produce").length },
+                      { id: "Grains & Bakery", label: "Grains & Bakery", count: inventoryItems.filter((i) => i.category === "Grains & Bakery").length },
+                      { id: "Oils & Condiments", label: "Oils & Condiments", count: inventoryItems.filter((i) => i.category === "Oils & Condiments").length },
+                      { id: "Beverages & Bar", label: "Beverages & Bar", count: inventoryItems.filter((i) => i.category === "Beverages & Bar").length },
+                      { id: "Bakery & Sweets", label: "Bakery & Sweets", count: inventoryItems.filter((i) => i.category === "Bakery & Sweets").length },
+                    ].map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setInventoryCategoryFilter(cat.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition cursor-pointer ${
+                          inventoryCategoryFilter === cat.id
+                            ? "bg-[#C46B4E] text-white"
+                            : isDarkMode
+                            ? "bg-[#12141c] text-slate-400 hover:text-white"
+                            : "bg-[#F7F5F0] text-[#64748B] hover:text-[#20252B]"
+                        }`}
+                      >
+                        {cat.label} ({cat.count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Items List (Table or Card) */}
+                {filteredInventoryItems.length === 0 ? (
+                  <div
+                    className={`p-12 text-center rounded-2xl border ${
+                      isDarkMode ? "bg-[#161822] border-[#262a3b]" : "bg-white border-[#E5E1D9]"
+                    }`}
+                  >
+                    <Boxes className="w-10 h-10 mx-auto text-[#64748B] mb-2 opacity-50" />
+                    <h3 className="font-semibold text-sm">No raw materials found</h3>
+                    <p className="text-xs text-[#64748B] mt-1">Try adjusting your search query or filters.</p>
+                  </div>
+                ) : inventoryViewMode === "table" ? (
+                  /* --- TABLE VIEW --- */
+                  <div
+                    className={`rounded-2xl border overflow-hidden ${
+                      isDarkMode ? "bg-[#161822] border-[#262a3b]" : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead
+                          className={`border-b text-[11px] font-semibold uppercase tracking-wider ${
+                            isDarkMode
+                              ? "bg-[#12141c] border-[#262a3b] text-slate-400"
+                              : "bg-[#F7F5F0] border-[#E5E1D9] text-[#64748B]"
+                          }`}
+                        >
+                          <tr>
+                            <th className="py-3.5 px-4 font-semibold">Raw Material</th>
+                            <th className="py-3.5 px-4 font-semibold">Category</th>
+                            <th className="py-3.5 px-4 font-semibold">Stock Level & Gauge</th>
+                            <th className="py-3.5 px-4 font-semibold">Thresholds</th>
+                            <th className="py-3.5 px-4 font-semibold">Unit Cost</th>
+                            <th className="py-3.5 px-4 font-semibold">Holding Value</th>
+                            <th className="py-3.5 px-4 font-semibold">Supplier & Source</th>
+                            <th className="py-3.5 px-4 font-semibold">Status</th>
+                            <th className="py-3.5 px-4 font-semibold text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
+                          {filteredInventoryItems.map((item) => {
+                            const isOut = item.currentStock === 0
+                            const isLow = !isOut && item.currentStock <= item.minimumStock
+                            const pct = Math.min(
+                              100,
+                              Math.round((item.currentStock / Math.max(1, item.optimalStock)) * 100)
+                            )
+
+                            return (
+                              <tr
+                                key={item.id}
+                                className={`transition-colors ${
+                                  isOut
+                                    ? isDarkMode
+                                      ? "bg-red-950/15 hover:bg-red-950/25"
+                                      : "bg-red-50/30 hover:bg-red-50/60"
+                                    : isLow
+                                    ? isDarkMode
+                                      ? "bg-amber-950/15 hover:bg-amber-950/25"
+                                      : "bg-amber-50/30 hover:bg-amber-50/60"
+                                    : isDarkMode
+                                    ? "hover:bg-[#1f2230]/50"
+                                    : "hover:bg-[#F7F5F0]/60"
+                                }`}
+                              >
+                                {/* Name & Location */}
+                                <td className="py-3.5 px-4 font-medium">
+                                  <div className="font-bold text-[#20252B] dark:text-white flex items-center gap-1.5">
+                                    <span>{item.name}</span>
+                                  </div>
+                                  <div className="text-[11px] text-[#64748B] flex items-center gap-1 mt-0.5">
+                                    <Warehouse className="w-3 h-3 shrink-0" />
+                                    <span>{item.storageLocation}</span>
+                                    {item.notes && (
+                                      <span className="truncate max-w-[140px] text-[10px] text-slate-400">
+                                        • {item.notes}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Category */}
+                                <td className="py-3.5 px-4">
+                                  <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-[#E9E3D8] dark:bg-[#262a3b] text-[#20252B] dark:text-slate-300 border border-[#E5E1D9] dark:border-transparent">
+                                    {item.category}
+                                  </span>
+                                </td>
+
+                                {/* Current Stock with Progress Gauge */}
+                                <td className="py-3.5 px-4 min-w-[140px]">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span
+                                      className={`font-bold text-sm ${
+                                        isOut
+                                          ? "text-red-600 dark:text-red-400"
+                                          : isLow
+                                          ? "text-amber-600 dark:text-amber-400"
+                                          : "text-[#20252B] dark:text-white"
+                                      }`}
+                                    >
+                                      {item.currentStock} {item.unit}
+                                    </span>
+                                    <span className="text-[10px] text-[#64748B]">
+                                      {pct}% of {item.optimalStock}
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-[#E5E1D9] dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-300 ${
+                                        isOut
+                                          ? "bg-red-500 w-0"
+                                          : isLow
+                                          ? "bg-amber-500"
+                                          : "bg-emerald-500"
+                                      }`}
+                                      style={{ width: `${Math.max(5, pct)}%` }}
+                                    />
+                                  </div>
+                                </td>
+
+                                {/* Thresholds */}
+                                <td className="py-3.5 px-4 text-[11px] text-[#64748B]">
+                                  <div>
+                                    Min: <span className="font-semibold text-[#20252B] dark:text-slate-200">{item.minimumStock} {item.unit}</span>
+                                  </div>
+                                  <div>
+                                    Optimal: <span>{item.optimalStock} {item.unit}</span>
+                                  </div>
+                                </td>
+
+                                {/* Unit Cost */}
+                                <td className="py-3.5 px-4 font-semibold text-[#20252B] dark:text-slate-200">
+                                  ₹{item.costPerUnit} <span className="text-[10px] text-[#64748B] font-normal">/{item.unit}</span>
+                                </td>
+
+                                {/* Total Value */}
+                                <td className="py-3.5 px-4 font-bold text-[#20252B] dark:text-white">
+                                  ₹{(item.currentStock * item.costPerUnit).toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                                </td>
+
+                                {/* Supplier & Last Restocked */}
+                                <td className="py-3.5 px-4 text-[11px]">
+                                  <div className="font-medium text-[#20252B] dark:text-slate-200 truncate max-w-[130px]" title={item.supplier}>
+                                    {item.supplier}
+                                  </div>
+                                  <div className="text-[10px] text-[#64748B] flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5" />
+                                    <span>{item.lastRestocked}</span>
+                                  </div>
+                                </td>
+
+                                {/* Status Badge */}
+                                <td className="py-3.5 px-4">
+                                  {isOut ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 inline-flex items-center gap-1">
+                                      <AlertOctagon className="w-2.5 h-2.5" />
+                                      Out of Stock
+                                    </span>
+                                  ) : isLow ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 inline-flex items-center gap-1">
+                                      <AlertTriangle className="w-2.5 h-2.5" />
+                                      Low Stock
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 inline-flex items-center gap-1">
+                                      <Check className="w-2.5 h-2.5" />
+                                      Adequate
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Actions */}
+                                <td className="py-3.5 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleOpenAdjustment(item)}
+                                      title="Stock Adjustment / Restock"
+                                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-[#C46B4E]/10 hover:bg-[#C46B4E] text-[#C46B4E] hover:text-white transition cursor-pointer border border-[#C46B4E]/30"
+                                    >
+                                      + Restock
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenEditMaterial(item)}
+                                      title="Edit details"
+                                      className="p-1.5 rounded-lg border border-[#E5E1D9] dark:border-[#262a3b] text-[#64748B] hover:text-[#20252B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                                    >
+                                      <Edit3 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteMaterial(item)}
+                                      title="Delete Raw Material"
+                                      className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : (
+                  /* --- CARD GRID VIEW --- */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredInventoryItems.map((item) => {
+                      const isOut = item.currentStock === 0
+                      const isLow = !isOut && item.currentStock <= item.minimumStock
+                      const pct = Math.min(
+                        100,
+                        Math.round((item.currentStock / Math.max(1, item.optimalStock)) * 100)
+                      )
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                            isOut
+                              ? isDarkMode
+                                ? "bg-red-950/15 border-red-900/40"
+                                : "bg-red-50/40 border-red-200"
+                              : isLow
+                              ? isDarkMode
+                                ? "bg-amber-950/15 border-amber-900/40"
+                                : "bg-amber-50/40 border-amber-200"
+                              : isDarkMode
+                              ? "bg-[#161822] border-[#262a3b] hover:border-[#C46B4E]"
+                              : "bg-white border-[#E5E1D9] hover:border-[#C46B4E] shadow-2xs"
+                          }`}
+                        >
+                          <div>
+                            {/* Card Header: Category & Status */}
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-[#E9E3D8] dark:bg-[#262a3b] text-[#20252B] dark:text-slate-300">
+                                {item.category}
+                              </span>
+
+                              {isOut ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-900/40 flex items-center gap-1">
+                                  <AlertOctagon className="w-2.5 h-2.5" />
+                                  Out of Stock
+                                </span>
+                              ) : isLow ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-900/40 flex items-center gap-1">
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                  Low Stock
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5" />
+                                  Adequate
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Name & Location */}
+                            <h3 className="font-bold text-sm text-[#20252B] dark:text-white">
+                              {item.name}
+                            </h3>
+                            <div className="text-[11px] text-[#64748B] flex items-center gap-1 mt-0.5">
+                              <Warehouse className="w-3 h-3 shrink-0" />
+                              <span>{item.storageLocation}</span>
+                            </div>
+
+                            {/* Stock Level & Visual Gauge */}
+                            <div className="mt-3 p-3 rounded-xl bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#262a3b]">
+                              <div className="flex items-center justify-between text-xs mb-1.5">
+                                <span className="text-[#64748B]">Current Stock:</span>
+                                <span className="font-bold text-sm text-[#20252B] dark:text-white">
+                                  {item.currentStock} {item.unit}
+                                </span>
+                              </div>
+                              <div className="w-full bg-[#E5E1D9] dark:bg-slate-800 rounded-full h-2 overflow-hidden mb-1">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    isOut
+                                      ? "bg-red-500 w-0"
+                                      : isLow
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500"
+                                  }`}
+                                  style={{ width: `${Math.max(5, pct)}%` }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[10px] text-[#64748B]">
+                                <span>Min: {item.minimumStock} {item.unit}</span>
+                                <span>Target: {item.optimalStock} {item.unit}</span>
+                              </div>
+                            </div>
+
+                            {/* Financials & Supplier */}
+                            <div className="grid grid-cols-2 gap-2 mt-3 text-[11px]">
+                              <div className="p-2 rounded-lg bg-[#FAF9F6] dark:bg-[#161822] border border-[#E5E1D9] dark:border-[#262a3b]">
+                                <span className="text-[#64748B] block text-[10px]">Cost / Unit</span>
+                                <span className="font-semibold text-[#20252B] dark:text-white">₹{item.costPerUnit}</span>
+                              </div>
+                              <div className="p-2 rounded-lg bg-[#FAF9F6] dark:bg-[#161822] border border-[#E5E1D9] dark:border-[#262a3b]">
+                                <span className="text-[#64748B] block text-[10px]">Holding Value</span>
+                                <span className="font-bold text-[#20252B] dark:text-white">₹{(item.currentStock * item.costPerUnit).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                              </div>
+                            </div>
+
+                            <div className="text-[10px] text-[#64748B] mt-2 flex items-center justify-between">
+                              <span className="truncate max-w-[150px]">Supplier: {item.supplier}</span>
+                              <span>Restocked: {item.lastRestocked}</span>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="pt-4 border-t border-[#E5E1D9] dark:border-[#262a3b] mt-3 flex items-center justify-between gap-2">
+                            <button
+                              onClick={() => handleOpenAdjustment(item)}
+                              className="flex-1 py-1.5 rounded-xl text-xs font-semibold bg-[#C46B4E] hover:bg-[#B25C40] text-white transition cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>Restock</span>
+                            </button>
+                            <button
+                              onClick={() => handleOpenEditMaterial(item)}
+                              className="p-1.5 rounded-xl border border-[#E5E1D9] dark:border-[#262a3b] text-[#64748B] hover:text-[#20252B] dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                              title="Edit Item"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMaterial(item)}
+                              className="p-1.5 rounded-xl border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                              title="Delete Item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             ) : activeTab === "tenants" ? (
               /* --- SUPER ADMIN: TENANT RESTAURANTS --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
@@ -5331,6 +6288,551 @@ function RestaurantAdminContent() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ADD / EDIT RAW MATERIAL MODAL */}
+      {showAddMaterialModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-lg rounded-2xl border p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto ${
+              isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-[#E5E1D9] dark:border-[#272b3b]">
+              <div className="flex items-center gap-2">
+                <Boxes className="w-5 h-5 text-[#C46B4E]" />
+                <h3 className="font-bold text-base">
+                  {editingMaterial ? "Edit Raw Material" : "Add New Raw Material"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddMaterialModal(false)}
+                className="text-[#64748B] hover:text-[#20252B] dark:hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMaterial} className="space-y-4">
+              {/* Material Name */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Material / Ingredient Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Fresh Mozzarella Bocconcini"
+                  value={matName}
+                  onChange={(e) => setMatName(e.target.value)}
+                  className={`w-full px-3.5 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              {/* Category & Unit */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Category</label>
+                  <select
+                    value={matCategory}
+                    onChange={(e) => setMatCategory(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="Produce">Produce</option>
+                    <option value="Dairy">Dairy</option>
+                    <option value="Meat & Poultry">Meat & Poultry</option>
+                    <option value="Grains & Bakery">Grains & Bakery</option>
+                    <option value="Oils & Condiments">Oils & Condiments</option>
+                    <option value="Beverages & Bar">Beverages & Bar</option>
+                    <option value="Bakery & Sweets">Bakery & Sweets</option>
+                    <option value="Packaging">Packaging</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Unit of Measure</label>
+                  <select
+                    value={matUnit}
+                    onChange={(e) => setMatUnit(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="kg">kg (Kilograms)</option>
+                    <option value="g">g (Grams)</option>
+                    <option value="L">L (Liters)</option>
+                    <option value="pcs">pcs (Pieces / Count)</option>
+                    <option value="packs">packs</option>
+                    <option value="cans">cans</option>
+                    <option value="bottles">bottles</option>
+                    <option value="kegs">kegs</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Stock Levels: Current, Minimum (Reorder), Optimal */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Current Stock</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={matStock}
+                    onChange={(e) => setMatStock(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Reorder Threshold</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={matMinStock}
+                    onChange={(e) => setMatMinStock(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Optimal Target</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={matOptimalStock}
+                    onChange={(e) => setMatOptimalStock(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Cost & Supplier */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Unit Cost (₹)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    placeholder="e.g. 240"
+                    value={matCost}
+                    onChange={(e) => setMatCost(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Supplier / Vendor</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Valley Dairy Farms"
+                    value={matSupplier}
+                    onChange={(e) => setMatSupplier(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Storage Location & Notes */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Storage Location</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Walk-in Chiller / Rack B"
+                    value={matLocation}
+                    onChange={(e) => setMatLocation(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Notes / Batch Spec</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Grade A antibiotic-free"
+                    value={matNotes}
+                    onChange={(e) => setMatNotes(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E5E1D9] dark:border-[#272b3b]">
+                <button
+                  type="button"
+                  onClick={() => setShowAddMaterialModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-[#E5E1D9] text-[#64748B] hover:text-[#20252B] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingInventory}
+                  className="px-5 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingInventory ? "Saving..." : editingMaterial ? "Update Material" : "Save Raw Material"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* QUICK STOCK ADJUSTMENT / RESTOCK MODAL */}
+      {showAdjustmentModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
+              isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-[#E5E1D9] dark:border-[#272b3b]">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5 text-[#C46B4E]" />
+                <h3 className="font-bold text-base">Quick Stock Adjustment</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdjustmentModal(false)}
+                className="text-[#64748B] hover:text-[#20252B] dark:hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleExecuteAdjustment} className="space-y-4">
+              {/* Select Raw Material */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Select Raw Material</label>
+                <select
+                  value={adjItemId}
+                  onChange={(e) => {
+                    setAdjItemId(e.target.value)
+                    const found = inventoryItems.find((i) => i.id === e.target.value)
+                    setAdjustmentTargetItem(found || null)
+                  }}
+                  className={`w-full px-3.5 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                >
+                  {inventoryItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} (Current: {item.currentStock} {item.unit})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Adjustment Type Tabs */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Adjustment Action Type</label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setAdjType("RESTOCK")}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
+                      adjType === "RESTOCK"
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                        : isDarkMode
+                        ? "bg-[#12141c] border-[#272b3b] text-slate-300"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <ArrowDownRight className="w-3.5 h-3.5" />
+                    <span>Restock / Intake (+)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAdjType("USAGE")}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
+                      adjType === "USAGE"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                        : isDarkMode
+                        ? "bg-[#12141c] border-[#272b3b] text-slate-300"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <span>Kitchen Usage (-)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAdjType("WASTE")}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
+                      adjType === "WASTE"
+                        ? "bg-red-600 text-white border-red-600 shadow-2xs"
+                        : isDarkMode
+                        ? "bg-[#12141c] border-[#272b3b] text-slate-300"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Spoilage / Waste (-)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setAdjType("AUDIT")}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
+                      adjType === "AUDIT"
+                        ? "bg-purple-600 text-white border-purple-600 shadow-2xs"
+                        : isDarkMode
+                        ? "bg-[#12141c] border-[#272b3b] text-slate-300"
+                        : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>Audit Count (=)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quantity */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">
+                  {adjType === "AUDIT" ? "New Verified Physical Stock" : "Quantity to Adjust"} (
+                  {adjustmentTargetItem ? adjustmentTargetItem.unit : "units"})
+                </label>
+                <input
+                  type="number"
+                  step="any"
+                  required
+                  min="0.01"
+                  value={adjQty}
+                  onChange={(e) => setAdjQty(e.target.value)}
+                  className={`w-full px-3.5 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              {/* Live Preview Box */}
+              {adjustmentTargetItem && (
+                <div className="p-3 rounded-xl bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#272b3b] text-xs">
+                  <div className="text-[11px] text-[#64748B] mb-1">Stock Preview Calculation:</div>
+                  <div className="flex items-center justify-between font-bold">
+                    <span>Current: {adjustmentTargetItem.currentStock} {adjustmentTargetItem.unit}</span>
+                    <span className="text-[#64748B]">→</span>
+                    <span className="text-[#C46B4E]">
+                      After:{" "}
+                      {adjType === "RESTOCK"
+                        ? Number((adjustmentTargetItem.currentStock + Number(adjQty || 0)).toFixed(2))
+                        : adjType === "USAGE" || adjType === "WASTE"
+                        ? Number(Math.max(0, adjustmentTargetItem.currentStock - Number(adjQty || 0)).toFixed(2))
+                        : Number(Number(adjQty || 0).toFixed(2))}{" "}
+                      {adjustmentTargetItem.unit}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Staff & Reason */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Logged By Staff</label>
+                  <input
+                    type="text"
+                    value={adjStaff}
+                    onChange={(e) => setAdjStaff(e.target.value)}
+                    placeholder="e.g. Manager Vikram"
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Reason / Reference</label>
+                  <input
+                    type="text"
+                    value={adjReason}
+                    onChange={(e) => setAdjReason(e.target.value)}
+                    placeholder="e.g. PO delivery #109 or daily prep"
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-hidden focus:ring-1 focus:ring-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#E5E1D9] dark:border-[#272b3b]">
+                <button
+                  type="button"
+                  onClick={() => setShowAdjustmentModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-[#E5E1D9] text-[#64748B] hover:text-[#20252B] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingInventory}
+                  className="px-5 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingInventory ? "Recording..." : "Apply Adjustment"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* STOCK MOVEMENT AUDIT LOG MODAL */}
+      {showMovementsLogModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-2xl rounded-2xl border p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col ${
+              isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D9] dark:border-[#272b3b]">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-[#C46B4E]" />
+                <div>
+                  <h3 className="font-bold text-base">Stock Movement Audit Log</h3>
+                  <p className="text-[11px] text-[#64748B]">Complete history of all restocks, usages, wastage, and physical inventory audits</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMovementsLogModal(false)}
+                className="text-[#64748B] hover:text-[#20252B] dark:hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+              {stockMovements.length === 0 ? (
+                <div className="py-12 text-center text-xs text-[#64748B]">
+                  No stock movements recorded yet.
+                </div>
+              ) : (
+                stockMovements.map((mov) => {
+                  const isRestock = mov.type === "RESTOCK"
+                  const isUsage = mov.type === "USAGE"
+                  const isWaste = mov.type === "WASTE"
+
+                  return (
+                    <div
+                      key={mov.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                        isDarkMode ? "bg-[#12141c] border-[#262a3b]" : "bg-[#F7F5F0] border-[#E5E1D9]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                            isRestock
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : isUsage
+                              ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+                              : isWaste
+                              ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                              : "bg-purple-500/15 text-purple-600 dark:text-purple-400"
+                          }`}
+                        >
+                          {isRestock ? (
+                            <ArrowDownRight className="w-4 h-4" />
+                          ) : isUsage ? (
+                            <ArrowUpRight className="w-4 h-4" />
+                          ) : isWaste ? (
+                            <Trash2 className="w-4 h-4" />
+                          ) : (
+                            <Scale className="w-4 h-4" />
+                          )}
+                        </div>
+
+                        <div>
+                          <div className="font-bold text-[#20252B] dark:text-white flex items-center gap-1.5">
+                            <span>{mov.itemName}</span>
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                                isRestock
+                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                  : isUsage
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
+                                  : isWaste
+                                  ? "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300"
+                                  : "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300"
+                              }`}
+                            >
+                              {mov.type}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#64748B] mt-0.5">
+                            {mov.reason || "Standard stock adjustment"}
+                            {mov.performedBy && <span className="opacity-80"> • by {mov.performedBy}</span>}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div
+                          className={`font-bold ${
+                            isRestock
+                              ? "text-emerald-600 dark:text-emerald-400"
+                              : isUsage || isWaste
+                              ? "text-red-600 dark:text-red-400"
+                              : "text-purple-600 dark:text-purple-400"
+                          }`}
+                        >
+                          {isRestock ? "+" : isUsage || isWaste ? "-" : ""}
+                          {mov.quantity} {mov.unit}
+                        </div>
+                        <div className="text-[10px] text-[#64748B]">
+                          {mov.previousStock} → {mov.newStock} {mov.unit}
+                        </div>
+                        <div className="text-[9px] text-[#64748B] mt-0.5">
+                          {new Date(mov.date).toLocaleDateString("en-IN", {
+                            day: "numeric",
+                            month: "short",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="pt-2 flex justify-end border-t border-[#E5E1D9] dark:border-[#272b3b]">
+              <button
+                type="button"
+                onClick={() => setShowMovementsLogModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#20252B] hover:bg-black text-white dark:bg-white dark:text-[#20252B] transition cursor-pointer"
+              >
+                Close Audit Log
+              </button>
+            </div>
           </div>
         </div>
       )}

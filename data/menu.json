@@ -152,7 +152,7 @@
     "tag": "Without Sugar",
     "description": "",
     "isVeg": true,
-    "isAvailable": false,
+    "isAvailable": true,
     "station": "bar"
   }
 ]
