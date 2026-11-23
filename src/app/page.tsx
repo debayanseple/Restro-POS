@@ -23,6 +23,7 @@ import {
   Minus,
   Trash2,
   RotateCcw,
+  QrCode,
 } from "lucide-react"
 
 interface PreviewMenuItem {
@@ -237,6 +238,13 @@ export default function LandingPage() {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-2.5">
+            <Link
+              href="/menu?table=Table%2001"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-purple-300 hover:text-white bg-purple-600/15 hover:bg-purple-600/25 border border-purple-500/30 transition flex items-center gap-1.5"
+            >
+              <QrCode className="w-3.5 h-3.5 text-purple-400" />
+              <span>QR Menu</span>
+            </Link>
             <Link
               href="/pos/login"
               className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-[#181a24] hover:bg-[#202330] border border-[#2b2f42] transition flex items-center gap-1.5"

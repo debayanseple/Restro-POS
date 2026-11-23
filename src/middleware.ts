@@ -18,17 +18,14 @@ export async function middleware(request: NextRequest) {
   // Refresh Supabase user session cookies
   let response = await updateSession(request)
 
-  // Allow login pages and auth callbacks
+  // Allow login pages, auth callbacks, customer QR menu, and landing page
   if (
     pathname.startsWith("/restaurant-admin/login") ||
     pathname.startsWith("/pos/login") ||
-    pathname.startsWith("/auth")
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/menu") ||
+    pathname === "/"
   ) {
-    return response
-  }
-
-  // Allow public landing page on root "/"
-  if (pathname === "/") {
     return response
   }
 
@@ -49,7 +46,6 @@ export async function middleware(request: NextRequest) {
     "dashboard",
     "pos",
     "orders",
-    "menu",
     "reservations",
     "kds",
     "customers",

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { TableQrModal, AllTablesQrModal } from "@/components/TableQrModal"
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -495,6 +496,7 @@ function RestaurantAdminContent() {
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null)
   const [tableValidationError, setTableValidationError] = useState(false)
   const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
+  const [showAllQrModal, setShowAllQrModal] = useState(false)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
   const [waitlist, setWaitlist] = useState<Array<{ name: string; guests: number; time: string }>>([])
   const [waitlistName, setWaitlistName] = useState("")
@@ -1762,17 +1764,39 @@ function RestaurantAdminContent() {
                       Live floor status — tap a table to update it
                     </p>
                   </div>
-                  <button
-                    onClick={() => alert("Edit Floor Plan")}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition ${
-                      isDarkMode
-                        ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-slate-300"
-                        : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs"
-                    }`}
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    Edit floor plan
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => setShowAllQrModal(true)}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shadow-md shadow-purple-900/30 transition cursor-pointer"
+                    >
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>Print Table QR Stands</span>
+                    </button>
+                    <a
+                      href="/menu"
+                      target="_blank"
+                      rel="noreferrer"
+                      className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                        isDarkMode
+                          ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-purple-300"
+                          : "border-slate-200 bg-white hover:bg-slate-50 text-purple-700 shadow-xs"
+                      }`}
+                    >
+                      <Utensils className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Preview QR Menu</span>
+                    </a>
+                    <button
+                      onClick={() => alert("Edit Floor Plan")}
+                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition ${
+                        isDarkMode
+                          ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-slate-300"
+                          : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs"
+                      }`}
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      Edit floor plan
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -1793,7 +1817,18 @@ function RestaurantAdminContent() {
                           const isSelected = selectedTableId === table.id
 
                           return (
-                            <div key={table.id} className="relative">
+                            <div key={table.id} className="relative group">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setShowQrModal(table)
+                                  setSelectedTableId(null)
+                                }}
+                                className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/20 hover:bg-purple-600 text-white/70 hover:text-white transition cursor-pointer z-10"
+                                title={`View ${table.name} QR Code`}
+                              >
+                                <QrCode className="w-3 h-3" />
+                              </button>
                               <button
                                 onClick={() =>
                                   setSelectedTableId(isSelected ? null : table.id)
@@ -2979,8 +3014,16 @@ function RestaurantAdminContent() {
                                 >
                                   {o.order_type?.replace(/[-_]/g, " ")}
                                 </span>
-                                <div className="text-[10px] text-purple-400 font-semibold mt-0.5">
-                                  {o.table_id || "Counter"}
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[10px] text-purple-400 font-bold">
+                                    {o.table_id || "Counter"}
+                                  </span>
+                                  {o.source === "qr_menu" && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                                      <QrCode className="w-2.5 h-2.5 text-purple-400" />
+                                      <span>QR Mobile</span>
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td
@@ -4410,71 +4453,14 @@ function RestaurantAdminContent() {
         </div>
       </div>
 
-      {/* QR Code Modal */}
+      {/* Table QR Code Modal */}
       {showQrModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div
-            className={`rounded-2xl p-6 max-w-sm w-full space-y-4 text-center border ${
-              isDarkMode
-                ? "bg-[#161822] border-[#272b3a]"
-                : "bg-white border-slate-200 shadow-2xl"
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <h3
-                className={`font-bold text-base ${
-                  isDarkMode ? "text-white" : "text-slate-900"
-                }`}
-              >
-                {showQrModal.name} QR Ordering Code
-              </h3>
-              <button
-                onClick={() => setShowQrModal(null)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <TableQrModal table={showQrModal} onClose={() => setShowQrModal(null)} />
+      )}
 
-            <div className="bg-white p-6 rounded-2xl inline-block shadow-md">
-              <svg
-                className="w-44 h-44 text-slate-900 mx-auto"
-                viewBox="0 0 100 100"
-                fill="currentColor"
-              >
-                <rect x="0" y="0" width="30" height="30" />
-                <rect x="5" y="5" width="20" height="20" fill="white" />
-                <rect x="10" y="10" width="10" height="10" />
-                <rect x="70" y="0" width="30" height="30" />
-                <rect x="75" y="5" width="20" height="20" fill="white" />
-                <rect x="80" y="10" width="10" height="10" />
-                <rect x="0" y="70" width="30" height="30" />
-                <rect x="5" y="75" width="20" height="20" fill="white" />
-                <rect x="10" y="80" width="10" height="10" />
-                <rect x="40" y="10" width="10" height="20" />
-                <rect x="40" y="40" width="20" height="20" />
-                <rect x="70" y="40" width="15" height="10" />
-                <rect x="70" y="70" width="10" height="20" />
-                <rect x="40" y="70" width="15" height="10" />
-              </svg>
-            </div>
-
-            <p
-              className={`text-xs ${
-                isDarkMode ? "text-slate-400" : "text-slate-500"
-              }`}
-            >
-              Scan with phone camera to view menu & place digital order for {showQrModal.name}.
-            </p>
-
-            <button
-              onClick={() => setShowQrModal(null)}
-              className="w-full py-2.5 rounded-xl bg-[#8b5cf6] hover:bg-[#7c3aed] text-white text-xs font-semibold transition"
-            >
-              Done
-            </button>
-          </div>
-        </div>
+      {/* All Tables QR Tent Cards Modal */}
+      {showAllQrModal && (
+        <AllTablesQrModal tables={tables} onClose={() => setShowAllQrModal(false)} />
       )}
 
       {/* Waitlist Modal */}

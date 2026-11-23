@@ -1,0 +1,133 @@
+export interface MenuItem {
+  id: string
+  name: string
+  price: number
+  category: "mains" | "sides" | "drinks" | "desserts"
+  icon: string
+  tag?: string
+  description?: string
+  isVeg?: boolean
+}
+
+export const MASTER_MENU_CATALOG: MenuItem[] = [
+  {
+    id: "m1",
+    name: "Classic Wagyu Burger",
+    price: 349,
+    category: "mains",
+    icon: "🍔",
+    tag: "Popular",
+    description: "Flame-grilled wagyu patty, toasted brioche bun, caramelized onions, smoked cheddar & house secret sauce.",
+    isVeg: false,
+  },
+  {
+    id: "m2",
+    name: "Truffle Mushroom Pasta",
+    price: 379,
+    category: "mains",
+    icon: "🍝",
+    tag: "Chef Special",
+    description: "Fettuccine tossed in rich white truffle cream, wild forest mushrooms & aged parmesan cheese.",
+    isVeg: true,
+  },
+  {
+    id: "m3",
+    name: "Margherita Artisan Pizza",
+    price: 299,
+    category: "mains",
+    icon: "🍕",
+    tag: "Popular",
+    description: "Hand-stretched sourdough base, San Marzano tomato pomodoro, fresh bocconcini mozzarella & basil.",
+    isVeg: true,
+  },
+  {
+    id: "m4",
+    name: "Crispy Truffle Fries",
+    price: 179,
+    category: "sides",
+    icon: "🍟",
+    tag: "Crispy",
+    description: "Golden hand-cut potato fries tossed with aromatic truffle oil, fresh rosemary & sea salt flakes.",
+    isVeg: true,
+  },
+  {
+    id: "m5",
+    name: "Caesar Salad Bowl",
+    price: 219,
+    category: "sides",
+    icon: "🥗",
+    tag: "Fresh",
+    description: "Crisp romaine hearts, garlic butter croutons, shaved parmesan & house-made Caesar emulsion.",
+    isVeg: true,
+  },
+  {
+    id: "m6",
+    name: "Grilled Chicken Wings",
+    price: 289,
+    category: "sides",
+    icon: "🍗",
+    tag: "Spicy",
+    description: "6 pieces of charcoal-grilled chicken wings glazed with peri-peri smoky BBQ marinade.",
+    isVeg: false,
+  },
+  {
+    id: "m7",
+    name: "Craft IPA Beer",
+    price: 249,
+    category: "drinks",
+    icon: "🍺",
+    tag: "Cold",
+    description: "Chilled draught India Pale Ale with vibrant citrus hop notes and a crisp, refreshing finish.",
+    isVeg: true,
+  },
+  {
+    id: "m8",
+    name: "Iced Caramel Macchiato",
+    price: 169,
+    category: "drinks",
+    icon: "☕",
+    tag: "Special",
+    description: "Slow-dripped espresso layered over whole milk and Madagascar vanilla, topped with buttery caramel drizzle.",
+    isVeg: true,
+  },
+  {
+    id: "m9",
+    name: "Sparkling Berry Fizz",
+    price: 149,
+    category: "drinks",
+    icon: "🍹",
+    tag: "Chilled",
+    description: "Muddled wild blueberries, fresh mint, zesty lime, crushed ice & sparkling soda water.",
+    isVeg: true,
+  },
+  {
+    id: "m10",
+    name: "Molten Lava Cake",
+    price: 229,
+    category: "desserts",
+    icon: "🍰",
+    tag: "Warm",
+    description: "Decadent Belgian dark chocolate sponge with a warm oozing molten center, served with vanilla crème.",
+    isVeg: true,
+  },
+  {
+    id: "m11",
+    name: "Artisan Tiramisu",
+    price: 219,
+    category: "desserts",
+    icon: "🧁",
+    tag: "Classic",
+    description: "Traditional Italian savoiardi soaked in rich espresso with velvety mascarpone and Dutch cocoa dust.",
+    isVeg: true,
+  },
+  {
+    id: "m12",
+    name: "Gelato Trio",
+    price: 189,
+    category: "desserts",
+    icon: "🍨",
+    tag: "Cold",
+    description: "Three artisanal scoops: Sicilian Pistachio, Bourbon Vanilla bean, and Dark Chocolate hazelnut.",
+    isVeg: true,
+  },
+]
