@@ -1,5 +1,1075 @@
 [
   {
+    "id": "ord_1795151728545_xqp7",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-8618",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:28.545Z",
+    "updated_at": "2026-11-20T05:15:28.545Z",
+    "order_items": [
+      {
+        "id": "it_1795151728545_0",
+        "order_id": "ord_1795151728545_xqp7",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151728545",
+        "order_id": "ord_1795151728545_xqp7",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:28.545Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151728135_k401",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-7521",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:28.135Z",
+    "updated_at": "2026-11-20T05:15:28.135Z",
+    "order_items": [
+      {
+        "id": "it_1795151728135_0",
+        "order_id": "ord_1795151728135_k401",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151728135",
+        "order_id": "ord_1795151728135_k401",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:28.135Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151727671_o6pf",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-5025",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:27.671Z",
+    "updated_at": "2026-11-20T05:15:27.671Z",
+    "order_items": [
+      {
+        "id": "it_1795151727671_0",
+        "order_id": "ord_1795151727671_o6pf",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151727671",
+        "order_id": "ord_1795151727671_o6pf",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:27.671Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151727279_wo13",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-1961",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:27.279Z",
+    "updated_at": "2026-11-20T05:15:27.279Z",
+    "order_items": [
+      {
+        "id": "it_1795151727279_0",
+        "order_id": "ord_1795151727279_wo13",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151727279",
+        "order_id": "ord_1795151727279_wo13",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:27.279Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151726843_lpwx",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-7824",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:26.843Z",
+    "updated_at": "2026-11-20T05:15:26.843Z",
+    "order_items": [
+      {
+        "id": "it_1795151726843_0",
+        "order_id": "ord_1795151726843_lpwx",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151726843",
+        "order_id": "ord_1795151726843_lpwx",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:26.843Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151726459_mvks",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-8675",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:26.459Z",
+    "updated_at": "2026-11-20T05:15:26.459Z",
+    "order_items": [
+      {
+        "id": "it_1795151726459_0",
+        "order_id": "ord_1795151726459_mvks",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151726459",
+        "order_id": "ord_1795151726459_mvks",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:26.459Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151726072_rek2",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-7603",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:26.072Z",
+    "updated_at": "2026-11-20T05:15:26.072Z",
+    "order_items": [
+      {
+        "id": "it_1795151726072_0",
+        "order_id": "ord_1795151726072_rek2",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151726072",
+        "order_id": "ord_1795151726072_rek2",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:26.072Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151725696_cyrw",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-4193",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:25.696Z",
+    "updated_at": "2026-11-20T05:15:25.696Z",
+    "order_items": [
+      {
+        "id": "it_1795151725696_0",
+        "order_id": "ord_1795151725696_cyrw",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151725696",
+        "order_id": "ord_1795151725696_cyrw",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:25.696Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151725208_ogkp",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-6851",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:25.208Z",
+    "updated_at": "2026-11-20T05:15:25.208Z",
+    "order_items": [
+      {
+        "id": "it_1795151725208_0",
+        "order_id": "ord_1795151725208_ogkp",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151725208",
+        "order_id": "ord_1795151725208_ogkp",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:25.208Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151724768_9elq",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-9324",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:24.768Z",
+    "updated_at": "2026-11-20T05:15:24.768Z",
+    "order_items": [
+      {
+        "id": "it_1795151724768_0",
+        "order_id": "ord_1795151724768_9elq",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151724768",
+        "order_id": "ord_1795151724768_9elq",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:24.768Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151724384_vf4z",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-6317",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:24.384Z",
+    "updated_at": "2026-11-20T05:15:24.384Z",
+    "order_items": [
+      {
+        "id": "it_1795151724384_0",
+        "order_id": "ord_1795151724384_vf4z",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151724384",
+        "order_id": "ord_1795151724384_vf4z",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:24.384Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151723952_4fhl",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-7311",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:23.952Z",
+    "updated_at": "2026-11-20T05:15:23.952Z",
+    "order_items": [
+      {
+        "id": "it_1795151723952_0",
+        "order_id": "ord_1795151723952_4fhl",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151723952",
+        "order_id": "ord_1795151723952_4fhl",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:23.952Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151723436_svck",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-7280",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:23.436Z",
+    "updated_at": "2026-11-20T05:15:23.436Z",
+    "order_items": [
+      {
+        "id": "it_1795151723436_0",
+        "order_id": "ord_1795151723436_svck",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151723436",
+        "order_id": "ord_1795151723436_svck",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:23.436Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151722959_e8r5",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-4228",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:22.959Z",
+    "updated_at": "2026-11-20T05:15:22.959Z",
+    "order_items": [
+      {
+        "id": "it_1795151722959_0",
+        "order_id": "ord_1795151722959_e8r5",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151722959",
+        "order_id": "ord_1795151722959_e8r5",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:22.959Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151722558_cez3",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-8575",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:22.558Z",
+    "updated_at": "2026-11-20T05:15:22.558Z",
+    "order_items": [
+      {
+        "id": "it_1795151722558_0",
+        "order_id": "ord_1795151722558_cez3",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151722558",
+        "order_id": "ord_1795151722558_cez3",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:22.558Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151722120_d0pj",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-4620",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:22.120Z",
+    "updated_at": "2026-11-20T05:15:22.120Z",
+    "order_items": [
+      {
+        "id": "it_1795151722120_0",
+        "order_id": "ord_1795151722120_d0pj",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151722120",
+        "order_id": "ord_1795151722120_d0pj",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:22.120Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151721716_jjqi",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-8164",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:21.716Z",
+    "updated_at": "2026-11-20T05:15:21.716Z",
+    "order_items": [
+      {
+        "id": "it_1795151721716_0",
+        "order_id": "ord_1795151721716_jjqi",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151721716",
+        "order_id": "ord_1795151721716_jjqi",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:21.716Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151721289_5iai",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-2687",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:21.289Z",
+    "updated_at": "2026-11-20T05:15:21.289Z",
+    "order_items": [
+      {
+        "id": "it_1795151721289_0",
+        "order_id": "ord_1795151721289_5iai",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151721289",
+        "order_id": "ord_1795151721289_5iai",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:21.289Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151720624_6432",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-6005",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:20.624Z",
+    "updated_at": "2026-11-20T05:15:20.624Z",
+    "order_items": [
+      {
+        "id": "it_1795151720624_0",
+        "order_id": "ord_1795151720624_6432",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151720624",
+        "order_id": "ord_1795151720624_6432",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:20.624Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151720148_0400",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 3,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-4839",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:20.148Z",
+    "updated_at": "2026-11-20T05:15:20.148Z",
+    "order_items": [
+      {
+        "id": "it_1795151720148_0",
+        "order_id": "ord_1795151720148_0400",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 3,
+        "special_instructions": null,
+        "name": "Tea",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Tea"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151720148",
+        "order_id": "ord_1795151720148_0400",
+        "amount": 3,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:20.148Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795151719025_o9qx",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": null,
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Counter",
+    "total_amount": 0,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "UNPAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-5146",
+    "notes": null,
+    "created_at": "2026-11-20T05:15:19.026Z",
+    "updated_at": "2026-11-20T05:15:19.026Z",
+    "order_items": [
+      {
+        "id": "it_1795151719026_0",
+        "order_id": "ord_1795151719025_o9qx",
+        "menu_item_id": "m_0",
+        "quantity": -5,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "<script>alert(1)</script> Beer",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "<script>alert(1)</script> Beer"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795151719026",
+        "order_id": "ord_1795151719025_o9qx",
+        "amount": 0,
+        "status": "UNPAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-20T05:15:19.026Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795076778165_lvf7",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "OPEN",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 16.74,
+    "tax_amount": 1.24,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-3164",
+    "notes": null,
+    "created_at": "2026-11-19T08:26:18.165Z",
+    "updated_at": "2026-11-19T08:26:18.165Z",
+    "order_items": [
+      {
+        "id": "it_1795076778165_0",
+        "order_id": "ord_1795076778165_lvf7",
+        "menu_item_id": "m7",
+        "quantity": 1,
+        "unit_price": 7.5,
+        "special_instructions": null,
+        "name": "Craft IPA Beer",
+        "station": "bar",
+        "status": "new",
+        "MenuItem": {
+          "name": "Craft IPA Beer"
+        }
+      },
+      {
+        "id": "it_1795076778165_1",
+        "order_id": "ord_1795076778165_lvf7",
+        "menu_item_id": "m4",
+        "quantity": 1,
+        "unit_price": 8,
+        "special_instructions": null,
+        "name": "Crispy Truffle Fries",
+        "station": "kitchen",
+        "status": "new",
+        "MenuItem": {
+          "name": "Crispy Truffle Fries"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795076778165",
+        "order_id": "ord_1795076778165_lvf7",
+        "amount": 16.74,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-19T08:26:18.165Z"
+      }
+    ]
+  },
+  {
     "id": "ord_1795003768083_lxvm",
     "restaurant_id": "1",
     "outlet_id": "1",

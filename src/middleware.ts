@@ -27,6 +27,11 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // Allow public landing page on root "/"
+  if (pathname === "/") {
+    return response
+  }
+
   const userRole = request.cookies.get("user_role")?.value
   const posRole = request.cookies.get("pos_role")?.value
 
@@ -36,29 +41,6 @@ export async function middleware(request: NextRequest) {
     loginUrl.pathname = pathname.startsWith("/pos") ? "/pos/login" : "/restaurant-admin/login"
     loginUrl.search = ""
     return NextResponse.redirect(loginUrl)
-  }
-
-  // Root / redirect based on authenticated user role
-  if (pathname === "/") {
-    const url = request.nextUrl.clone()
-    url.pathname = "/restaurant-admin"
-    if (userRole === "super-admin") {
-      url.searchParams.set("role", "super-admin")
-      url.searchParams.set("tab", "tenants")
-    } else if (userRole === "restaurant-admin") {
-      url.searchParams.set("role", "restaurant-admin")
-      url.searchParams.set("tab", "tables")
-    } else if (userRole === "pos-kitchen" || posRole === "kitchen") {
-      url.searchParams.set("role", "pos-kitchen")
-      url.searchParams.set("tab", "kds")
-    } else if (userRole === "pos-reception" || posRole === "reception") {
-      url.searchParams.set("role", "pos-reception")
-      url.searchParams.set("tab", "tables")
-    } else {
-      url.searchParams.set("role", "pos-orders")
-      url.searchParams.set("tab", "pos")
-    }
-    return NextResponse.redirect(url)
   }
 
   // Map individual module routes into unified portal tabs
