@@ -7,6 +7,8 @@ export interface MenuItem {
   tag?: string
   description?: string
   isVeg?: boolean
+  isAvailable?: boolean
+  station?: "kitchen" | "bar"
 }
 
 export const MASTER_MENU_CATALOG: MenuItem[] = [
@@ -19,6 +21,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Popular",
     description: "Flame-grilled wagyu patty, toasted brioche bun, caramelized onions, smoked cheddar & house secret sauce.",
     isVeg: false,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m2",
@@ -29,6 +33,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Chef Special",
     description: "Fettuccine tossed in rich white truffle cream, wild forest mushrooms & aged parmesan cheese.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m3",
@@ -39,6 +45,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Popular",
     description: "Hand-stretched sourdough base, San Marzano tomato pomodoro, fresh bocconcini mozzarella & basil.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m4",
@@ -49,6 +57,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Crispy",
     description: "Golden hand-cut potato fries tossed with aromatic truffle oil, fresh rosemary & sea salt flakes.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m5",
@@ -59,6 +69,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Fresh",
     description: "Crisp romaine hearts, garlic butter croutons, shaved parmesan & house-made Caesar emulsion.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m6",
@@ -69,6 +81,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Spicy",
     description: "6 pieces of charcoal-grilled chicken wings glazed with peri-peri smoky BBQ marinade.",
     isVeg: false,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m7",
@@ -79,6 +93,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Cold",
     description: "Chilled draught India Pale Ale with vibrant citrus hop notes and a crisp, refreshing finish.",
     isVeg: true,
+    isAvailable: true,
+    station: "bar",
   },
   {
     id: "m8",
@@ -89,6 +105,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Special",
     description: "Slow-dripped espresso layered over whole milk and Madagascar vanilla, topped with buttery caramel drizzle.",
     isVeg: true,
+    isAvailable: true,
+    station: "bar",
   },
   {
     id: "m9",
@@ -99,6 +117,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Chilled",
     description: "Muddled wild blueberries, fresh mint, zesty lime, crushed ice & sparkling soda water.",
     isVeg: true,
+    isAvailable: true,
+    station: "bar",
   },
   {
     id: "m10",
@@ -109,6 +129,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Warm",
     description: "Decadent Belgian dark chocolate sponge with a warm oozing molten center, served with vanilla crème.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m11",
@@ -119,6 +141,8 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Classic",
     description: "Traditional Italian savoiardi soaked in rich espresso with velvety mascarpone and Dutch cocoa dust.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
   {
     id: "m12",
@@ -129,5 +153,7 @@ export const MASTER_MENU_CATALOG: MenuItem[] = [
     tag: "Cold",
     description: "Three artisanal scoops: Sicilian Pistachio, Bourbon Vanilla bean, and Dark Chocolate hazelnut.",
     isVeg: true,
+    isAvailable: true,
+    station: "kitchen",
   },
 ]

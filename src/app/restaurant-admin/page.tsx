@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { TableQrModal, AllTablesQrModal } from "@/components/TableQrModal"
+import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -46,6 +47,12 @@ import {
   Clock,
   LogOut,
   MoreVertical,
+  Trash2,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  Sparkles,
+  Filter,
 } from "lucide-react"
 
 // Types for Order data from Supabase
@@ -583,22 +590,176 @@ function RestaurantAdminContent() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderSentToast, setOrderSentToast] = useState(false)
 
-  const menuCatalog = [
-    { id: "m1", name: "Classic Wagyu Burger", price: 349, category: "mains", icon: "🍔", tag: "Popular" },
-    { id: "m2", name: "Truffle Mushroom Pasta", price: 379, category: "mains", icon: "🍝", tag: "Chef Special" },
-    { id: "m3", name: "Margherita Artisan Pizza", price: 299, category: "mains", icon: "🍕", tag: "" },
-    { id: "m4", name: "Crispy Truffle Fries", price: 179, category: "sides", icon: "🍟", tag: "Crispy" },
-    { id: "m5", name: "Caesar Salad Bowl", price: 219, category: "sides", icon: "🥗", tag: "Fresh" },
-    { id: "m6", name: "Grilled Chicken Wings", price: 289, category: "sides", icon: "🍗", tag: "Spicy" },
-    { id: "m7", name: "Craft IPA Beer", price: 249, category: "drinks", icon: "🍺", tag: "Cold" },
-    { id: "m8", name: "Iced Caramel Macchiato", price: 169, category: "drinks", icon: "☕", tag: "" },
-    { id: "m9", name: "Sparkling Berry Fizz", price: 149, category: "drinks", icon: "🍹", tag: "" },
-    { id: "m10", name: "Molten Lava Cake", price: 229, category: "desserts", icon: "🍰", tag: "Warm" },
-    { id: "m11", name: "Artisan Tiramisu", price: 219, category: "desserts", icon: "🧁", tag: "" },
-    { id: "m12", name: "Gelato Trio", price: 189, category: "desserts", icon: "🍨", tag: "" },
-  ]
+  // --- DYNAMIC MENU CATALOG & AVAILABILITY STATE ---
+  const [menuCatalog, setMenuCatalog] = useState<MenuItem[]>(MASTER_MENU_CATALOG)
+  const [menuSearch, setMenuSearch] = useState("")
+  const [menuCategoryFilter, setMenuCategoryFilter] = useState("all")
+  const [menuStockFilter, setMenuStockFilter] = useState<"all" | "in-stock" | "out-of-stock">("all")
+  const [showAddItemModal, setShowAddItemModal] = useState(false)
+  const [menuToast, setMenuToast] = useState<string | null>(null)
 
-  const addToCart = (item: typeof menuCatalog[0]) => {
+  // Add Item Form State
+  const [newItemName, setNewItemName] = useState("")
+  const [newItemPrice, setNewItemPrice] = useState("")
+  const [newItemCategory, setNewItemCategory] = useState<"mains" | "sides" | "drinks" | "desserts">("mains")
+  const [newItemStation, setNewItemStation] = useState<"kitchen" | "bar">("kitchen")
+  const [newItemIsVeg, setNewItemIsVeg] = useState(true)
+  const [newItemIcon, setNewItemIcon] = useState("🍲")
+  const [newItemTag, setNewItemTag] = useState("")
+  const [newItemDescription, setNewItemDescription] = useState("")
+  const [newItemIsAvailable, setNewItemIsAvailable] = useState(true)
+  const [isSavingMenuItem, setIsSavingMenuItem] = useState(false)
+
+  // Load menu from /api/menu and listen for cross-tab sync
+  useEffect(() => {
+    const fetchMenu = async () => {
+      try {
+        const res = await fetch("/api/menu")
+        if (res.ok) {
+          const data = await res.json()
+          if (Array.isArray(data.items)) {
+            setMenuCatalog(data.items)
+          }
+        }
+      } catch {}
+    }
+
+    fetchMenu()
+
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("restro_sync_channel")
+      bc.onmessage = (event) => {
+        if (event.data?.type === "menu_updated" && Array.isArray(event.data.items)) {
+          setMenuCatalog(event.data.items)
+        }
+      }
+    }
+
+    return () => {
+      if (bc) bc.close()
+    }
+  }, [])
+
+  // Toggle Item Availability Status (Available vs Out of Stock)
+  const handleToggleItemAvailability = async (item: MenuItem) => {
+    const nextAvailable = item.isAvailable === false ? true : false
+    const updatedCatalog = menuCatalog.map((m) =>
+      m.id === item.id ? { ...m, isAvailable: nextAvailable } : m
+    )
+    setMenuCatalog(updatedCatalog)
+
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      const bc = new BroadcastChannel("restro_sync_channel")
+      bc.postMessage({ type: "menu_updated", items: updatedCatalog })
+      bc.close()
+    }
+
+    setMenuToast(`${item.name} is now ${nextAvailable ? "In Stock (Available)" : "Out of Stock"}`)
+    setTimeout(() => setMenuToast(null), 3500)
+
+    try {
+      await fetch("/api/menu", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: item.id, isAvailable: nextAvailable }),
+      })
+    } catch (err) {
+      console.error("Failed to update menu item status:", err)
+    }
+  }
+
+  // Remove Item from Menu
+  const handleRemoveMenuItem = async (item: MenuItem) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to remove "${item.name}" from the menu? It will be removed from all POS screens and Customer QR menus.`
+    )
+    if (!confirmDelete) return
+
+    const updatedCatalog = menuCatalog.filter((m) => m.id !== item.id)
+    setMenuCatalog(updatedCatalog)
+
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      const bc = new BroadcastChannel("restro_sync_channel")
+      bc.postMessage({ type: "menu_updated", items: updatedCatalog })
+      bc.close()
+    }
+
+    setMenuToast(`Removed "${item.name}" from menu`)
+    setTimeout(() => setMenuToast(null), 3500)
+
+    try {
+      await fetch(`/api/menu?id=${item.id}`, {
+        method: "DELETE",
+      })
+    } catch (err) {
+      console.error("Failed to delete menu item:", err)
+    }
+  }
+
+  // Add New Menu Item
+  const handleAddMenuItem = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!newItemName.trim() || !newItemPrice) {
+      alert("Please enter a dish name and valid price.")
+      return
+    }
+
+    setIsSavingMenuItem(true)
+    try {
+      const itemPayload: MenuItem = {
+        id: `m_${Date.now()}`,
+        name: newItemName.trim(),
+        price: parseFloat(newItemPrice) || 0,
+        category: newItemCategory,
+        station: newItemCategory === "drinks" ? "bar" : newItemStation,
+        isVeg: newItemIsVeg,
+        icon: newItemIcon || "🍽️",
+        tag: newItemTag.trim() || undefined,
+        description: newItemDescription.trim() || undefined,
+        isAvailable: newItemIsAvailable,
+      }
+
+      const updatedCatalog = [itemPayload, ...menuCatalog]
+      setMenuCatalog(updatedCatalog)
+
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({ type: "menu_updated", items: updatedCatalog })
+        bc.close()
+      }
+
+      await fetch("/api/menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(itemPayload),
+      })
+
+      // Reset form
+      setNewItemName("")
+      setNewItemPrice("")
+      setNewItemTag("")
+      setNewItemDescription("")
+      setNewItemIcon("🍲")
+      setNewItemIsAvailable(true)
+      setShowAddItemModal(false)
+
+      setMenuToast(`Added "${itemPayload.name}" to menu!`)
+      setTimeout(() => setMenuToast(null), 3500)
+    } catch (err) {
+      console.error("Failed to add menu item:", err)
+      alert("Could not save menu item. Please try again.")
+    } finally {
+      setIsSavingMenuItem(false)
+    }
+  }
+
+  const addToCart = (item: MenuItem) => {
+    if (item.isAvailable === false) {
+      alert(`${item.name} is currently Out of Stock and cannot be added.`)
+      return
+    }
+
     setCart((prev) => {
       const exists = prev.find((i) => i.id === item.id)
       if (exists) {
@@ -2270,47 +2431,66 @@ function RestaurantAdminContent() {
                             (posCategory === "all" || item.category === posCategory) &&
                             item.name.toLowerCase().includes(posSearch.toLowerCase())
                         )
-                        .map((item) => (
-                          <button
-                            key={item.id}
-                            onClick={() => addToCart(item)}
-                            className={`p-3.5 rounded-xl transition-all text-left flex flex-col justify-between group h-32 border ${
-                              isDarkMode
-                                ? "bg-[#1a1c26] border-[#262938] hover:border-[#C46B4E] hover:shadow-lg"
-                                : "bg-slate-50 border-slate-200 hover:border-[#C46B4E] hover:shadow-md"
-                            }`}
-                          >
-                            <div>
-                              <div className="flex justify-between items-start">
-                                <span className="text-2xl">{item.icon}</span>
-                                {item.tag && (
-                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E9E3D8] text-[#20252B] font-semibold border border-[#E5E1D9]">
-                                    {item.tag}
+                        .map((item) => {
+                          const isOutOfStock = item.isAvailable === false
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => addToCart(item)}
+                              className={`p-3.5 rounded-xl transition-all text-left flex flex-col justify-between group h-32 border relative ${
+                                isOutOfStock
+                                  ? isDarkMode
+                                    ? "bg-[#181a24]/60 border-red-900/40 opacity-70"
+                                    : "bg-red-50/50 border-red-200 opacity-80"
+                                  : isDarkMode
+                                  ? "bg-[#1a1c26] border-[#262938] hover:border-[#C46B4E] hover:shadow-lg"
+                                  : "bg-white border-[#E5E1D9] hover:border-[#C46B4E] hover:shadow-md"
+                              }`}
+                            >
+                              <div>
+                                <div className="flex justify-between items-start">
+                                  <span className="text-2xl">{item.icon}</span>
+                                  {isOutOfStock ? (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 font-bold border border-red-200 dark:border-red-800">
+                                      Out of Stock
+                                    </span>
+                                  ) : item.tag ? (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E9E3D8] text-[#20252B] font-semibold border border-[#E5E1D9]">
+                                      {item.tag}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <h4
+                                  className={`font-semibold text-xs mt-2 truncate ${
+                                    isOutOfStock
+                                      ? "text-slate-400 line-through"
+                                      : isDarkMode
+                                      ? "text-white"
+                                      : "text-[#20252B]"
+                                  }`}
+                                >
+                                  {item.name}
+                                </h4>
+                              </div>
+                              <div
+                                className={`flex justify-between items-center pt-2 border-t ${
+                                  isDarkMode ? "border-[#232635]" : "border-[#E5E1D9]"
+                                }`}
+                              >
+                                <span className={`text-sm font-bold ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
+                                  ₹{item.price.toFixed(2)}
+                                </span>
+                                {isOutOfStock ? (
+                                  <span className="text-[10px] text-red-500 font-bold uppercase">Out</span>
+                                ) : (
+                                  <span className="w-5 h-5 rounded-md bg-[#C46B4E] text-white flex items-center justify-center text-xs">
+                                    +
                                   </span>
                                 )}
                               </div>
-                              <h4
-                                className={`font-semibold text-xs mt-2 truncate ${
-                                  isDarkMode ? "text-white" : "text-slate-900"
-                                }`}
-                              >
-                                {item.name}
-                              </h4>
-                            </div>
-                            <div
-                              className={`flex justify-between items-center pt-2 border-t ${
-                                isDarkMode ? "border-[#232635]" : "border-slate-200"
-                              }`}
-                            >
-                              <span className="text-sm font-bold text-[#C46B4E]">
-                                ₹{item.price.toFixed(2)}
-                              </span>
-                              <span className="w-5 h-5 rounded-md bg-[#C46B4E] text-white flex items-center justify-center text-xs">
-                                +
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                            </button>
+                          )
+                        })}
                     </div>
                   </div>
 
@@ -3206,6 +3386,360 @@ function RestaurantAdminContent() {
                         })}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            ) : activeTab === "menu" ? (
+              /* --- MENU CATALOG & LIVE AVAILABILITY MANAGEMENT --- */
+              <div className="space-y-6 max-w-[1440px] mx-auto">
+                {/* Toast Notification Banner */}
+                {menuToast && (
+                  <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>{menuToast}</span>
+                    </div>
+                    <button
+                      onClick={() => setMenuToast(null)}
+                      className="text-xs text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Top Action Bar */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <h1
+                      className={`text-2xl sm:text-3xl font-bold tracking-tight ${
+                        isDarkMode ? "text-white" : "text-[#20252B]"
+                      }`}
+                    >
+                      Menu & Catalog Management
+                    </h1>
+                    <p
+                      className={`text-xs sm:text-sm mt-1 ${
+                        isDarkMode ? "text-slate-400" : "text-[#64748B]"
+                      }`}
+                    >
+                      Add or remove items, manage categories, and toggle live availability (in stock / out of stock) synced with customer QR menus.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowAddItemModal(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold shadow-md transition cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add New Menu Item</span>
+                  </button>
+                </div>
+
+                {/* Metrics Summary Strip */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#181a24] border-[#262938]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                        Total Catalog Items
+                      </span>
+                      <Utensils className="w-4 h-4 text-[#C46B4E]" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-[#20252B] dark:text-white">
+                      {menuCatalog.length}
+                    </div>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">Dishes across all categories</p>
+                  </div>
+
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#181a24] border-[#262938]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                        Available (In Stock)
+                      </span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">
+                      {menuCatalog.filter((i) => i.isAvailable !== false).length}
+                    </div>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">Orderable by customers & staff</p>
+                  </div>
+
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isDarkMode
+                        ? "bg-[#181a24] border-[#262938]"
+                        : "bg-white border-[#E5E1D9] shadow-2xs"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
+                        Out of Stock
+                      </span>
+                      <AlertTriangle className="w-4 h-4 text-red-500" />
+                    </div>
+                    <div className="text-2xl font-bold mt-2 text-red-600 dark:text-red-400">
+                      {menuCatalog.filter((i) => i.isAvailable === false).length}
+                    </div>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">Blocked on customer QR menu</p>
+                  </div>
+                </div>
+
+                {/* Filters Strip */}
+                <div
+                  className={`p-4 rounded-2xl border space-y-3 ${
+                    isDarkMode
+                      ? "bg-[#161822] border-[#242738]"
+                      : "bg-white border-[#E5E1D9] shadow-2xs"
+                  }`}
+                >
+                  <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                    {/* Search Input */}
+                    <div className="relative flex-1 max-w-md">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={menuSearch}
+                        onChange={(e) => setMenuSearch(e.target.value)}
+                        placeholder="Search items by name or description..."
+                        className={`w-full pl-10 pr-4 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] transition ${
+                          isDarkMode
+                            ? "bg-[#12141c] border-[#272b3b] text-white placeholder-slate-500"
+                            : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B] placeholder-[#64748B]"
+                        }`}
+                      />
+                      {menuSearch && (
+                        <button
+                          onClick={() => setMenuSearch("")}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Stock Status Filter Buttons */}
+                    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#272b3b]">
+                      <button
+                        onClick={() => setMenuStockFilter("all")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                          menuStockFilter === "all"
+                            ? "bg-[#C46B4E] text-white shadow-2xs"
+                            : "text-[#64748B] hover:text-[#20252B] dark:hover:text-white"
+                        }`}
+                      >
+                        All Status ({menuCatalog.length})
+                      </button>
+                      <button
+                        onClick={() => setMenuStockFilter("in-stock")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                          menuStockFilter === "in-stock"
+                            ? "bg-emerald-600 text-white shadow-2xs"
+                            : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-900"
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        In Stock ({menuCatalog.filter((i) => i.isAvailable !== false).length})
+                      </button>
+                      <button
+                        onClick={() => setMenuStockFilter("out-of-stock")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
+                          menuStockFilter === "out-of-stock"
+                            ? "bg-red-600 text-white shadow-2xs"
+                            : "text-red-700 dark:text-red-400 hover:text-red-900"
+                        }`}
+                      >
+                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                        Out of Stock ({menuCatalog.filter((i) => i.isAvailable === false).length})
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1">
+                    {[
+                      { id: "all", label: "All Categories", count: menuCatalog.length },
+                      { id: "mains", label: "Mains & Pizza", count: menuCatalog.filter((i) => i.category === "mains").length },
+                      { id: "sides", label: "Sides & Fries", count: menuCatalog.filter((i) => i.category === "sides").length },
+                      { id: "drinks", label: "Drinks & Bar", count: menuCatalog.filter((i) => i.category === "drinks").length },
+                      { id: "desserts", label: "Desserts", count: menuCatalog.filter((i) => i.category === "desserts").length },
+                    ].map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setMenuCategoryFilter(cat.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                          menuCategoryFilter === cat.id
+                            ? "bg-[#C46B4E] text-white shadow-2xs"
+                            : isDarkMode
+                            ? "bg-[#12141c] text-slate-400 hover:text-white border border-[#272b3b]"
+                            : "bg-[#F7F5F0] text-[#64748B] hover:text-[#20252B] border border-[#E5E1D9]"
+                        }`}
+                      >
+                        {cat.label} ({cat.count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Items Grid & Management Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {menuCatalog
+                    .filter((item) => {
+                      const matchesCategory = menuCategoryFilter === "all" || item.category === menuCategoryFilter
+                      const matchesSearch =
+                        item.name.toLowerCase().includes(menuSearch.toLowerCase()) ||
+                        (item.description && item.description.toLowerCase().includes(menuSearch.toLowerCase()))
+                      const matchesStock =
+                        menuStockFilter === "all" ||
+                        (menuStockFilter === "in-stock" && item.isAvailable !== false) ||
+                        (menuStockFilter === "out-of-stock" && item.isAvailable === false)
+                      return matchesCategory && matchesSearch && matchesStock
+                    })
+                    .map((item) => {
+                      const isOutOfStock = item.isAvailable === false
+                      return (
+                        <div
+                          key={item.id}
+                          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                            isOutOfStock
+                              ? isDarkMode
+                                ? "bg-[#181a24]/60 border-red-900/30 opacity-80"
+                                : "bg-red-50/40 border-red-200"
+                              : isDarkMode
+                              ? "bg-[#161822] border-[#262a3b] hover:border-[#C46B4E]"
+                              : "bg-white border-[#E5E1D9] hover:border-[#C46B4E] shadow-2xs"
+                          }`}
+                        >
+                          <div className="space-y-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-3xl p-2 rounded-xl bg-[#F7F5F0] dark:bg-[#1f2231] border border-[#E5E1D9] dark:border-[#2b2f42] shrink-0">
+                                  {item.icon}
+                                </span>
+                                <div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span
+                                      className={`w-3 h-3 rounded-xs border flex items-center justify-center shrink-0 ${
+                                        item.isVeg
+                                          ? "border-emerald-600 bg-emerald-50"
+                                          : "border-amber-700 bg-amber-50"
+                                      }`}
+                                      title={item.isVeg ? "Vegetarian" : "Non-Vegetarian"}
+                                    >
+                                      <span
+                                        className={`w-1.5 h-1.5 rounded-full ${
+                                          item.isVeg ? "bg-emerald-600" : "bg-amber-700"
+                                        }`}
+                                      />
+                                    </span>
+                                    <h3
+                                      className={`font-bold text-sm leading-tight ${
+                                        isOutOfStock
+                                          ? "line-through text-slate-400"
+                                          : isDarkMode
+                                          ? "text-white"
+                                          : "text-[#20252B]"
+                                      }`}
+                                    >
+                                      {item.name}
+                                    </h3>
+                                  </div>
+                                  <div className="text-sm font-extrabold text-[#C46B4E] mt-1">
+                                    ₹{item.price.toFixed(2)}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Stock Status Badge */}
+                              <div>
+                                {isOutOfStock ? (
+                                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400 border border-red-200 dark:border-red-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                    Out of Stock
+                                  </span>
+                                ) : (
+                                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                    In Stock
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Tags & Routing Station */}
+                            <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                              <span className="px-2 py-0.5 rounded-md bg-[#E9E3D8] text-[#20252B] font-medium border border-[#E5E1D9] capitalize">
+                                {item.category}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-md font-medium border ${
+                                  item.station === "bar" || item.category === "drinks"
+                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                }`}
+                              >
+                                {item.station === "bar" || item.category === "drinks" ? "Bar Station" : "Kitchen Station"}
+                              </span>
+                              {item.tag && (
+                                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-medium">
+                                  {item.tag}
+                                </span>
+                              )}
+                            </div>
+
+                            {item.description && (
+                              <p className="text-xs text-[#64748B] line-clamp-2 leading-relaxed">
+                                {item.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Action Buttons: Toggle Stock & Delete */}
+                          <div className="pt-3 mt-3 border-t border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-between gap-2">
+                            {/* Toggle Availability Button */}
+                            <button
+                              onClick={() => handleToggleItemAvailability(item)}
+                              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
+                                isOutOfStock
+                                  ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-2xs"
+                                  : "bg-white dark:bg-[#12141c] hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40"
+                              }`}
+                            >
+                              {isOutOfStock ? (
+                                <>
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Mark In Stock</span>
+                                </>
+                              ) : (
+                                <>
+                                  <AlertTriangle className="w-3.5 h-3.5" />
+                                  <span>Mark Out of Stock</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Remove Item Button */}
+                            <button
+                              onClick={() => handleRemoveMenuItem(item)}
+                              title="Delete Item"
+                              className="p-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-white dark:bg-[#12141c] text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                 </div>
               </div>
             ) : activeTab === "tenants" ? (
@@ -4562,6 +5096,232 @@ function RestaurantAdminContent() {
               Add Guest
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ADD MENU ITEM MODAL */}
+      {showAddItemModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-lg rounded-2xl border p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto ${
+              isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="flex items-center justify-between border-b pb-3 border-[#E5E1D9] dark:border-[#272b3b]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold">
+                  <Utensils className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base">Add New Menu Item</h3>
+                  <p className="text-xs text-[#64748B]">
+                    Item will immediately appear in POS and Customer QR Menus
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddItemModal(false)}
+                className="w-8 h-8 rounded-full bg-[#F7F5F0] dark:bg-[#1f2231] text-[#64748B] hover:text-[#20252B] flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddMenuItem} className="space-y-4">
+              {/* Item Name */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Dish / Item Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  placeholder="e.g. Paneer Butter Masala"
+                  className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Price */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Price in ₹ (INR) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    value={newItemPrice}
+                    onChange={(e) => setNewItemPrice(e.target.value)}
+                    placeholder="e.g. 299"
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+
+                {/* Category */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Category</label>
+                  <select
+                    value={newItemCategory}
+                    onChange={(e: any) => setNewItemCategory(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="mains">Mains & Pizza</option>
+                    <option value="sides">Sides & Fries</option>
+                    <option value="drinks">Drinks & Bar</option>
+                    <option value="desserts">Desserts</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Station */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Preparation Station</label>
+                  <select
+                    value={newItemCategory === "drinks" ? "bar" : newItemStation}
+                    disabled={newItemCategory === "drinks"}
+                    onChange={(e: any) => setNewItemStation(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] disabled:opacity-60 ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <option value="kitchen">Kitchen KDS Rail</option>
+                    <option value="bar">Bar Dispense Rail</option>
+                  </select>
+                </div>
+
+                {/* Dietary: Veg vs Non-Veg */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Food Type</label>
+                  <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setNewItemIsVeg(true)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 border cursor-pointer ${
+                        newItemIsVeg
+                          ? "bg-emerald-600 text-white border-emerald-600"
+                          : "bg-[#F7F5F0] dark:bg-[#12141c] text-[#64748B] border-[#E5E1D9] dark:border-[#272b3b]"
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      Veg
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewItemIsVeg(false)}
+                      className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 border cursor-pointer ${
+                        !newItemIsVeg
+                          ? "bg-amber-600 text-white border-amber-600"
+                          : "bg-[#F7F5F0] dark:bg-[#12141c] text-[#64748B] border-[#E5E1D9] dark:border-[#272b3b]"
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                      Non-Veg
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Emoji / Icon Selector */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Dish Icon (Select or type emoji)</label>
+                <div className="flex items-center gap-2">
+                  <div className="text-2xl w-10 h-10 rounded-xl bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-center shrink-0">
+                    {newItemIcon}
+                  </div>
+                  <div className="flex items-center gap-1 overflow-x-auto py-1">
+                    {["🍔", "🍕", "🍝", "🍟", "🥗", "🍗", "🍲", "🍛", "🥘", "🍺", "🍹", "☕", "🍰", "🧁", "🍨"].map(
+                      (emo) => (
+                        <button
+                          key={emo}
+                          type="button"
+                          onClick={() => setNewItemIcon(emo)}
+                          className={`w-8 h-8 rounded-lg text-lg flex items-center justify-center cursor-pointer transition border ${
+                            newItemIcon === emo
+                              ? "bg-[#C46B4E] text-white border-[#C46B4E]"
+                              : "bg-[#F7F5F0] dark:bg-[#12141c] border-[#E5E1D9] dark:border-[#272b3b] hover:scale-110"
+                          }`}
+                        >
+                          {emo}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Badge Tag */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Special Tag (Optional)</label>
+                <input
+                  type="text"
+                  value={newItemTag}
+                  onChange={(e) => setNewItemTag(e.target.value)}
+                  placeholder="e.g. Chef Special, Popular, Spicy..."
+                  className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="text-xs font-semibold">Description</label>
+                <textarea
+                  rows={2}
+                  value={newItemDescription}
+                  onChange={(e) => setNewItemDescription(e.target.value)}
+                  placeholder="Ingredients, preparation style or flavor notes..."
+                  className={`w-full p-2.5 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                />
+              </div>
+
+              {/* Stock Status Switch */}
+              <div className="p-3 rounded-xl bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-between text-xs">
+                <div>
+                  <div className="font-semibold">Initial Availability Status</div>
+                  <div className="text-[11px] text-[#64748B]">Can customers order this immediately?</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setNewItemIsAvailable(!newItemIsAvailable)}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                    newItemIsAvailable
+                      ? "bg-emerald-600 text-white"
+                      : "bg-red-600 text-white"
+                  }`}
+                >
+                  {newItemIsAvailable ? "In Stock" : "Out of Stock"}
+                </button>
+              </div>
+
+              {/* Submit Actions */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddItemModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-[#E5E1D9] text-[#64748B] hover:text-[#20252B] cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingMenuItem}
+                  className="px-5 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingMenuItem ? "Saving Item..." : "Add Item to Menu"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

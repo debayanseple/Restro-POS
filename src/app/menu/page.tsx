@@ -13,6 +13,7 @@ import {
   Receipt,
   ArrowRight,
   X,
+  AlertCircle,
 } from "lucide-react"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
 
@@ -50,6 +51,44 @@ function CustomerMenuContent() {
   const [activeOrder, setActiveOrder] = useState<any | null>(null)
   const [waiterCalled, setWaiterCalled] = useState(false)
   const [billRequested, setBillRequested] = useState(false)
+
+  // Live dynamic menu items loaded from /api/menu and synchronized in realtime
+  const [menuItems, setMenuItems] = useState<MenuItem[]>(MASTER_MENU_CATALOG)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchMenu = async () => {
+      try {
+        const res = await fetch("/api/menu")
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted && Array.isArray(data.items)) {
+            setMenuItems(data.items)
+          }
+        }
+      } catch {}
+    }
+
+    fetchMenu()
+    const pollInterval = setInterval(fetchMenu, 4000)
+
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("restro_sync_channel")
+      bc.onmessage = (event) => {
+        if (event.data?.type === "menu_updated" && Array.isArray(event.data.items)) {
+          setMenuItems(event.data.items)
+        }
+      }
+    }
+
+    return () => {
+      isMounted = false
+      clearInterval(pollInterval)
+      if (bc) bc.close()
+    }
+  }, [])
 
   // Load existing active order from localStorage on table change
   useEffect(() => {
@@ -91,6 +130,11 @@ function CustomerMenuContent() {
 
   // Cart operations
   const addToCart = (item: MenuItem) => {
+    if (item.isAvailable === false) {
+      alert(`Sorry, ${item.name} is currently Out of Stock and cannot be ordered.`)
+      return
+    }
+
     setCart((prev) => {
       const exists = prev.find((i) => i.id === item.id)
       if (exists) {
@@ -117,7 +161,7 @@ function CustomerMenuContent() {
 
   // Filter menu catalog
   const filteredItems = useMemo(() => {
-    return MASTER_MENU_CATALOG.filter((item) => {
+    return menuItems.filter((item) => {
       const matchesCategory = selectedCategory === "all" || item.category === selectedCategory
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -129,11 +173,24 @@ function CustomerMenuContent() {
 
       return matchesCategory && matchesSearch && matchesDiet
     })
-  }, [selectedCategory, searchQuery, dietaryFilter])
+  }, [menuItems, selectedCategory, searchQuery, dietaryFilter])
+
+  // Check if any cart item is currently out of stock
+  const cartOutOfStockItems = useMemo(() => {
+    return cart.filter((c) => {
+      const latest = menuItems.find((m) => m.id === c.id)
+      return latest && latest.isAvailable === false
+    })
+  }, [cart, menuItems])
 
   // Handle Order Placement
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !selectedTable || isSubmitting) return
+
+    if (cartOutOfStockItems.length > 0) {
+      alert(`The following item(s) are currently Out of Stock and cannot be ordered:\n${cartOutOfStockItems.map((i) => `• ${i.name}`).join("\n")}\n\nPlease remove them from your order to proceed.`)
+      return
+    }
 
     setIsSubmitting(true)
     try {
@@ -412,20 +469,24 @@ function CustomerMenuContent() {
           ) : (
             filteredItems.map((item) => {
               const inCart = cart.find((i) => i.id === item.id)
+              const isOutOfStock = item.isAvailable === false
+
               return (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-xl bg-white border border-[#E5E1D9] flex gap-3.5 transition hover:border-[#C46B4E] shadow-2xs"
+                  className={`p-3.5 rounded-xl bg-white border border-[#E5E1D9] flex gap-3.5 transition shadow-2xs ${
+                    isOutOfStock ? "opacity-75 bg-[#FAF9F6]" : "hover:border-[#C46B4E]"
+                  }`}
                 >
                   {/* Dish Icon / Visual */}
-                  <div className="w-16 h-16 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-center text-3xl shrink-0">
+                  <div className={`w-16 h-16 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-center text-3xl shrink-0 ${isOutOfStock ? "grayscale-50" : ""}`}>
                     {item.icon}
                   </div>
 
                   {/* Dish Details */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         {/* Veg / Non-Veg Indicator */}
                         <span
                           className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center shrink-0 ${
@@ -442,15 +503,20 @@ function CustomerMenuContent() {
                           />
                         </span>
 
-                        <h3 className="font-bold text-sm text-[#20252B] truncate">
+                        <h3 className={`font-bold text-sm truncate ${isOutOfStock ? "text-[#64748B] line-through decoration-[#64748B]/50" : "text-[#20252B]"}`}>
                           {item.name}
                         </h3>
 
-                        {item.tag && (
-                          <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-md bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] shrink-0">
+                        {/* Out of Stock vs Custom Tag Badge */}
+                        {isOutOfStock ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-100 text-red-700 border border-red-200 shrink-0">
+                            Out of Stock
+                          </span>
+                        ) : item.tag ? (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] shrink-0">
                             {item.tag}
                           </span>
-                        )}
+                        ) : null}
                       </div>
 
                       {item.description && (
@@ -461,12 +527,16 @@ function CustomerMenuContent() {
                     </div>
 
                     <div className="flex items-center justify-between pt-2 mt-1 border-t border-[#E5E1D9]">
-                      <span className="font-bold text-sm text-[#C46B4E]">
+                      <span className={`font-bold text-sm ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
                         ₹{item.price.toFixed(2)}
                       </span>
 
-                      {/* Add Button or Quantity Stepper */}
-                      {inCart ? (
+                      {/* Add Button or Out of Stock indicator */}
+                      {isOutOfStock ? (
+                        <div className="px-3 py-1.5 rounded-lg bg-[#E5E1D9] text-[#64748B] text-xs font-semibold select-none cursor-not-allowed">
+                          Unavailable
+                        </div>
+                      ) : inCart ? (
                         <div className="flex items-center gap-2 bg-[#F7F5F0] border border-[#E5E1D9] rounded-lg px-1.5 py-1">
                           <button
                             onClick={() => updateQuantity(item.id, -1)}
@@ -554,40 +624,71 @@ function CustomerMenuContent() {
               </button>
             </div>
 
+            {/* Warning if any item in cart is out of stock */}
+            {cartOutOfStockItems.length > 0 && (
+              <div className="mx-4 mt-3 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-600" />
+                <div>
+                  <strong className="font-semibold">Some items are now Out of Stock:</strong>
+                  <ul className="list-disc list-inside mt-0.5 space-y-0.5">
+                    {cartOutOfStockItems.map((item) => (
+                      <li key={item.id}>{item.name} is no longer available</li>
+                    ))}
+                  </ul>
+                  <p className="text-[11px] mt-1 text-red-700">Please remove them from your order to proceed.</p>
+                </div>
+              </div>
+            )}
+
             {/* Drawer Body Items */}
             <div className="p-4 overflow-y-auto space-y-4 flex-1">
               <div className="space-y-2.5">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-3 rounded-lg bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="font-semibold text-[#20252B]">{item.name}</div>
-                      <div className="text-[#C46B4E] font-semibold text-[11px]">
-                        ₹{(item.price * item.quantity).toFixed(2)}
+                {cart.map((item) => {
+                  const isItemOutOfStock = menuItems.find((m) => m.id === item.id)?.isAvailable === false
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-3 rounded-lg border flex items-center justify-between text-xs ${
+                        isItemOutOfStock
+                          ? "bg-red-50/70 border-red-200"
+                          : "bg-[#F7F5F0] border-[#E5E1D9]"
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-[#20252B]">{item.name}</span>
+                          {isItemOutOfStock && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-red-100 text-red-700">
+                              Out of Stock
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[#C46B4E] font-semibold text-[11px]">
+                          ₹{(item.price * item.quantity).toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-white border border-[#E5E1D9] rounded-lg px-1.5 py-1">
+                        <button
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="w-5 h-5 rounded-md bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#20252B] flex items-center justify-center cursor-pointer"
+                        >
+                          <Minus className="w-2.5 h-2.5" />
+                        </button>
+                        <span className="text-xs font-bold text-[#20252B] w-4 text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          disabled={isItemOutOfStock}
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="w-5 h-5 rounded-md bg-[#C46B4E] hover:bg-[#B25C40] disabled:opacity-40 text-white flex items-center justify-center cursor-pointer"
+                        >
+                          <Plus className="w-2.5 h-2.5" />
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-2 bg-white border border-[#E5E1D9] rounded-lg px-1.5 py-1">
-                      <button
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="w-5 h-5 rounded-md bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#20252B] flex items-center justify-center cursor-pointer"
-                      >
-                        <Minus className="w-2.5 h-2.5" />
-                      </button>
-                      <span className="text-xs font-bold text-[#20252B] w-4 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="w-5 h-5 rounded-md bg-[#C46B4E] hover:bg-[#B25C40] text-white flex items-center justify-center cursor-pointer"
-                      >
-                        <Plus className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               {/* Special Instructions & Notes */}
@@ -653,11 +754,13 @@ function CustomerMenuContent() {
             <div className="p-4 border-t border-[#E5E1D9] bg-white">
               <button
                 onClick={handlePlaceOrder}
-                disabled={isSubmitting || cart.length === 0}
+                disabled={isSubmitting || cart.length === 0 || cartOutOfStockItems.length > 0}
                 className="w-full py-3 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white font-bold text-sm transition disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2 shadow-2xs"
               >
                 {isSubmitting ? (
                   <span>Sending Order to Kitchen...</span>
+                ) : cartOutOfStockItems.length > 0 ? (
+                  <span>Remove Out-of-Stock Items to Order</span>
                 ) : (
                   <>
                     <ChefHat className="w-4 h-4" />
