@@ -2904,7 +2904,7 @@ function RestaurantAdminContent() {
                 </div>
 
                 <div
-                  className={`rounded-2xl border ${
+                  className={`rounded-2xl border min-h-[320px] ${
                     isDarkMode
                       ? "bg-[#14161f] border-[#202330]"
                       : "bg-white border-slate-200 shadow-xs"
@@ -2941,7 +2941,7 @@ function RestaurantAdminContent() {
                           return normType === normFilter
                         })
                         .map((o, idx, filteredArr) => {
-                          const isNearBottom = idx >= filteredArr.length - 2 || filteredArr.length <= 2
+                          const isNearBottom = idx >= filteredArr.length - 2 || filteredArr.length <= 3
                           const hasKitchen = (o.order_items || []).some((it: any) => !isBarItem(it.MenuItem?.name || it.name || ""))
                           const hasBar = (o.order_items || []).some((it: any) => isBarItem(it.MenuItem?.name || it.name || ""))
 
@@ -3068,97 +3068,99 @@ function RestaurantAdminContent() {
                                   {o.payment_status === "PAID" ? "Paid" : "Unpaid"}
                                 </button>
                               </td>
-                              <td className="py-3.5 px-4 text-right relative">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setActiveOrderMenuId(activeOrderMenuId === o.id ? null : o.id)
-                                  }}
-                                  className={`p-1.5 rounded-lg border transition ${
-                                    activeOrderMenuId === o.id
-                                      ? "bg-purple-600 text-white border-purple-500"
-                                      : isDarkMode
-                                      ? "bg-[#1e212d] text-slate-300 border-[#2b2f42] hover:bg-slate-700 hover:text-white"
-                                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900"
-                                  }`}
-                                  title="Actions"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-
-                                {activeOrderMenuId === o.id && (
-                                  <div
-                                    onClick={(e) => e.stopPropagation()}
-                                    className={`absolute right-4 ${
-                                      isNearBottom ? "bottom-11 mb-1" : "top-11 mt-1"
-                                    } z-50 w-48 rounded-xl border p-1.5 shadow-2xl text-left ${
-                                      isDarkMode
-                                        ? "bg-[#191b26] border-[#2d3144] text-slate-200 shadow-black/80"
-                                        : "bg-white border-slate-200 text-slate-800 shadow-slate-300/60"
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="relative inline-block text-left">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setActiveOrderMenuId(activeOrderMenuId === o.id ? null : o.id)
+                                    }}
+                                    className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                                      activeOrderMenuId === o.id
+                                        ? "bg-purple-600 text-white border-purple-500"
+                                        : isDarkMode
+                                        ? "bg-[#1e212d] text-slate-300 border-[#2b2f42] hover:bg-slate-700 hover:text-white"
+                                        : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 hover:text-slate-900"
                                     }`}
+                                    title="Actions"
                                   >
-                                    {o.payment_status !== "PAID" ? (
-                                      <button
-                                        onClick={() => updatePaymentStatus(o.id, "PAID")}
-                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2 transition"
-                                      >
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                                        <span>Mark as Paid</span>
-                                      </button>
-                                    ) : (
-                                      <button
-                                        onClick={() => updatePaymentStatus(o.id, "UNPAID")}
-                                        className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition"
-                                      >
-                                        <X className="w-4 h-4 text-amber-400" />
-                                        <span>Mark as Unpaid</span>
-                                      </button>
-                                    )}
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
 
-                                    <button
-                                      onClick={() => {
-                                        setActiveOrderMenuId(null)
-                                        window.print()
-                                      }}
-                                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
-                                        isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
+                                  {activeOrderMenuId === o.id && (
+                                    <div
+                                      onClick={(e) => e.stopPropagation()}
+                                      className={`absolute right-0 ${
+                                        isNearBottom ? "bottom-full mb-1.5" : "top-full mt-1.5"
+                                      } z-50 w-48 rounded-xl border p-1.5 shadow-2xl text-left ${
+                                        isDarkMode
+                                          ? "bg-[#191b26] border-[#2d3144] text-slate-200 shadow-black/80"
+                                          : "bg-white border-slate-200 text-slate-800 shadow-slate-300/60"
                                       }`}
                                     >
-                                      <Receipt className="w-4 h-4 text-purple-400" />
-                                      <span>Print Receipt</span>
-                                    </button>
+                                      {o.payment_status !== "PAID" ? (
+                                        <button
+                                          onClick={() => updatePaymentStatus(o.id, "PAID")}
+                                          className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2 transition cursor-pointer"
+                                        >
+                                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                          <span>Mark as Paid</span>
+                                        </button>
+                                      ) : (
+                                        <button
+                                          onClick={() => updatePaymentStatus(o.id, "UNPAID")}
+                                          className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-amber-400 hover:bg-amber-500/10 flex items-center gap-2 transition cursor-pointer"
+                                        >
+                                          <X className="w-4 h-4 text-amber-400" />
+                                          <span>Mark as Unpaid</span>
+                                        </button>
+                                      )}
 
-                                    {hasKitchen && kStage !== "completed" && (
                                       <button
                                         onClick={() => {
-                                          advanceKdsTicket(`T-${o.order_number?.replace(/\D/g, "") || o.id.slice(-4)}-K`)
                                           setActiveOrderMenuId(null)
+                                          window.print()
                                         }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition cursor-pointer ${
                                           isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
                                         }`}
                                       >
-                                        <ChefHat className="w-4 h-4 text-blue-400" />
-                                        <span>Advance Kitchen</span>
+                                        <Receipt className="w-4 h-4 text-purple-400" />
+                                        <span>Print Receipt</span>
                                       </button>
-                                    )}
 
-                                    {hasBar && bStage !== "completed" && (
-                                      <button
-                                        onClick={() => {
-                                          advanceKdsTicket(`T-${o.order_number?.replace(/\D/g, "") || o.id.slice(-4)}-B`)
-                                          setActiveOrderMenuId(null)
-                                        }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition ${
-                                          isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
-                                        }`}
-                                      >
-                                        <Utensils className="w-4 h-4 text-amber-400" />
-                                        <span>Advance Bar</span>
-                                      </button>
-                                    )}
-                                  </div>
-                                )}
+                                      {hasKitchen && kStage !== "completed" && (
+                                        <button
+                                          onClick={() => {
+                                            advanceKdsTicket(`T-${o.order_number?.replace(/\D/g, "") || o.id.slice(-4)}-K`)
+                                            setActiveOrderMenuId(null)
+                                          }}
+                                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition cursor-pointer ${
+                                            isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
+                                          }`}
+                                        >
+                                          <ChefHat className="w-4 h-4 text-blue-400" />
+                                          <span>Advance Kitchen</span>
+                                        </button>
+                                      )}
+
+                                      {hasBar && bStage !== "completed" && (
+                                        <button
+                                          onClick={() => {
+                                            advanceKdsTicket(`T-${o.order_number?.replace(/\D/g, "") || o.id.slice(-4)}-B`)
+                                            setActiveOrderMenuId(null)
+                                          }}
+                                          className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition cursor-pointer ${
+                                            isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
+                                          }`}
+                                        >
+                                          <Utensils className="w-4 h-4 text-amber-400" />
+                                          <span>Advance Bar</span>
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           )
