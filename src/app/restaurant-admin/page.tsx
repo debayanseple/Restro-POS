@@ -2142,8 +2142,8 @@ function RestaurantAdminContent() {
   const [reservations, setReservations] = useState<ReservationItem[]>([
     {
       id: "RES-101",
-      guestName: "Alexander Wright",
-      phone: "+1 (555) 234-8891",
+      guestName: "Aarav Mehta",
+      phone: "+91 98201 23456",
       guests: 4,
       time: "19:00 Today",
       table: "Table 3",
@@ -2152,8 +2152,8 @@ function RestaurantAdminContent() {
     },
     {
       id: "RES-102",
-      guestName: "Sophia Martinez",
-      phone: "+1 (555) 412-9903",
+      guestName: "Priya Sharma",
+      phone: "+91 98302 34567",
       guests: 2,
       time: "19:30 Today",
       table: "Table 1",
@@ -2162,18 +2162,18 @@ function RestaurantAdminContent() {
     },
     {
       id: "RES-103",
-      guestName: "Marcus Sterling",
-      phone: "+1 (555) 872-3310",
+      guestName: "Rohan Malhotra",
+      phone: "+91 98403 45678",
       guests: 6,
       time: "20:15 Today",
       table: "Table 6",
       status: "Confirmed",
-      notes: "Corporate dinner, pre-ordered wine",
+      notes: "Corporate dinner, pre-ordered mocktails",
     },
     {
       id: "RES-104",
-      guestName: "Emma Watson",
-      phone: "+1 (555) 601-7744",
+      guestName: "Ananya Iyer",
+      phone: "+91 98104 56789",
       guests: 2,
       time: "21:00 Today",
       table: "Table 2",
@@ -2338,7 +2338,7 @@ function RestaurantAdminContent() {
     const newResPayload = {
       id: `RES-${Math.floor(100 + Math.random() * 900)}`,
       guestName: newResGuest.trim(),
-      phone: newResPhone.trim() || "+1 (555) 987-6543",
+      phone: newResPhone.trim() || "+91 98765 43210",
       guests: newResSeats,
       time: `${newResTime} Today`,
       table: newResTable,
@@ -2386,9 +2386,9 @@ function RestaurantAdminContent() {
   const [customersList] = useState([
     {
       id: "CUST-01",
-      name: "Alexander Wright",
-      phone: "+1 (555) 234-8891",
-      email: "a.wright@corp.com",
+      name: "Aarav Mehta",
+      phone: "+91 98201 23456",
+      email: "aarav.mehta@corp.in",
       visits: 14,
       totalSpend: "₹14,250.00",
       loyalty: "VIP Platinum",
@@ -2398,9 +2398,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-02",
-      name: "Sophia Martinez",
-      phone: "+1 (555) 412-9903",
-      email: "sophia.m@design.org",
+      name: "Priya Sharma",
+      phone: "+91 98302 34567",
+      email: "priya.sharma@design.org",
       visits: 4,
       totalSpend: "₹3,980.00",
       loyalty: "Silver",
@@ -2410,9 +2410,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-03",
-      name: "Marcus Sterling",
-      phone: "+1 (555) 872-3310",
-      email: "m.sterling@capital.com",
+      name: "Rohan Malhotra",
+      phone: "+91 98403 45678",
+      email: "rohan.m@capital.in",
       visits: 22,
       totalSpend: "₹31,800.00",
       loyalty: "VIP Gold",
@@ -2422,9 +2422,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-04",
-      name: "David Chen",
-      phone: "+1 (555) 901-2244",
-      email: "dchen@tech.io",
+      name: "Rajesh Verma",
+      phone: "+91 98105 67890",
+      email: "rajesh.v@tech.in",
       visits: 8,
       totalSpend: "₹7,600.00",
       loyalty: "Gold",
@@ -2434,9 +2434,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-05",
-      name: "Olivia Brown",
-      phone: "+1 (555) 345-6671",
-      email: "olivia.b@studio.net",
+      name: "Sunita Rao",
+      phone: "+91 98706 78901",
+      email: "sunita.r@studio.net",
       visits: 5,
       totalSpend: "₹3,900.00",
       loyalty: "Silver",
@@ -6421,7 +6421,7 @@ function RestaurantAdminContent() {
                           <label className="font-semibold block mb-1">Guest Full Name</label>
                           <input
                             type="text"
-                            placeholder="e.g. John Doe"
+                            placeholder="e.g. Rahul Sharma"
                             value={newResGuest}
                             onChange={(e) => setNewResGuest(e.target.value)}
                             className={`w-full p-2.5 rounded-xl border text-xs ${
@@ -6436,7 +6436,7 @@ function RestaurantAdminContent() {
                             <label className="font-semibold block mb-1">Contact Phone</label>
                             <input
                               type="tel"
-                              placeholder="+1 (555) 000-0000"
+                              placeholder="+91 98765 43210"
                               value={newResPhone}
                               onChange={(e) => setNewResPhone(e.target.value)}
                               className={`w-full p-2.5 rounded-xl border text-xs ${
@@ -6567,6 +6567,7 @@ function RestaurantAdminContent() {
                             <label className="font-semibold block mb-1">Contact Phone</label>
                             <input
                               type="tel"
+                              placeholder="+91 98765 43210"
                               value={editingReservation.phone}
                               onChange={(e) =>
                                 setEditingReservation({ ...editingReservation, phone: e.target.value })

@@ -975,13 +975,13 @@ function CustomerMenuContent() {
                 </div>
                 <div>
                   <label className="text-[11px] font-medium text-[#64748B] block mb-1">
-                    Phone (For Bill Updates)
+                    Phone (For WhatsApp / SMS Bill)
                   </label>
                   <input
                     type="tel"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="9876543210"
+                    placeholder="+91 98765 43210"
                     className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder-[#64748B] focus:outline-none focus:border-[#C46B4E]"
                   />
                 </div>
