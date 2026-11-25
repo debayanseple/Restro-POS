@@ -1,43 +1,23 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
+import { readStore, writeStore } from "@/lib/serverless-store"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const MENU_FILE = path.join(DATA_DIR, "menu.json")
+export const dynamic = "force-dynamic"
 
-function getMenuItems(): MenuItem[] {
-  try {
-    if (fs.existsSync(MENU_FILE)) {
-      const content = fs.readFileSync(MENU_FILE, "utf-8")
-      const parsed = JSON.parse(content)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to load menu.json:", err)
-  }
-
-  // Fallback to initial master catalog
-  const initial = MASTER_MENU_CATALOG.map((item) => ({
+function getInitialMenu(): MenuItem[] {
+  return MASTER_MENU_CATALOG.map((item) => ({
     ...item,
     isAvailable: item.isAvailable !== undefined ? item.isAvailable : true,
     station: item.station || (item.category === "drinks" ? "bar" : "kitchen"),
   }))
-  saveMenuItems(initial)
-  return initial
+}
+
+function getMenuItems(): MenuItem[] {
+  return readStore<MenuItem[]>("menu.json", getInitialMenu())
 }
 
 function saveMenuItems(items: MenuItem[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(MENU_FILE, JSON.stringify(items, null, 2), "utf-8")
-  } catch (err) {
-    console.warn("Failed to save menu.json:", err)
-  }
+  writeStore("menu.json", items)
 }
 
 function sortMenuItems(items: MenuItem[]): MenuItem[] {

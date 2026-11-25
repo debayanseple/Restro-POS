@@ -1,33 +1,15 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
-import fs from "fs"
-import path from "path"
+import { readStore, writeStore } from "@/lib/serverless-store"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const ORDERS_FILE = path.join(DATA_DIR, "orders.json")
+export const dynamic = "force-dynamic"
 
 function loadSavedOrders(): any[] {
-  try {
-    if (fs.existsSync(ORDERS_FILE)) {
-      const content = fs.readFileSync(ORDERS_FILE, "utf-8")
-      const parsed = JSON.parse(content)
-      if (Array.isArray(parsed)) return parsed
-    }
-  } catch (err) {
-    console.warn("Could not read orders from disk:", err)
-  }
-  return []
+  return readStore<any[]>("orders.json", [])
 }
 
 function saveOrdersToDisk(orders: any[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf-8")
-  } catch (err) {
-    console.warn("Could not save orders to disk:", err)
-  }
+  writeStore("orders.json", orders)
 }
 
 function isBarItem(name: string): boolean {
@@ -54,27 +36,23 @@ function isBarItem(name: string): boolean {
 function markTableOccupied(tableIdentifier: string | null) {
   if (!tableIdentifier) return
   try {
-    const TABLES_FILE = path.join(DATA_DIR, "tables.json")
-    if (fs.existsSync(TABLES_FILE)) {
-      const content = fs.readFileSync(TABLES_FILE, "utf-8")
-      let tables = JSON.parse(content)
-      if (Array.isArray(tables)) {
-        const clean = String(tableIdentifier).toLowerCase().trim()
-        tables = tables.map((t: any) => {
-          const match1 = t.name.toLowerCase().trim() === clean
-          const match2 = `table ${t.id}` === clean
-          const match3 = `table 0${t.id}` === clean
-          const match4 = String(t.id) === clean
-          if (match1 || match2 || match3 || match4) {
-            return { ...t, status: "occupied", isOpen: true }
-          }
-          return t
-        })
-        fs.writeFileSync(TABLES_FILE, JSON.stringify(tables, null, 2), "utf-8")
-      }
+    let tables = readStore<any[]>("tables.json", [])
+    if (Array.isArray(tables) && tables.length > 0) {
+      const clean = String(tableIdentifier).toLowerCase().trim()
+      tables = tables.map((t: any) => {
+        const match1 = t.name && t.name.toLowerCase().trim() === clean
+        const match2 = `table ${t.id}` === clean
+        const match3 = `table 0${t.id}` === clean
+        const match4 = String(t.id) === clean
+        if (match1 || match2 || match3 || match4) {
+          return { ...t, status: "occupied", isOpen: true }
+        }
+        return t
+      })
+      writeStore("tables.json", tables)
     }
   } catch (err) {
-    console.warn("Could not mark table occupied in tables.json:", err)
+    console.warn("Could not mark table occupied:", err)
   }
 }
 

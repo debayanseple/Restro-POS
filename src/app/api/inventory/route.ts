@@ -1,67 +1,28 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
 import {
   MASTER_INVENTORY_CATALOG,
   MASTER_STOCK_MOVEMENTS,
   InventoryItem,
   StockMovement,
 } from "@/lib/inventory-catalog"
+import { readStore, writeStore } from "@/lib/serverless-store"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const INVENTORY_FILE = path.join(DATA_DIR, "inventory.json")
-const MOVEMENTS_FILE = path.join(DATA_DIR, "inventory-movements.json")
+export const dynamic = "force-dynamic"
 
 function getInventoryItems(): InventoryItem[] {
-  try {
-    if (fs.existsSync(INVENTORY_FILE)) {
-      const data = fs.readFileSync(INVENTORY_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to read inventory.json, using fallback:", err)
-  }
-  return MASTER_INVENTORY_CATALOG
+  return readStore<InventoryItem[]>("inventory.json", MASTER_INVENTORY_CATALOG)
 }
 
 function saveInventoryItems(items: InventoryItem[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(INVENTORY_FILE, JSON.stringify(items, null, 2), "utf-8")
-  } catch (err) {
-    console.warn("Failed to save inventory.json:", err)
-  }
+  writeStore("inventory.json", items)
 }
 
 function getStockMovements(): StockMovement[] {
-  try {
-    if (fs.existsSync(MOVEMENTS_FILE)) {
-      const data = fs.readFileSync(MOVEMENTS_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed)) {
-        return parsed
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to read inventory-movements.json, using fallback:", err)
-  }
-  return MASTER_STOCK_MOVEMENTS
+  return readStore<StockMovement[]>("inventory-movements.json", MASTER_STOCK_MOVEMENTS)
 }
 
 function saveStockMovements(movements: StockMovement[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(MOVEMENTS_FILE, JSON.stringify(movements, null, 2), "utf-8")
-  } catch (err) {
-    console.warn("Failed to save inventory-movements.json:", err)
-  }
+  writeStore("inventory-movements.json", movements)
 }
 
 // GET: Return all raw materials and stock movement history

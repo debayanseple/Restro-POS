@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
+import { readStore, writeStore } from "@/lib/serverless-store"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const TABLES_FILE = path.join(DATA_DIR, "tables.json")
-const ORDERS_FILE = path.join(DATA_DIR, "orders.json")
+export const dynamic = "force-dynamic"
 
 const DEFAULT_TABLES = [
   { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
@@ -17,33 +14,11 @@ const DEFAULT_TABLES = [
 ]
 
 function getTables(): any[] {
-  let tables = [...DEFAULT_TABLES]
-  try {
-    if (fs.existsSync(TABLES_FILE)) {
-      const content = fs.readFileSync(TABLES_FILE, "utf-8")
-      const parsed = JSON.parse(content)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        tables = parsed
-      }
-    } else {
-      saveTables(tables)
-    }
-  } catch (err) {
-    console.warn("Failed to load tables.json:", err)
-  }
-
-  return tables
+  return readStore<any[]>("tables.json", DEFAULT_TABLES)
 }
 
 function saveTables(tables: any[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(TABLES_FILE, JSON.stringify(tables, null, 2), "utf-8")
-  } catch (err) {
-    console.warn("Failed to save tables.json:", err)
-  }
+  writeStore("tables.json", tables)
 }
 
 export async function GET() {

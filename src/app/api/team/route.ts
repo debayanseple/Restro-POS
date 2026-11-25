@@ -1,35 +1,15 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
-import path from "path"
 import { MASTER_TEAM_MEMBERS, TeamMember, StaffRole } from "@/lib/team-catalog"
+import { readStore, writeStore } from "@/lib/serverless-store"
 
-const DATA_DIR = path.join(process.cwd(), "data")
-const TEAM_FILE = path.join(DATA_DIR, "team.json")
+export const dynamic = "force-dynamic"
 
 function getTeamMembers(): TeamMember[] {
-  try {
-    if (fs.existsSync(TEAM_FILE)) {
-      const data = fs.readFileSync(TEAM_FILE, "utf-8")
-      const parsed = JSON.parse(data)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (err) {
-    console.warn("Failed to read team.json, using master catalog fallback:", err)
-  }
-  return MASTER_TEAM_MEMBERS
+  return readStore<TeamMember[]>("team.json", MASTER_TEAM_MEMBERS)
 }
 
 function saveTeamMembers(members: TeamMember[]) {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true })
-    }
-    fs.writeFileSync(TEAM_FILE, JSON.stringify(members, null, 2), "utf-8")
-  } catch (err) {
-    console.warn("Failed to save team.json:", err)
-  }
+  writeStore("team.json", members)
 }
 
 // GET: Return all team members
