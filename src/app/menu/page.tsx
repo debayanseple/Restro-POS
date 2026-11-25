@@ -14,6 +14,9 @@ import {
   ArrowRight,
   X,
   AlertCircle,
+  Bell,
+  Sparkles,
+  CheckCircle2,
 } from "lucide-react"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
 
@@ -51,6 +54,48 @@ function CustomerMenuContent() {
   const [activeOrder, setActiveOrder] = useState<any | null>(null)
   const [waiterCalled, setWaiterCalled] = useState(false)
   const [billRequested, setBillRequested] = useState(false)
+  const [cleaningRequested, setCleaningRequested] = useState(false)
+  const [isServiceBellOpen, setIsServiceBellOpen] = useState(false)
+  const [serviceActionStatus, setServiceActionStatus] = useState<string | null>(null)
+
+  const handleServiceRequest = (type: "clean" | "waiter" | "bill") => {
+    let msg = ""
+    if (type === "clean") {
+      setCleaningRequested(true)
+      msg = `Cleaning request sent for ${selectedTable}. A team member is on the way!`
+      setTimeout(() => setCleaningRequested(false), 5000)
+    } else if (type === "waiter") {
+      setWaiterCalled(true)
+      msg = `Waiter called for ${selectedTable}. Someone will be with you shortly!`
+      setTimeout(() => setWaiterCalled(false), 5000)
+    } else if (type === "bill") {
+      setBillRequested(true)
+      msg = `Bill requested for ${selectedTable}. Your invoice is being brought to your table!`
+      setTimeout(() => setBillRequested(false), 5000)
+    }
+
+    setServiceActionStatus(msg)
+    setIsServiceBellOpen(false)
+
+    // Broadcast to POS & Staff terminals if supported
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      try {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({
+          type: "table_service_request",
+          table: selectedTable,
+          serviceType: type,
+          timestamp: new Date().toISOString(),
+        })
+        bc.close()
+      } catch {}
+    }
+
+    // Auto-clear notification toast after 4.5 seconds
+    setTimeout(() => {
+      setServiceActionStatus(null)
+    }, 4500)
+  }
 
   // Live dynamic menu items loaded from /api/menu and synchronized in realtime
   const [menuItems, setMenuItems] = useState<MenuItem[]>(MASTER_MENU_CATALOG)
@@ -619,6 +664,183 @@ function CustomerMenuContent() {
           </button>
         </div>
       )}
+
+      {/* Toast Banner for Service Request Feedback */}
+      {serviceActionStatus && (
+        <div className="fixed top-4 inset-x-4 max-w-md mx-auto z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="p-3.5 rounded-2xl bg-[#20252B] text-white shadow-2xl border border-[#E5E1D9]/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#C46B4E] flex items-center justify-center shrink-0 shadow-xs">
+                <BellRing className="w-4 h-4 text-white animate-bounce" />
+              </div>
+              <p className="text-xs font-medium leading-snug text-[#F7F5F0]">
+                {serviceActionStatus}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setServiceActionStatus(null)}
+              className="text-[#E9E3D8] hover:text-white p-1 rounded-lg transition cursor-pointer shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING SERVICE BELL BUTTON & CURVED POPUP MENU */}
+      <div
+        className={`fixed z-40 transition-all duration-300 ${
+          cartCount > 0 ? "bottom-20 right-4 sm:right-6" : "bottom-5 right-4 sm:right-6"
+        }`}
+      >
+        {/* Backdrop for curved popup on mobile */}
+        {isServiceBellOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] sm:bg-transparent"
+            onClick={() => setIsServiceBellOpen(false)}
+          />
+        )}
+
+        {/* Curved Popup Menu */}
+        {isServiceBellOpen && (
+          <div
+            className="absolute bottom-16 right-0 z-50 w-72 sm:w-80 rounded-3xl bg-white border border-[#E5E1D9] shadow-2xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-200"
+            style={{ filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.2))" }}
+          >
+            {/* Curved Header */}
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E1D9]">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-2xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold">
+                  <Bell className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-[#20252B]">Table Assistance</h4>
+                  <p className="text-[10px] text-[#64748B] font-medium">{selectedTable}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsServiceBellOpen(false)}
+                className="w-7 h-7 rounded-full bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#64748B] hover:text-[#20252B] flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Options List */}
+            <div className="space-y-2">
+              {/* Option 1: Clean Table */}
+              <button
+                type="button"
+                onClick={() => handleServiceRequest("clean")}
+                disabled={cleaningRequested}
+                className="w-full p-2.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] border border-[#E5E1D9] transition flex items-center gap-3 text-left group cursor-pointer disabled:opacity-60"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-[#20252B] flex items-center justify-between">
+                    <span>Clean Table</span>
+                    {cleaningRequested && (
+                      <span className="text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                        Requested
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#64748B] truncate">
+                    Wipe surface & clear empty plates
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 2: Call Waiter */}
+              <button
+                type="button"
+                onClick={() => handleServiceRequest("waiter")}
+                disabled={waiterCalled}
+                className="w-full p-2.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] border border-[#E5E1D9] transition flex items-center gap-3 text-left group cursor-pointer disabled:opacity-60"
+              >
+                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <BellRing className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-[#20252B] flex items-center justify-between">
+                    <span>Call Waiter</span>
+                    {waiterCalled && (
+                      <span className="text-[9px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                        Notified
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#64748B] truncate">
+                    Need water, cutlery, or ordering help
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 3: Ask for Bill */}
+              <button
+                type="button"
+                onClick={() => handleServiceRequest("bill")}
+                disabled={billRequested}
+                className="w-full p-2.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] border border-[#E5E1D9] transition flex items-center gap-3 text-left group cursor-pointer disabled:opacity-60"
+              >
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-[#20252B] flex items-center justify-between">
+                    <span>Ask for Bill</span>
+                    {billRequested && (
+                      <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                        Requested
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-[#64748B] truncate">
+                    Ready to pay via UPI, Card, or Cash
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            {/* Micro hint footer */}
+            <div className="pt-1 text-center">
+              <span className="text-[10px] text-[#64748B]">
+                Staff will be notified at the service station
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Floating Bell Trigger Button */}
+        <button
+          type="button"
+          onClick={() => setIsServiceBellOpen((prev) => !prev)}
+          title="Table Service & Assistance"
+          aria-label="Table Service Bell"
+          className={`relative w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer ${
+            isServiceBellOpen
+              ? "bg-[#C46B4E] text-white rotate-12 scale-105 shadow-[#C46B4E]/30"
+              : "bg-[#20252B] hover:bg-[#2e353e] text-white shadow-[#20252B]/30 hover:scale-105 active:scale-95"
+          } border-2 border-white`}
+        >
+          {isServiceBellOpen ? (
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+          ) : (
+            <>
+              <Bell className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+              {/* Pulsing indicator dot */}
+              <span className="absolute top-0 right-0 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C46B4E] opacity-75" />
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#C46B4E] border-2 border-white" />
+              </span>
+            </>
+          )}
+        </button>
+      </div>
 
       {/* Cart & Checkout Slide-Over Drawer */}
       {isCartOpen && (
