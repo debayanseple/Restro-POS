@@ -698,41 +698,38 @@ function CustomerMenuContent() {
         </div>
       )}
 
-      {/* FLOATING SERVICE BELL BUTTON & CURVED POPUP MENU */}
-      <div
-        className={`fixed z-40 transition-all duration-300 ${
-          cartCount > 0 ? "bottom-24 right-4 sm:right-6" : "bottom-6 right-4 sm:right-6"
-        }`}
-      >
-        {/* Backdrop for curved popup on mobile */}
-        {isServiceBellOpen && (
+      {/* TABLE ASSISTANCE POPUP / BOTTOM SHEET MODAL */}
+      {isServiceBellOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-end justify-center sm:justify-end sm:p-6 p-0">
+          {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] sm:bg-transparent"
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200"
             onClick={() => setIsServiceBellOpen(false)}
           />
-        )}
 
-        {/* Curved Popup Menu */}
-        {isServiceBellOpen && (
+          {/* Action Sheet Card: Slides up from bottom on mobile, floating card on desktop */}
           <div
-            className="absolute bottom-18 sm:bottom-20 right-0 z-50 w-[calc(100vw-2rem)] max-w-[340px] sm:w-80 rounded-3xl bg-white border border-[#E5E1D9] shadow-2xl p-4 sm:p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-200"
+            className="relative z-10 w-full sm:w-88 max-w-lg sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-3xl border border-[#E5E1D9] shadow-2xl p-5 pb-8 sm:pb-5 space-y-3.5 animate-in slide-in-from-bottom duration-200 sm:mb-20 max-h-[85vh] overflow-y-auto"
             style={{ filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.25))" }}
           >
-            {/* Curved Header */}
+            {/* Mobile Drag Indicator Handle */}
+            <div className="w-12 h-1.5 rounded-full bg-[#E5E1D9] mx-auto -mt-1 mb-2 sm:hidden" />
+
+            {/* Header */}
             <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D9]">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold shadow-xs">
                   <Bell className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-[#20252B]">Table Assistance</h4>
+                  <h4 className="text-base font-bold text-[#20252B]">Table Assistance</h4>
                   <p className="text-xs text-[#64748B] font-medium">{selectedTable}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsServiceBellOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#64748B] hover:text-[#20252B] flex items-center justify-center transition cursor-pointer active:scale-95"
+                className="w-9 h-9 rounded-full bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#64748B] hover:text-[#20252B] flex items-center justify-center transition cursor-pointer active:scale-95"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -745,7 +742,7 @@ function CustomerMenuContent() {
                 type="button"
                 onClick={() => handleServiceRequest("clean")}
                 disabled={cleaningRequested}
-                className="w-full p-3 sm:p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
+                className="w-full p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
                 <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
                   <Sparkles className="w-5 h-5" />
@@ -770,7 +767,7 @@ function CustomerMenuContent() {
                 type="button"
                 onClick={() => handleServiceRequest("waiter")}
                 disabled={waiterCalled}
-                className="w-full p-3 sm:p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
+                className="w-full p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
                 <div className="w-11 h-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
                   <BellRing className="w-5 h-5" />
@@ -795,7 +792,7 @@ function CustomerMenuContent() {
                 type="button"
                 onClick={() => handleServiceRequest("bill")}
                 disabled={billRequested}
-                className="w-full p-3 sm:p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
+                className="w-full p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
                 <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
                   <Receipt className="w-5 h-5" />
@@ -818,14 +815,20 @@ function CustomerMenuContent() {
 
             {/* Micro hint footer */}
             <div className="pt-1 text-center">
-              <span className="text-[11px] text-[#64748B] font-medium">
+              <span className="text-xs text-[#64748B] font-medium">
                 Staff will be notified at the service station
               </span>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Floating Bell Trigger Button */}
+      {/* FLOATING SERVICE BELL BUTTON */}
+      <div
+        className={`fixed z-40 transition-all duration-300 ${
+          cartCount > 0 ? "bottom-24 right-4 sm:right-6" : "bottom-6 right-4 sm:right-6"
+        }`}
+      >
         <button
           type="button"
           onClick={() => setIsServiceBellOpen((prev) => !prev)}
