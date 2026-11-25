@@ -22,8 +22,6 @@ import {
   Minus,
   Trash2,
   QrCode,
-  Wifi,
-  Copy,
   Check,
 } from "lucide-react"
 
@@ -53,8 +51,6 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false)
   const [activeSessionRole, setActiveSessionRole] = useState<string | null>(null)
   const [previewTab, setPreviewTab] = useState<"pos" | "kds" | "tables">("pos")
-  const [networkUrl, setNetworkUrl] = useState("")
-  const [networkCopied, setNetworkCopied] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 
   // POS Preview Interactive State
@@ -119,15 +115,6 @@ export default function LandingPage() {
     if (roleCookie) {
       setActiveSessionRole(roleCookie)
     }
-
-    fetch("/api/system/network-info")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.networkUrl) {
-          setNetworkUrl(data.networkUrl)
-        }
-      })
-      .catch((e) => console.error("Network info fetch error:", e))
 
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 10)
@@ -264,32 +251,6 @@ export default function LandingPage() {
               Architecture
             </a>
           </nav>
-
-          {/* LAN Network IP Pill */}
-          {networkUrl && (
-            <div
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs font-mono text-emerald-900 shadow-2xs"
-              title="Accessible from any phone, tablet, or PC on this Wi-Fi network"
-            >
-              <Wifi className="w-3.5 h-3.5 text-emerald-600 animate-pulse shrink-0" />
-              <span>{networkUrl.replace(/^https?:\/\//, "")}</span>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(networkUrl)
-                  setNetworkCopied(true)
-                  setTimeout(() => setNetworkCopied(false), 2000)
-                }}
-                className="p-1 hover:opacity-75 cursor-pointer ml-0.5 text-emerald-700"
-                title="Copy Network IP"
-              >
-                {networkCopied ? (
-                  <Check className="w-3 h-3 text-emerald-700" />
-                ) : (
-                  <Copy className="w-3 h-3 opacity-60" />
-                )}
-              </button>
-            </div>
-          )}
 
           {/* Action CTAs */}
           <div className="flex items-center gap-2.5">
