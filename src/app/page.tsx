@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import QRCode from "qrcode"
 import {
   Utensils,
   ShoppingCart,
@@ -23,6 +24,12 @@ import {
   Trash2,
   QrCode,
   Check,
+  Smartphone,
+  ExternalLink,
+  Copy,
+  Bell,
+  Search,
+  BellRing,
 } from "lucide-react"
 
 interface PreviewMenuItem {
@@ -50,8 +57,11 @@ const PREVIEW_CATALOG: PreviewMenuItem[] = [
 export default function LandingPage() {
   const [mounted, setMounted] = useState(false)
   const [activeSessionRole, setActiveSessionRole] = useState<string | null>(null)
-  const [previewTab, setPreviewTab] = useState<"pos" | "kds" | "tables">("pos")
+  const [previewTab, setPreviewTab] = useState<"pos" | "kds" | "tables" | "qr-menu">("pos")
   const [isScrolled, setIsScrolled] = useState(false)
+  const [origin, setOrigin] = useState("")
+  const [demoQrUrl, setDemoQrUrl] = useState("")
+  const [copiedDemoLink, setCopiedDemoLink] = useState(false)
 
   // POS Preview Interactive State
   const [posCategory, setPosCategory] = useState<"all" | "mains" | "sides" | "drinks">("all")
@@ -108,6 +118,22 @@ export default function LandingPage() {
 
   useEffect(() => {
     setMounted(true)
+    if (typeof window !== "undefined") {
+      const currOrigin = window.location.origin
+      setOrigin(currOrigin)
+      const demoUrl = `${currOrigin}/menu?demo=true&table=Demo%20Table%2001`
+      QRCode.toDataURL(demoUrl, {
+        width: 320,
+        margin: 2,
+        color: {
+          dark: "#20252B",
+          light: "#ffffff",
+        },
+      })
+        .then((url) => setDemoQrUrl(url))
+        .catch(() => {})
+    }
+
     const roleCookie = document.cookie.replace(
       /(?:(?:^|.*)\s*user_role\s*=\s*([^;]*).*$)|^.*$/,
       "$1"
@@ -255,11 +281,14 @@ export default function LandingPage() {
           {/* Action CTAs */}
           <div className="flex items-center gap-2.5">
             <Link
-              href="/menu?table=Table%2001"
-              className="px-3.5 py-2 rounded-lg text-xs font-medium text-[#20252B] bg-white hover:bg-[#F7F5F0] border border-[#E5E1D9] transition flex items-center gap-1.5 shadow-2xs"
+              href="/menu?demo=true&table=Demo%20Table%2001"
+              className="px-3.5 py-2 rounded-lg text-xs font-medium text-[#20252B] bg-white hover:bg-[#F7F5F0] border border-[#E5E1D9] transition flex items-center gap-1.5 shadow-2xs group"
             >
               <QrCode className="w-3.5 h-3.5 text-[#C46B4E]" />
-              <span>QR Menu</span>
+              <span>Demo QR Menu</span>
+              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-200">
+                Demo
+              </span>
             </Link>
             <Link
               href="/pos/login"
@@ -355,32 +384,32 @@ export default function LandingPage() {
           </div>
 
           {/* Master View Switcher Tabs */}
-          <div className="flex items-center justify-center gap-2 max-w-md mx-auto p-1.5 rounded-xl bg-[#E9E3D8] border border-[#E5E1D9]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-2xl mx-auto p-1.5 rounded-xl bg-[#E9E3D8] border border-[#E5E1D9]">
             <button
               onClick={() => setPreviewTab("pos")}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
                 previewTab === "pos"
                   ? "bg-[#C46B4E] text-white shadow-2xs"
                   : "text-[#20252B] hover:text-[#C46B4E]"
               }`}
             >
               <ShoppingCart className="w-3.5 h-3.5" />
-              <span>Point of Sale</span>
+              <span>POS Terminal</span>
             </button>
             <button
               onClick={() => setPreviewTab("kds")}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
                 previewTab === "kds"
                   ? "bg-[#C46B4E] text-white shadow-2xs"
                   : "text-[#20252B] hover:text-[#C46B4E]"
               }`}
             >
               <ChefHat className="w-3.5 h-3.5" />
-              <span>Kitchen / Bar KDS</span>
+              <span>Kitchen & Bar</span>
             </button>
             <button
               onClick={() => setPreviewTab("tables")}
-              className={`flex-1 py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-2 ${
                 previewTab === "tables"
                   ? "bg-[#C46B4E] text-white shadow-2xs"
                   : "text-[#20252B] hover:text-[#C46B4E]"
@@ -388,6 +417,26 @@ export default function LandingPage() {
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>Table Floor</span>
+            </button>
+            <button
+              onClick={() => setPreviewTab("qr-menu")}
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                previewTab === "qr-menu"
+                  ? "bg-[#C46B4E] text-white shadow-2xs"
+                  : "text-[#20252B] hover:text-[#C46B4E]"
+              }`}
+            >
+              <QrCode className="w-3.5 h-3.5" />
+              <span>QR Menu</span>
+              <span
+                className={`text-[9px] px-1.5 py-0.2 rounded font-bold uppercase ${
+                  previewTab === "qr-menu"
+                    ? "bg-white/20 text-white"
+                    : "bg-[#C46B4E]/15 text-[#C46B4E]"
+                }`}
+              >
+                Demo
+              </span>
             </button>
           </div>
 
@@ -783,7 +832,7 @@ export default function LandingPage() {
                     ))}
                 </div>
               </div>
-            ) : (
+            ) : previewTab === "tables" ? (
               /* --- TABLE FLOOR MANAGEMENT INTERACTIVE PREVIEW --- */
               <div className="space-y-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2D333B] pb-4">
@@ -843,6 +892,214 @@ export default function LandingPage() {
                       <div className="text-[10px] text-[#94A3B8] mt-0.5">{tbl.seats} Seats</div>
                     </div>
                   ))}
+                </div>
+              </div>
+            ) : (
+              /* --- CUSTOMER QR MENU INTERACTIVE SHOWCASE --- */
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#2D333B] pb-4">
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-[#C46B4E]" />
+                      Customer QR Menu — Interactive Demo Showcase
+                    </h3>
+                    <p className="text-xs text-[#94A3B8] mt-0.5">
+                      Scan the QR code with your phone or open in a new tab. Full guest self-ordering, dietary filters, and assistance calls.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800 text-xs font-medium flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Sandbox Mode · 0% Kitchen Impact</span>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* Left: Scannable QR Code & Quick Action Box */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <div className="p-5 rounded-2xl bg-[#1E2329] border border-[#353D47] flex flex-col items-center text-center space-y-4 shadow-lg">
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-bold text-[#E8C2B5] tracking-wider uppercase">
+                          Live Interactive Mobile Menu
+                        </span>
+                        <h4 className="text-sm font-bold text-white">
+                          Scan with Smartphone Camera
+                        </h4>
+                        <p className="text-xs text-[#94A3B8]">
+                          Instantly opens the digital self-ordering menu on your phone for <strong>Demo Table 01</strong>.
+                        </p>
+                      </div>
+
+                      {/* QR Code Container */}
+                      <div className="p-3 bg-white rounded-2xl shadow-md border-4 border-[#C46B4E]/30 inline-block">
+                        {demoQrUrl ? (
+                          <img
+                            src={demoQrUrl}
+                            alt="Demo Customer QR Menu"
+                            className="w-48 h-48 rounded-lg"
+                          />
+                        ) : (
+                          <div className="w-48 h-48 flex items-center justify-center text-xs text-[#64748B] bg-slate-100 rounded-lg">
+                            Generating QR...
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Actions: Open in tab & Copy link */}
+                      <div className="w-full space-y-2 pt-1">
+                        <Link
+                          href="/menu?demo=true&table=Demo%20Table%2001"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full py-2.5 px-4 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold flex items-center justify-center gap-2 transition cursor-pointer shadow-xs"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Open Demo Menu in New Tab</span>
+                        </Link>
+
+                        <button
+                          onClick={() => {
+                            if (typeof window !== "undefined") {
+                              navigator.clipboard.writeText(
+                                `${window.location.origin}/menu?demo=true&table=Demo%20Table%2001`
+                              )
+                              setCopiedDemoLink(true)
+                              setTimeout(() => setCopiedDemoLink(false), 2500)
+                            }
+                          }}
+                          className="w-full py-2 px-4 rounded-xl bg-[#262C34] hover:bg-[#2D343E] text-[#94A3B8] hover:text-white border border-[#353D47] text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
+                        >
+                          {copiedDemoLink ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                              <span className="text-emerald-300">Link Copied to Clipboard!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy Demo QR Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Isolation Reassurance Banner */}
+                    <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs flex items-start gap-2.5">
+                      <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <p className="text-[11px] leading-relaxed">
+                        <strong>100% Isolated Demo Sandbox:</strong> Orders placed from this menu run safely in test sandbox memory. They will <strong>NOT</strong> dispatch to Nodedr Bistro's kitchen KDS, will <strong>NOT</strong> occupy live dining tables, and will <strong>NOT</strong> alert the staff desk.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right: Phone Frame Live Mockup Preview */}
+                  <div className="lg:col-span-7 flex justify-center">
+                    <div className="w-full max-w-sm rounded-[36px] bg-[#121519] border-4 border-[#353D47] p-3 shadow-2xl relative overflow-hidden">
+                      {/* Speaker / Dynamic Island notch */}
+                      <div className="w-24 h-4 bg-[#262C34] rounded-full mx-auto mb-2 flex items-center justify-center">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500/80 mr-1.5" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-black/60" />
+                      </div>
+
+                      {/* Screen Content inside phone frame */}
+                      <div className="rounded-[24px] bg-[#F7F5F0] text-[#20252B] p-3.5 space-y-3 font-sans shadow-inner overflow-hidden select-none">
+                        {/* Phone Top Header */}
+                        <div className="flex items-center justify-between border-b border-[#E5E1D9] pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold text-xs">
+                              <Utensils className="w-3.5 h-3.5" />
+                            </div>
+                            <div>
+                              <div className="text-xs font-bold leading-tight">Demo Restaurant</div>
+                              <div className="text-[9px] text-[#64748B]">Digital Menu</div>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md bg-[#E9E3D8] text-[#20252B] text-[10px] font-semibold flex items-center gap-1 border border-[#E5E1D9]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Demo Table 01
+                          </span>
+                        </div>
+
+                        {/* Sandbox Notice inside mockup */}
+                        <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[10px] flex items-center gap-1.5">
+                          <Zap className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>Sandbox Mode: Safe to test ordering without affecting kitchen.</span>
+                        </div>
+
+                        {/* Dietary Tags */}
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          <span className="px-2 py-0.5 rounded-md bg-[#C46B4E] text-white font-medium">All Items</span>
+                          <span className="px-2 py-0.5 rounded-md bg-white border border-[#E5E1D9] text-[#64748B] font-medium">Veg Only</span>
+                          <span className="px-2 py-0.5 rounded-md bg-white border border-[#E5E1D9] text-[#64748B] font-medium">Drinks</span>
+                        </div>
+
+                        {/* Mock Item Cards */}
+                        <div className="space-y-2">
+                          <div className="p-2.5 rounded-xl bg-white border border-[#E5E1D9] flex items-center justify-between gap-2 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-2xl">🍔</span>
+                              <div>
+                                <div className="text-xs font-bold text-[#20252B]">Classic Wagyu Burger</div>
+                                <div className="text-[10px] text-[#C46B4E] font-semibold">₹349.00</div>
+                              </div>
+                            </div>
+                            <Link
+                              href="/menu?demo=true&table=Demo%20Table%2001"
+                              target="_blank"
+                              className="px-2.5 py-1 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-[10px] font-bold shadow-2xs"
+                            >
+                              + Add
+                            </Link>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-white border border-[#E5E1D9] flex items-center justify-between gap-2 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-2xl">🍕</span>
+                              <div>
+                                <div className="text-xs font-bold text-[#20252B]">Margherita Artisan Pizza</div>
+                                <div className="text-[10px] text-[#C46B4E] font-semibold">₹299.00</div>
+                              </div>
+                            </div>
+                            <Link
+                              href="/menu?demo=true&table=Demo%20Table%2001"
+                              target="_blank"
+                              className="px-2.5 py-1 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-[10px] font-bold shadow-2xs"
+                            >
+                              + Add
+                            </Link>
+                          </div>
+
+                          <div className="p-2.5 rounded-xl bg-white border border-[#E5E1D9] flex items-center justify-between gap-2 shadow-2xs">
+                            <div className="flex items-center gap-2.5">
+                              <span className="text-2xl">🍹</span>
+                              <div>
+                                <div className="text-xs font-bold text-[#20252B]">Sparkling Berry Fizz</div>
+                                <div className="text-[10px] text-[#C46B4E] font-semibold">₹149.00</div>
+                              </div>
+                            </div>
+                            <Link
+                              href="/menu?demo=true&table=Demo%20Table%2001"
+                              target="_blank"
+                              className="px-2.5 py-1 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-[10px] font-bold shadow-2xs"
+                            >
+                              + Add
+                            </Link>
+                          </div>
+                        </div>
+
+                        {/* Mock Bottom Sheet / Bell button preview */}
+                        <div className="pt-1 flex items-center justify-between gap-2">
+                          <div className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#20252B] text-white text-[10px] font-semibold flex items-center justify-between">
+                            <span>View Order (3 items)</span>
+                            <span className="text-[#E8C2B5] font-bold">₹797.00 →</span>
+                          </div>
+                          <div className="w-8 h-8 rounded-full bg-[#C46B4E] text-white flex items-center justify-center shadow-xs">
+                            <Bell className="w-4 h-4" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

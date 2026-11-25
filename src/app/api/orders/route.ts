@@ -63,6 +63,34 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
+    // Defensive check: If this is an isolated demo order, simulate success without touching live database, orders.json, or occupying real tables
+    const isDemoOrder =
+      body.isDemo === true ||
+      body.mode === "demo" ||
+      body.source === "DEMO_QR" ||
+      body.source === "DEMO_QR_MENU" ||
+      String(body.table_id || "").toLowerCase().includes("demo") ||
+      String(body.tableId || "").toLowerCase().includes("demo")
+
+    if (isDemoOrder) {
+      const generatedOrderNumber =
+        body.order_number ||
+        body.orderNumber ||
+        `DEMO-${Math.floor(1000 + Math.random() * 9000)}`
+      return NextResponse.json({
+        id: `demo_${Date.now()}`,
+        order_number: generatedOrderNumber,
+        isDemo: true,
+        message: "Demo order simulated in sandbox. Not dispatched to live kitchen.",
+        status: "OPEN",
+        kitchen_stage: "new",
+        bar_stage: "new",
+        total_amount: Number(body.total_amount ?? 0),
+        table_id: body.table_id || "Demo Table 01",
+        items: body.items || [],
+      })
+    }
+
     // Normalize parameter names across both camelCase and snake_case
     const restaurant_id = body.restaurant_id || body.restaurantId || "demo-restaurant-1"
     const outlet_id = body.outlet_id || body.outletId || null
