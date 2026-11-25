@@ -1,12 +1,102 @@
 [
   {
+    "id": "req_1795588955429_i9ou",
+    "table": "Table 08",
+    "tableNumber": 8,
+    "type": "waiter",
+    "title": "Call Waiter",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:42:35.429Z",
+    "clearedAt": "2026-11-25T06:43:57.497Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795588947319_oh3h",
+    "table": "Table 08",
+    "tableNumber": 8,
+    "type": "bill",
+    "title": "Ask for Bill",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:42:27.319Z",
+    "clearedAt": "2026-11-25T06:43:57.534Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795588940778_hxp7",
+    "table": "Table 08",
+    "tableNumber": 8,
+    "type": "clean",
+    "title": "Clean Table",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:42:20.778Z",
+    "clearedAt": "2026-11-25T06:43:57.569Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795588936502_b16b",
+    "table": "Table 06",
+    "tableNumber": 6,
+    "type": "waiter",
+    "title": "Call Waiter",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:42:16.502Z",
+    "clearedAt": "2026-11-25T06:43:57.594Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795587975654_rs4g",
+    "table": "Table 06",
+    "tableNumber": 6,
+    "type": "bill",
+    "title": "Ask for Bill",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:26:15.654Z",
+    "clearedAt": "2026-11-25T06:32:12.602Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795587948735_fosj",
+    "table": "Table 06",
+    "tableNumber": 6,
+    "type": "waiter",
+    "title": "Call Waiter",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:25:58.346Z",
+    "clearedAt": "2026-11-25T06:32:13.216Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795587917178_ospd",
+    "table": "Table 06",
+    "tableNumber": 6,
+    "type": "clean",
+    "title": "Clean Table",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:25:17.178Z",
+    "clearedAt": "2026-11-25T06:26:04.233Z",
+    "clearedBy": "Front Desk"
+  },
+  {
+    "id": "req_1795587404983_epa0",
+    "table": "Table 05",
+    "tableNumber": 5,
+    "type": "bill",
+    "title": "Ask for Bill",
+    "status": "resolved",
+    "createdAt": "2026-11-25T06:16:44.983Z",
+    "clearedAt": "2026-11-25T06:17:02.772Z",
+    "clearedBy": "Front Desk"
+  },
+  {
     "id": "req_demo_1",
     "table": "Table 03",
     "tableNumber": 3,
     "type": "waiter",
     "title": "Call Waiter",
-    "status": "pending",
-    "createdAt": "2026-11-25T05:58:00.000Z"
+    "status": "resolved",
+    "createdAt": "2026-11-25T05:58:00.000Z",
+    "clearedAt": "2026-11-25T06:24:28.343Z",
+    "clearedBy": "Front Desk"
   },
   {
     "id": "req_demo_2",
@@ -14,7 +104,9 @@
     "tableNumber": 7,
     "type": "clean",
     "title": "Clean Table",
-    "status": "pending",
-    "createdAt": "2026-11-25T05:55:00.000Z"
+    "status": "resolved",
+    "createdAt": "2026-11-25T05:55:00.000Z",
+    "clearedAt": "2026-11-25T06:24:29.033Z",
+    "clearedBy": "Front Desk"
   }
 ]

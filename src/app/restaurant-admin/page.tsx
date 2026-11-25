@@ -1692,13 +1692,27 @@ function RestaurantAdminContent() {
     } catch {}
   }
 
-  // Fetch orders and tables with 3s background polling
+  const fetchReservations = async () => {
+    try {
+      const res = await fetch("/api/reservations")
+      if (res.ok) {
+        const data = await res.json()
+        if (data.reservations && Array.isArray(data.reservations)) {
+          setReservations(data.reservations)
+        }
+      }
+    } catch {}
+  }
+
+  // Fetch orders, tables, and reservations with 3s background polling
   useEffect(() => {
     fetchOrders()
     fetchTables()
+    fetchReservations()
     const interval = setInterval(() => {
       fetchOrders()
       fetchTables()
+      fetchReservations()
     }, 3000)
     return () => clearInterval(interval)
   }, [])
@@ -1784,9 +1798,13 @@ function RestaurantAdminContent() {
           } catch {}
           return updated
         })
+      } else if (event.data.type === "reservation_updated") {
+        fetchReservations()
+        fetchTables()
       } else if (event.data.type === "refresh_orders") {
         fetchOrders()
         fetchTables()
+        fetchReservations()
       }
     }
 
@@ -2196,18 +2214,16 @@ function RestaurantAdminContent() {
     return tables.find((t) => t.name.toLowerCase() === clean || t.id === num)
   }
 
-  // Change reservation status with availability check & auto table occupancy
+  // Change reservation status with backend synchronization & auto table occupancy
   const handleReservationStatusChange = async (resId: string, targetStatus: string) => {
     const resItem = reservations.find((r) => r.id === resId)
     if (!resItem) return false
 
     const currentStatus = resItem.status
 
-    // When marking as "Arrived" or "Seated":
+    // Quick client-side check if table is available
     if (targetStatus === "Arrived" || targetStatus === "Seated") {
       const targetTable = getTableForReservation(resItem.table)
-
-      // Check if table is available (if not already occupied by this party)
       if (
         targetTable &&
         targetTable.status !== "available" &&
@@ -2220,150 +2236,166 @@ function RestaurantAdminContent() {
         setTimeout(() => setReservationWarningToast(null), 6000)
         return false
       }
+    }
 
-      // Mark the table as occupied
-      if (targetTable) {
-        const nextOrderCode = targetTable.orderCode || `ORD-${Math.floor(100 + Math.random() * 900)}`
-        setTables((prev) =>
-          prev.map((t) =>
-            t.id === targetTable.id
-              ? {
-                  ...t,
-                  status: "occupied",
-                  isOpen: true,
-                  orderCode: nextOrderCode,
-                }
-              : t
-          )
+    try {
+      const res = await fetch("/api/reservations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: resId, status: targetStatus }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        setReservationWarningToast(
+          data.error || `⚠️ Could not update reservation status. Table may be occupied.`
         )
-        try {
-          if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-            const bc = new BroadcastChannel("restro_sync_channel")
-            bc.postMessage({ type: "table_updated", table_id: targetTable.id, status: "occupied", isOpen: true })
-            bc.close()
-          }
-          await fetch("/api/tables", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ table_id: targetTable.id, status: "occupied", isOpen: true }),
-          })
-        } catch {}
+        setTimeout(() => setReservationWarningToast(null), 6000)
+        return false
       }
-    } else if (targetStatus === "Completed" || targetStatus === "Cancelled") {
-      // Free up the table if it was previously occupied
-      if (currentStatus === "Arrived" || currentStatus === "Seated") {
-        const targetTable = getTableForReservation(resItem.table)
-        if (targetTable) {
-          setTables((prev) =>
-            prev.map((t) =>
-              t.id === targetTable.id ? { ...t, status: "available", isOpen: false } : t
-            )
-          )
-          try {
-            if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-              const bc = new BroadcastChannel("restro_sync_channel")
-              bc.postMessage({ type: "table_updated", table_id: targetTable.id, status: "available", isOpen: false })
-              bc.close()
-            }
-            await fetch("/api/tables", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ table_id: targetTable.id, status: "available", isOpen: false }),
-            })
-          } catch {}
-        }
+
+      // Update reservations state from server
+      if (data.reservations && Array.isArray(data.reservations)) {
+        setReservations(data.reservations)
+      } else {
+        setReservations((prev) =>
+          prev.map((item) => (item.id === resId ? { ...item, status: targetStatus } : item))
+        )
       }
+
+      // Update tables state from server
+      if (data.tables && Array.isArray(data.tables)) {
+        setTables(data.tables)
+      }
+
+      // Broadcast changes to all tabs and windows
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({ type: "reservation_updated", resId, status: targetStatus })
+        bc.postMessage({ type: "table_updated" })
+        bc.close()
+      }
+
+      if (targetStatus === "Arrived") {
+        setReservationWarningToast(
+          `✅ ${resItem.guestName} marked as Arrived! ${resItem.table} is now Occupied on the floor plan.`
+        )
+        setTimeout(() => setReservationWarningToast(null), 4500)
+      } else if (targetStatus === "Seated") {
+        setReservationWarningToast(
+          `✅ ${resItem.guestName} seated at ${resItem.table}! Floor map updated.`
+        )
+        setTimeout(() => setReservationWarningToast(null), 4500)
+        setActiveTab("tables")
+      } else if (targetStatus === "Completed" || targetStatus === "Cancelled") {
+        setReservationWarningToast(
+          `✅ Reservation for ${resItem.guestName} marked as ${targetStatus}. ${resItem.table} is now Available.`
+        )
+        setTimeout(() => setReservationWarningToast(null), 4500)
+      }
+
+      return true
+    } catch {
+      setReservationWarningToast("⚠️ Network error while updating reservation.")
+      setTimeout(() => setReservationWarningToast(null), 5000)
+      return false
     }
-
-    // Update reservation state
-    setReservations((prev) =>
-      prev.map((item) => (item.id === resId ? { ...item, status: targetStatus } : item))
-    )
-
-    if (targetStatus === "Arrived") {
-      setReservationWarningToast(`✅ ${resItem.guestName} marked as Arrived! ${resItem.table} is now Occupied on the floor plan.`)
-      setTimeout(() => setReservationWarningToast(null), 4500)
-    } else if (targetStatus === "Seated") {
-      setReservationWarningToast(`✅ ${resItem.guestName} seated at ${resItem.table}! Floor map updated.`)
-      setTimeout(() => setReservationWarningToast(null), 4500)
-      setActiveTab("tables")
-    }
-
-    return true
   }
 
   // Handle saving an edited reservation
   const handleSaveEditedReservation = async (updated: ReservationItem) => {
-    const original = reservations.find((r) => r.id === updated.id)
-    if (!original) return
+    try {
+      const res = await fetch("/api/reservations", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      })
 
-    // If table changed or status was set to Arrived / Seated
-    if (updated.status === "Arrived" || updated.status === "Seated") {
-      const newTable = getTableForReservation(updated.table)
-      const tableChanged = original.table !== updated.table
-      const statusChangedToOccupied = original.status !== "Arrived" && original.status !== "Seated"
+      const data = await res.json()
 
-      if (tableChanged || statusChangedToOccupied) {
-        if (
-          newTable &&
-          newTable.status !== "available" &&
-          (!tableChanged && (original.status === "Arrived" || original.status === "Seated") ? false : true)
-        ) {
-          setReservationWarningToast(
-            `⚠️ ${updated.table} is currently ${newTable.status.toUpperCase()}! Please select an available table or keep status as Confirmed.`
-          )
-          setTimeout(() => setReservationWarningToast(null), 6000)
-          return
-        }
-
-        // Occupy the new table
-        if (newTable) {
-          setTables((prev) =>
-            prev.map((t) =>
-              t.id === newTable.id
-                ? {
-                    ...t,
-                    status: "occupied",
-                    isOpen: true,
-                    orderCode: t.orderCode || `ORD-${Math.floor(100 + Math.random() * 900)}`,
-                  }
-                : t
-            )
-          )
-          try {
-            await fetch("/api/tables", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ table_id: newTable.id, status: "occupied", isOpen: true }),
-            })
-          } catch {}
-        }
-
-        // If table changed and previous was occupied, free previous table
-        if (tableChanged && (original.status === "Arrived" || original.status === "Seated")) {
-          const oldTable = getTableForReservation(original.table)
-          if (oldTable) {
-            setTables((prev) =>
-              prev.map((t) => (t.id === oldTable.id ? { ...t, status: "available", isOpen: false } : t))
-            )
-            try {
-              await fetch("/api/tables", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ table_id: oldTable.id, status: "available", isOpen: false }),
-              })
-            } catch {}
-          }
-        }
+      if (!res.ok || !data.success) {
+        setReservationWarningToast(
+          data.error || "⚠️ Could not save edited reservation. Please verify table availability."
+        )
+        setTimeout(() => setReservationWarningToast(null), 6000)
+        return
       }
+
+      if (data.reservations && Array.isArray(data.reservations)) {
+        setReservations(data.reservations)
+      } else {
+        setReservations((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+      }
+
+      if (data.tables && Array.isArray(data.tables)) {
+        setTables(data.tables)
+      }
+
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({ type: "reservation_updated", resId: updated.id })
+        bc.postMessage({ type: "table_updated" })
+        bc.close()
+      }
+
+      setReservationWarningToast(`✅ Reservation ${updated.id} for ${updated.guestName} updated successfully!`)
+      setTimeout(() => setReservationWarningToast(null), 4500)
+      setEditingReservation(null)
+    } catch {
+      setReservationWarningToast("⚠️ Network error while saving reservation.")
+      setTimeout(() => setReservationWarningToast(null), 5000)
+    }
+  }
+
+  // Handle saving a brand new reservation
+  const handleSaveNewReservation = async () => {
+    if (!newResGuest.trim()) return
+
+    const newResPayload = {
+      id: `RES-${Math.floor(100 + Math.random() * 900)}`,
+      guestName: newResGuest.trim(),
+      phone: newResPhone.trim() || "+1 (555) 987-6543",
+      guests: newResSeats,
+      time: `${newResTime} Today`,
+      table: newResTable,
+      status: "Confirmed",
+      notes: "Booked via Front Desk",
     }
 
-    setReservations((prev) =>
-      prev.map((r) => (r.id === updated.id ? updated : r))
-    )
-    setEditingReservation(null)
-    setReservationWarningToast(`✅ Reservation ${updated.id} for ${updated.guestName} updated successfully!`)
-    setTimeout(() => setReservationWarningToast(null), 4500)
+    try {
+      const res = await fetch("/api/reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newResPayload),
+      })
+
+      const data = await res.json()
+
+      if (data.reservations && Array.isArray(data.reservations)) {
+        setReservations(data.reservations)
+      } else {
+        setReservations((prev) => [newResPayload, ...prev])
+      }
+
+      if (data.tables && Array.isArray(data.tables)) {
+        setTables(data.tables)
+      }
+
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({ type: "reservation_updated" })
+        bc.close()
+      }
+
+      setReservationWarningToast(`✅ New reservation for ${newResPayload.guestName} confirmed!`)
+      setTimeout(() => setReservationWarningToast(null), 4000)
+    } catch {
+      setReservations((prev) => [newResPayload, ...prev])
+    }
+
+    setNewResGuest("")
+    setShowAddResModal(false)
   }
 
   // --- CUSTOMER DIRECTORY STATE (For Reception & Admin) ---
@@ -6521,24 +6553,7 @@ function RestaurantAdminContent() {
                           Cancel
                         </button>
                         <button
-                          onClick={() => {
-                            if (!newResGuest) return
-                            setReservations((prev) => [
-                              ...prev,
-                              {
-                                id: `RES-${Math.floor(100 + Math.random() * 900)}`,
-                                guestName: newResGuest,
-                                phone: newResPhone || "+1 (555) 987-6543",
-                                guests: newResSeats,
-                                time: `${newResTime} Today`,
-                                table: newResTable,
-                                status: "Confirmed",
-                                notes: "Booked via Reception"
-                              }
-                            ])
-                            setNewResGuest("")
-                            setShowAddResModal(false)
-                          }}
+                          onClick={handleSaveNewReservation}
                           className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
                         >
                           Confirm Reservation

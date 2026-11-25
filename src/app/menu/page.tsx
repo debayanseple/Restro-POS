@@ -709,7 +709,7 @@ function CustomerMenuContent() {
 
           {/* Action Sheet Card: Slides up from bottom on mobile, floating card on desktop */}
           <div
-            className="relative z-10 w-full sm:w-88 max-w-lg sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-3xl border border-[#E5E1D9] shadow-2xl p-5 pb-8 sm:pb-5 space-y-3.5 animate-in slide-in-from-bottom duration-200 sm:mb-20 max-h-[85vh] overflow-y-auto"
+            className="relative z-10 w-full sm:w-92 max-w-lg sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-3xl border-t sm:border border-[#E5E1D9] shadow-2xl p-5 pb-10 sm:pb-5 space-y-3.5 animate-in slide-in-from-bottom duration-250 sm:mb-20 max-h-[85vh] overflow-y-auto overscroll-contain touch-pan-y"
             style={{ filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.25))" }}
           >
             {/* Mobile Drag Indicator Handle */}
