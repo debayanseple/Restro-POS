@@ -1143,8 +1143,14 @@ function CustomerMenuContent() {
 
       {/* Table Picker Modal */}
       {showTablePicker && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white border border-[#E5E1D9] p-5 space-y-4 shadow-lg text-[#20252B]">
+        <div
+          onClick={() => setShowTablePicker(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl bg-white border border-[#E5E1D9] p-5 space-y-4 shadow-lg text-[#20252B] cursor-default"
+          >
             <div className="text-center space-y-1">
               <h3 className="font-bold text-base text-[#20252B] flex items-center justify-center gap-1.5">
                 <Utensils className="w-4 h-4 text-[#C46B4E]" />
