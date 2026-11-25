@@ -30,6 +30,7 @@ import {
   Settings,
   Headphones,
   Bell,
+  BellRing,
   Moon,
   Sun,
   ChevronDown,
@@ -177,6 +178,20 @@ function formatTimeAgo(isoString?: string): string {
   if (diffMins < 60) return `${diffMins}m`
   const diffHours = Math.floor(diffMins / 60)
   return `${diffHours}h`
+}
+
+interface ServiceRequestItem {
+  id: string
+  table: string
+  tableNumber: number
+  type: "clean" | "waiter" | "bill"
+  title: string
+  status: "pending" | "in-progress" | "resolved"
+  createdAt: string
+  clearedAt?: string
+  clearedBy?: string
+  message?: string
+  notes?: string
 }
 
 function buildKdsTicketsFromOrders(ordersList: SupabaseOrder[]): KdsTicket[] {
@@ -834,6 +849,136 @@ function RestaurantAdminContent() {
       })
       .catch((e) => console.error("Error fetching network info:", e))
   }, [])
+
+  // --- FRONT DESK & LIVE TABLE SERVICE REQUESTS QUEUE ---
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequestItem[]>([])
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false)
+  const [serviceQueueFilter, setServiceQueueFilter] = useState<"all" | "waiter" | "clean" | "bill">("all")
+  const [serviceToast, setServiceToast] = useState<string | null>(null)
+
+  // Fetch Service Requests from /api/service-requests
+  useEffect(() => {
+    let isMounted = true
+
+    const fetchServiceRequests = async () => {
+      try {
+        const res = await fetch("/api/service-requests")
+        if (res.ok) {
+          const data = await res.json()
+          if (isMounted && Array.isArray(data.requests)) {
+            setServiceRequests(data.requests)
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch service requests:", err)
+      }
+    }
+
+    fetchServiceRequests()
+    const interval = setInterval(fetchServiceRequests, 3500)
+
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("restro_sync_channel")
+      bc.onmessage = (event) => {
+        if (event.data?.type === "table_service_request") {
+          fetchServiceRequests()
+          const actionLabel =
+            event.data.serviceType === "clean"
+              ? "Clean Table"
+              : event.data.serviceType === "bill"
+              ? "Bill Requested"
+              : "Call Waiter"
+          setServiceToast(`🔔 ${event.data.table}: ${actionLabel}`)
+          setTimeout(() => setServiceToast(null), 5000)
+        }
+      }
+    }
+
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+      if (bc) bc.close()
+    }
+  }, [])
+
+  // Clear single request
+  const handleClearServiceRequest = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    // Optimistic update
+    setServiceRequests((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status: "resolved" } : r))
+    )
+
+    try {
+      const res = await fetch("/api/service-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status: "resolved", clearedBy: "Front Desk" }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.requests)) {
+          setServiceRequests(data.requests)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to clear service request:", err)
+    }
+  }
+
+  // Clear all requests for a table
+  const handleClearAllTableRequests = async (tableStr: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation()
+    setServiceRequests((prev) =>
+      prev.map((r) =>
+        r.table.toLowerCase() === tableStr.toLowerCase()
+          ? { ...r, status: "resolved" }
+          : r
+      )
+    )
+
+    try {
+      const res = await fetch("/api/service-requests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clearAllTable: tableStr, clearedBy: "Front Desk" }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.requests)) {
+          setServiceRequests(data.requests)
+        }
+      }
+    } catch (err) {
+      console.error("Failed to clear table requests:", err)
+    }
+  }
+
+  // Pending requests list
+  const pendingServiceRequests = useMemo(() => {
+    return serviceRequests.filter((r) => r.status === "pending")
+  }, [serviceRequests])
+
+  // Map of tableNumber -> pending requests
+  const tableRequestsMap = useMemo(() => {
+    const map: Record<number, ServiceRequestItem[]> = {}
+    for (const req of pendingServiceRequests) {
+      if (!map[req.tableNumber]) {
+        map[req.tableNumber] = []
+      }
+      map[req.tableNumber].push(req)
+    }
+    return map
+  }, [pendingServiceRequests])
+
+  // Filtered queue items
+  const filteredQueueRequests = useMemo(() => {
+    return pendingServiceRequests.filter((r) => {
+      if (serviceQueueFilter === "all") return true
+      return r.type === serviceQueueFilter
+    })
+  }, [pendingServiceRequests, serviceQueueFilter])
 
   // Load Inventory from API & Subscribe to broadcast
   useEffect(() => {
@@ -2497,17 +2642,92 @@ function RestaurantAdminContent() {
 
               <div className="relative">
                 <button
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                  type="button"
+                  onClick={() => setShowServiceDropdown((prev) => !prev)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
                     isDarkMode
                       ? "text-slate-300 hover:text-white hover:bg-[#1a1c24]"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
+                  title="Table Service Queue"
                 >
                   <Bell className="w-4 h-4" />
                 </button>
-                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#C46B4E] text-white text-[10px] font-bold flex items-center justify-center">
-                  4
-                </span>
+                {pendingServiceRequests.length > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#C46B4E] text-white text-[10px] font-bold flex items-center justify-center animate-pulse">
+                    {pendingServiceRequests.length}
+                  </span>
+                )}
+
+                {/* Dropdown Menu for Service Requests */}
+                {showServiceDropdown && (
+                  <div
+                    className={`absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl border p-4 space-y-3 z-50 animate-in fade-in zoom-in-95 ${
+                      isDarkMode
+                        ? "bg-[#161822] border-[#292c3c] text-white"
+                        : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between pb-2 border-b border-[#E5E1D9] dark:border-[#272b3b]">
+                      <div className="flex items-center gap-2">
+                        <BellRing className="w-4 h-4 text-[#C46B4E]" />
+                        <h4 className="text-xs font-bold">Table Service Queue</h4>
+                        {pendingServiceRequests.length > 0 && (
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-[#C46B4E] text-white">
+                            {pendingServiceRequests.length}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowServiceDropdown(false)}
+                        className="p-1 text-[#64748B] hover:text-[#20252B] dark:hover:text-white cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {pendingServiceRequests.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-[#64748B]">
+                        All tables clear • No pending assistance calls
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto pr-0.5">
+                        {pendingServiceRequests.map((req) => (
+                          <div
+                            key={req.id}
+                            className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs ${
+                              isDarkMode
+                                ? "bg-[#12141c] border-[#2b2f3e]"
+                                : "bg-[#F7F5F0] border-[#E5E1D9]"
+                            }`}
+                          >
+                            <div>
+                              <div className="font-bold flex items-center gap-1.5">
+                                <span className="text-[#C46B4E] font-bold">{req.table}</span>
+                                <span>•</span>
+                                <span>{req.title}</span>
+                              </div>
+                              <div className="text-[10px] text-[#64748B] flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3" />
+                                <span>{formatTimeAgo(req.createdAt)}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleClearServiceRequest(req.id, e)}
+                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition flex items-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Clear</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Night Mode Toggle Button (Interactive Moon / Sun) */}
@@ -2621,7 +2841,21 @@ function RestaurantAdminContent() {
           </header>
 
           {/* Main Module Content */}
-          <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+          <main className="flex-1 overflow-y-auto p-6 lg:p-8 relative">
+            {/* Live Service Request Toast Alert */}
+            {serviceToast && (
+              <div className="fixed top-20 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-orange-600 text-white shadow-2xl shadow-orange-600/40 border border-orange-400 animate-bounce">
+                <BellRing className="w-5 h-5 animate-pulse text-white shrink-0" />
+                <span className="font-bold text-sm tracking-wide">{serviceToast}</span>
+                <button
+                  type="button"
+                  onClick={() => setServiceToast(null)}
+                  className="ml-2 hover:bg-orange-700 p-1 rounded-md text-xs text-orange-200 hover:text-white transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             {activeTab === "tables" ? (
               /* --- TABLES VIEW --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
@@ -2693,9 +2927,33 @@ function RestaurantAdminContent() {
                           const isOccupied = table.status === "occupied"
                           const isReserved = table.status === "reserved"
                           const isSelected = selectedTableId === table.id
+                          const activeTableRequests = tableRequestsMap[table.id] || []
+                          const hasActiveRequest = activeTableRequests.length > 0
 
                           return (
                             <div key={table.id} className="relative group">
+                              {/* Active Service Call Badge */}
+                              {hasActiveRequest && (
+                                <div className="absolute -top-2.5 -left-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#C46B4E] text-white text-[9px] font-bold shadow-md animate-bounce border-2 border-white dark:border-[#14161f]">
+                                  {activeTableRequests[0].type === "clean" ? (
+                                    <>
+                                      <Sparkles className="w-2.5 h-2.5" />
+                                      <span>Clean</span>
+                                    </>
+                                  ) : activeTableRequests[0].type === "bill" ? (
+                                    <>
+                                      <Receipt className="w-2.5 h-2.5" />
+                                      <span>Bill</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <BellRing className="w-2.5 h-2.5" />
+                                      <span>Call</span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation()
@@ -2712,6 +2970,10 @@ function RestaurantAdminContent() {
                                   setSelectedTableId(isSelected ? null : table.id)
                                 }
                                 className={`w-full h-24 rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all relative border ${
+                                  hasActiveRequest
+                                    ? "ring-2 ring-[#C46B4E] shadow-md shadow-[#C46B4E]/20"
+                                    : ""
+                                } ${
                                   isAvailable
                                     ? isDarkMode
                                       ? "bg-[#0b2920] border-[#10b981]/50 text-emerald-300 hover:border-emerald-400 shadow-lg shadow-emerald-950/20"
@@ -2760,6 +3022,19 @@ function RestaurantAdminContent() {
                                       : "bg-white border-slate-200 text-slate-800 shadow-lg"
                                   }`}
                                 >
+                                  {/* Table active requests banner inside dropdown */}
+                                  {hasActiveRequest && (
+                                    <div className="p-1 border-b border-[#E5E1D9] bg-amber-50/90 dark:bg-amber-950/40">
+                                      <button
+                                        onClick={() => handleClearAllTableRequests(table.name)}
+                                        className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center justify-between transition cursor-pointer"
+                                      >
+                                        <span>Clear Assistance ({activeTableRequests.length})</span>
+                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                      </button>
+                                    </div>
+                                  )}
+
                                   <div
                                     className={`px-3 py-1.5 font-medium border-b text-[11px] ${
                                       isDarkMode
@@ -2904,6 +3179,206 @@ function RestaurantAdminContent() {
 
                   {/* Right Column: Waitlist & Guest ordering codes */}
                   <div className="space-y-6">
+                    {/* Front Desk Live Service Queue Card */}
+                    <div
+                      className={`rounded-2xl p-5 space-y-4 border ${
+                        isDarkMode
+                          ? "bg-[#14161f] border-[#202330]"
+                          : "bg-white border-slate-200 shadow-xs"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center">
+                            <BellRing className={`w-4 h-4 ${pendingServiceRequests.length > 0 ? "animate-bounce" : ""}`} />
+                          </div>
+                          <div>
+                            <h3
+                              className={`font-bold text-sm flex items-center gap-2 ${
+                                isDarkMode ? "text-white" : "text-slate-900"
+                              }`}
+                            >
+                              Front Desk Service Queue
+                              {pendingServiceRequests.length > 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-orange-500 text-white animate-pulse">
+                                  {pendingServiceRequests.length}
+                                </span>
+                              )}
+                            </h3>
+                            <p
+                              className={`text-[11px] ${
+                                isDarkMode ? "text-slate-400" : "text-slate-500"
+                              }`}
+                            >
+                              Live table assistance calls & cleaning requests
+                            </p>
+                          </div>
+                        </div>
+
+                        {pendingServiceRequests.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              pendingServiceRequests.forEach((req) => handleClearServiceRequest(req.id))
+                            }}
+                            className={`text-xs px-2.5 py-1 rounded-lg border font-medium transition cursor-pointer ${
+                              isDarkMode
+                                ? "border-[#292c3a] bg-[#1a1c26] hover:bg-[#222534] text-slate-300"
+                                : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
+                            }`}
+                          >
+                            Clear All
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filter Pills */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        {(
+                          [
+                            { id: "all", label: `All (${pendingServiceRequests.length})` },
+                            {
+                              id: "waiter",
+                              label: `🔔 Waiter (${
+                                pendingServiceRequests.filter((r) => r.type === "waiter").length
+                              })`,
+                            },
+                            {
+                              id: "clean",
+                              label: `✨ Clean (${
+                                pendingServiceRequests.filter((r) => r.type === "clean").length
+                              })`,
+                            },
+                            {
+                              id: "bill",
+                              label: `🧾 Bill (${
+                                pendingServiceRequests.filter((r) => r.type === "bill").length
+                              })`,
+                            },
+                          ] as const
+                        ).map((tab) => {
+                          const active = serviceQueueFilter === tab.id
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setServiceQueueFilter(tab.id)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                                active
+                                  ? "bg-[#C46B4E] text-white shadow-xs"
+                                  : isDarkMode
+                                  ? "bg-[#1a1c26] text-slate-300 hover:bg-[#222534]"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      {/* Requests List */}
+                      {filteredQueueRequests.length === 0 ? (
+                        <div
+                          className={`p-6 rounded-xl border border-dashed text-center flex flex-col items-center justify-center gap-2 ${
+                            isDarkMode
+                              ? "border-[#262938] bg-[#1a1c26]/50 text-slate-400"
+                              : "border-slate-200 bg-slate-50/50 text-slate-500"
+                          }`}
+                        >
+                          <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                          <p className="text-xs font-medium">All Tables Serviced</p>
+                          <p className="text-[11px] opacity-70">
+                            No pending requests in this filter. Calls from the QR menu appear here instantly.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                          {filteredQueueRequests.map((req) => {
+                            const isWaiter = req.type === "waiter"
+                            const isClean = req.type === "clean"
+                            const isBill = req.type === "bill"
+
+                            return (
+                              <div
+                                key={req.id}
+                                className={`p-3 rounded-xl border transition flex items-center justify-between gap-3 ${
+                                  isDarkMode
+                                    ? "bg-[#1b1d28] border-[#292c3a] hover:border-orange-500/40"
+                                    : "bg-slate-50 border-slate-200 hover:border-orange-300"
+                                }`}
+                              >
+                                <div className="flex items-start gap-3 min-w-0">
+                                  <div
+                                    className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                                      isWaiter
+                                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                        : isClean
+                                        ? "bg-teal-500/15 text-teal-600 dark:text-teal-400"
+                                        : "bg-purple-500/15 text-purple-600 dark:text-purple-400"
+                                    }`}
+                                  >
+                                    {isWaiter ? (
+                                      <BellRing className="w-4 h-4" />
+                                    ) : isClean ? (
+                                      <Sparkles className="w-4 h-4" />
+                                    ) : (
+                                      <Receipt className="w-4 h-4" />
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span
+                                        className={`font-bold text-xs px-2 py-0.5 rounded-md ${
+                                          isDarkMode
+                                            ? "bg-[#252837] text-white"
+                                            : "bg-white text-slate-800 shadow-xs border border-slate-200"
+                                        }`}
+                                      >
+                                        {req.table}
+                                      </span>
+                                      <span
+                                        className={`text-xs font-semibold ${
+                                          isDarkMode ? "text-slate-200" : "text-slate-800"
+                                        }`}
+                                      >
+                                        {req.title}
+                                      </span>
+                                    </div>
+                                    <div
+                                      className={`text-[11px] flex items-center gap-1.5 mt-1 ${
+                                        isDarkMode ? "text-slate-400" : "text-slate-500"
+                                      }`}
+                                    >
+                                      <Clock className="w-3 h-3 shrink-0" />
+                                      <span>{formatTimeAgo(req.createdAt)}</span>
+                                      {req.message && (
+                                        <>
+                                          <span>•</span>
+                                          <span className="truncate max-w-[130px] italic">"{req.message}"</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleClearServiceRequest(req.id, e)}
+                                  title="Mark as resolved / cleared"
+                                  className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Clear</span>
+                                </button>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+
                     {/* Waitlist Card */}
                     <div
                       className={`rounded-2xl p-5 space-y-3 border ${

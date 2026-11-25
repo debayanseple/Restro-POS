@@ -1,0 +1,20 @@
+[
+  {
+    "id": "req_demo_1",
+    "table": "Table 03",
+    "tableNumber": 3,
+    "type": "waiter",
+    "title": "Call Waiter",
+    "status": "pending",
+    "createdAt": "2026-11-25T05:58:00.000Z"
+  },
+  {
+    "id": "req_demo_2",
+    "table": "Table 07",
+    "tableNumber": 7,
+    "type": "clean",
+    "title": "Clean Table",
+    "status": "pending",
+    "createdAt": "2026-11-25T05:55:00.000Z"
+  }
+]

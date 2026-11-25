@@ -77,7 +77,17 @@ function CustomerMenuContent() {
     setServiceActionStatus(msg)
     setIsServiceBellOpen(false)
 
-    // Broadcast to POS & Staff terminals if supported
+    // 1. Send to backend service-requests API so Front Desk & Admin receive it in queue
+    fetch("/api/service-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        table: selectedTable,
+        type: type,
+      }),
+    }).catch((err) => console.warn("Failed to log service request:", err))
+
+    // 2. Broadcast to POS & Staff terminals if supported
     if (typeof window !== "undefined" && "BroadcastChannel" in window) {
       try {
         const bc = new BroadcastChannel("restro_sync_channel")
