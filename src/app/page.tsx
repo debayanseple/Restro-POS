@@ -254,13 +254,7 @@ export default function LandingPage() {
 
           {/* Action CTAs */}
           <div className="flex items-center gap-2.5">
-            <Link
-              href="/menu?table=Table%2001"
-              className="px-3.5 py-2 rounded-lg text-xs font-medium text-[#20252B] bg-white hover:bg-[#F7F5F0] border border-[#E5E1D9] transition flex items-center gap-1.5 shadow-2xs"
-            >
-              <QrCode className="w-3.5 h-3.5 text-[#C46B4E]" />
-              <span>QR Menu</span>
-            </Link>
+           
             <Link
               href="/pos/login"
               className="px-3.5 py-2 rounded-lg text-xs font-medium text-[#20252B] bg-white hover:bg-[#F7F5F0] border border-[#20252B] transition flex items-center gap-1.5"
@@ -282,30 +276,42 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-20 pb-20 overflow-hidden bg-[#F7F5F0]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E9E3D8] border border-[#E5E1D9] text-[#20252B] text-xs font-medium">
+        {/* Animated line artwork + warm drifting glows */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 hero-lines" />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-28 left-1/2 -translate-x-1/2 w-[34rem] h-[34rem] rounded-full bg-[#C46B4E]/10 blur-3xl hero-glow"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-24 -right-20 w-72 h-72 rounded-full bg-[#E9E3D8] blur-3xl hero-glow"
+          style={{ animationDelay: "-4s" }}
+        />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+          <div className="hero-rise inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E9E3D8] border border-[#E5E1D9] text-[#20252B] text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-[#C46B4E]" />
             <span>High-Speed Counter POS & Real-Time Kitchen Rails</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-[#20252B] max-w-4xl mx-auto leading-tight sm:leading-tight">
+          <h1 className="hero-rise text-4xl sm:text-6xl font-bold tracking-tight text-[#20252B] max-w-4xl mx-auto leading-tight sm:leading-tight" style={{ animationDelay: "0.08s" }}>
             Run Your Restaurant Operations.{" "}
             <span className="text-[#C46B4E]">
               Seamlessly from Counter to Kitchen.
             </span>
           </h1>
 
-          <p className="text-base sm:text-lg text-[#64748B] max-w-2xl mx-auto leading-relaxed">
+          <p className="hero-rise text-base sm:text-lg text-[#64748B] max-w-2xl mx-auto leading-relaxed" style={{ animationDelay: "0.16s" }}>
             Unify high-speed order taking, interactive table floor management,
             and decoupled Kitchen & Bar display systems with persistent sync and zero downtime.
           </p>
 
-          <div className="pt-3 flex flex-col sm:flex-row items-center justify-center gap-3.5">
+          <div className="hero-rise pt-3 flex flex-col sm:flex-row items-center justify-center gap-3.5" style={{ animationDelay: "0.24s" }}>
             <Link
               href="/restaurant-admin/login"
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white font-semibold text-sm transition flex items-center justify-center gap-2 group shadow-xs"
             >
-              <span>Launch Restaurant Portal</span>
+              <span>Book Your Free Demo</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
             </Link>
             <Link
@@ -318,7 +324,7 @@ export default function LandingPage() {
           </div>
 
           {/* Metrics Row */}
-          <div className="pt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto">
+          <div className="hero-rise pt-12 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-4xl mx-auto" style={{ animationDelay: "0.32s" }}>
             <div className="p-4 rounded-xl bg-white border border-[#E5E1D9] text-center shadow-2xs">
               <div className="text-2xl font-bold text-[#20252B] tracking-tight">&lt; 100ms</div>
               <div className="text-xs text-[#64748B] font-medium mt-0.5">Ticket Dispatch Speed</div>
