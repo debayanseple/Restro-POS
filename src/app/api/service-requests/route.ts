@@ -69,6 +69,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Table identifier is required" }, { status: 400 })
     }
 
+    // Defensive check: If this is an isolated demo/sandbox table, return simulated success without adding to queue
+    if (String(table).toLowerCase().includes("demo") || body.isDemo === true) {
+      return NextResponse.json({
+        success: true,
+        isDemo: true,
+        message: `Demo service request simulated for ${table}. Not added to live staff queue.`,
+      })
+    }
+
     const validTypes: ServiceRequestType[] = ["clean", "waiter", "bill"]
     const reqType: ServiceRequestType = validTypes.includes(type) ? type : "waiter"
 

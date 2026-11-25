@@ -1,28 +1,8 @@
 [
   {
-    "id": "RES-638",
-    "guestName": "qwe",
-    "phone": "1234567809",
-    "guests": 10,
-    "time": "14:07 Today",
-    "table": "Table 1",
-    "status": "Arrived",
-    "notes": "Booked via Front Desk"
-  },
-  {
-    "id": "RES-313",
-    "guestName": "ASD",
-    "phone": "1234567809",
-    "guests": 10,
-    "time": "14:07 Today",
-    "table": "Table 4",
-    "status": "Completed",
-    "notes": "Booked via Front Desk"
-  },
-  {
     "id": "RES-101",
-    "guestName": "Alexander Wright",
-    "phone": "+1 (555) 234-8891",
+    "guestName": "Aarav Mehta",
+    "phone": "+91 98201 23456",
     "guests": 4,
     "time": "19:00 Today",
     "table": "Table 3",
@@ -31,8 +11,8 @@
   },
   {
     "id": "RES-102",
-    "guestName": "Sophia Martinez",
-    "phone": "+1 (555) 412-9903",
+    "guestName": "Priya Sharma",
+    "phone": "+91 98302 34567",
     "guests": 2,
     "time": "19:30 Today",
     "table": "Table 1",
@@ -41,18 +21,18 @@
   },
   {
     "id": "RES-103",
-    "guestName": "Marcus Sterling",
-    "phone": "+1 (555) 872-3310",
+    "guestName": "Rohan Malhotra",
+    "phone": "+91 98403 45678",
     "guests": 6,
     "time": "20:15 Today",
     "table": "Table 6",
     "status": "Confirmed",
-    "notes": "Corporate dinner, pre-ordered wine"
+    "notes": "Corporate dinner, pre-ordered mocktails"
   },
   {
     "id": "RES-104",
-    "guestName": "Emma Watson",
-    "phone": "+1 (555) 601-7744",
+    "guestName": "Ananya Iyer",
+    "phone": "+91 98104 56789",
     "guests": 2,
     "time": "21:00 Today",
     "table": "Table 2",

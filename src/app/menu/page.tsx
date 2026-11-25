@@ -28,20 +28,30 @@ interface CartItem extends MenuItem {
 function CustomerMenuContent() {
   const searchParams = useSearchParams()
   const rawTableParam = searchParams.get("table") || searchParams.get("table_id") || ""
+  const isDemoUrl =
+    searchParams.get("demo") === "true" ||
+    searchParams.get("demo") === "1" ||
+    searchParams.get("mode") === "demo" ||
+    rawTableParam.toLowerCase().includes("demo")
 
   // Format table identifier (e.g. "1" -> "Table 01", "Table 02" -> "Table 02")
   const normalizedTable = useMemo(() => {
-    if (!rawTableParam) return ""
+    if (!rawTableParam) return isDemoUrl ? "Demo Table 01" : ""
     const trimmed = rawTableParam.trim()
     if (/^\d+$/.test(trimmed)) {
       const num = parseInt(trimmed, 10)
       return `Table ${num < 10 ? "0" + num : num}`
     }
     return trimmed
-  }, [rawTableParam])
+  }, [rawTableParam, isDemoUrl])
 
-  const [selectedTable, setSelectedTable] = useState<string>(normalizedTable || "Table 01")
-  const [showTablePicker, setShowTablePicker] = useState<boolean>(!normalizedTable)
+  const [selectedTable, setSelectedTable] = useState<string>(
+    normalizedTable || (isDemoUrl ? "Demo Table 01" : "Table 01")
+  )
+  const [showTablePicker, setShowTablePicker] = useState<boolean>(!normalizedTable && !isDemoUrl)
+  const isDemoMode = useMemo(() => {
+    return isDemoUrl || selectedTable.toLowerCase().includes("demo")
+  }, [isDemoUrl, selectedTable])
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all")
   const [searchQuery, setSearchQuery] = useState("")
@@ -62,20 +72,34 @@ function CustomerMenuContent() {
     let msg = ""
     if (type === "clean") {
       setCleaningRequested(true)
-      msg = `Cleaning request sent for ${selectedTable}. A team member is on the way!`
+      msg = isDemoMode
+        ? `[Demo Sandbox] Cleaning requested for ${selectedTable}. (Simulated)`
+        : `Cleaning request sent for ${selectedTable}. A team member is on the way!`
       setTimeout(() => setCleaningRequested(false), 5000)
     } else if (type === "waiter") {
       setWaiterCalled(true)
-      msg = `Waiter called for ${selectedTable}. Someone will be with you shortly!`
+      msg = isDemoMode
+        ? `[Demo Sandbox] Waiter called for ${selectedTable}. (Simulated)`
+        : `Waiter called for ${selectedTable}. Someone will be with you shortly!`
       setTimeout(() => setWaiterCalled(false), 5000)
     } else if (type === "bill") {
       setBillRequested(true)
-      msg = `Bill requested for ${selectedTable}. Your invoice is being brought to your table!`
+      msg = isDemoMode
+        ? `[Demo Sandbox] Bill requested for ${selectedTable}. (Simulated)`
+        : `Bill requested for ${selectedTable}. Your invoice is being brought to your table!`
       setTimeout(() => setBillRequested(false), 5000)
     }
 
     setServiceActionStatus(msg)
     setIsServiceBellOpen(false)
+
+    // In isolated demo mode, do not spam live kitchen or front desk
+    if (isDemoMode) {
+      setTimeout(() => {
+        setServiceActionStatus(null)
+      }, 4500)
+      return
+    }
 
     // 1. Send to backend service-requests API so Front Desk & Admin receive it in queue
     fetch("/api/service-requests", {
@@ -160,9 +184,9 @@ function CustomerMenuContent() {
     }
   }, [selectedTable])
 
-  // Sync active order with server polling every 4 seconds
+  // Sync active order with server polling every 4 seconds (skip for demo sandbox orders)
   useEffect(() => {
-    if (!activeOrder?.id) return
+    if (!activeOrder?.id || activeOrder?.isDemo) return
 
     const pollInterval = setInterval(async () => {
       try {
@@ -253,6 +277,63 @@ function CustomerMenuContent() {
       return
     }
 
+    // In isolated demo mode, simulate the order purely in local sandbox state
+    if (isDemoMode) {
+      setIsSubmitting(true)
+      setTimeout(() => {
+        const demoOrderNum = `DEMO-${Math.floor(1000 + Math.random() * 9000)}`
+        const demoOrderData = {
+          id: `demo_${Date.now()}`,
+          order_number: demoOrderNum,
+          restaurant_id: "demo-sandbox",
+          outlet_id: "demo-sandbox-outlet",
+          user_id: "demo_guest",
+          order_type: "dine-in",
+          table_id: selectedTable || "Demo Table 01",
+          source: "DEMO_QR_MENU",
+          total_amount: grandTotal,
+          tax_amount: gst,
+          discount_amount: 0,
+          payment_status: "PENDING",
+          payment_method: "CASH",
+          kds_stage: "new",
+          kitchen_stage: "new",
+          bar_stage: "new",
+          status: "OPEN",
+          isDemo: true,
+          created_at: new Date().toISOString(),
+          items: cart.map((item) => ({
+            menu_item_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit_price: item.price,
+            station: item.category === "drinks" ? "bar" : "kitchen",
+            status: "new",
+          })),
+        }
+
+        setActiveOrder(demoOrderData)
+        localStorage.setItem(`restro_qr_order_${selectedTable}`, JSON.stringify(demoOrderData))
+        setCart([])
+        setIsCartOpen(false)
+        setOrderNotes("")
+        setIsSubmitting(false)
+
+        // Simulate realistic kitchen progression in demo mode for interactive preview
+        setTimeout(() => {
+          setActiveOrder((prev: any) =>
+            prev && prev.isDemo ? { ...prev, kitchen_stage: "preparing" } : prev
+          )
+        }, 8000)
+        setTimeout(() => {
+          setActiveOrder((prev: any) =>
+            prev && prev.isDemo ? { ...prev, kitchen_stage: "ready" } : prev
+          )
+        }, 22000)
+      }, 500)
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const generatedOrderNum = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
@@ -329,11 +410,18 @@ function CustomerMenuContent() {
               <Utensils className="w-4 h-4" />
             </div>
             <div>
-              <h1 className="font-bold text-sm tracking-tight text-[#20252B]">
-                Downtown Main Outlet
-              </h1>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-bold text-sm tracking-tight text-[#20252B]">
+                  {isDemoMode ? "Demo Restaurant" : "Downtown Main Outlet"}
+                </h1>
+                {isDemoMode && (
+                  <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-200">
+                    Demo Sandbox
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-[#64748B]">
-                Digital Menu & Table Ordering
+                {isDemoMode ? "Interactive Customer Self-Ordering Showcase" : "Digital Menu & Table Ordering"}
               </p>
             </div>
           </div>
@@ -343,7 +431,7 @@ function CustomerMenuContent() {
             onClick={() => setShowTablePicker(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] text-xs font-semibold hover:bg-[#DDD5C7] transition cursor-pointer"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span className={`w-2 h-2 rounded-full ${isDemoMode ? "bg-amber-500 animate-pulse" : "bg-emerald-600"}`} />
             <span>{selectedTable || "Choose Table"}</span>
           </button>
         </div>
@@ -351,6 +439,20 @@ function CustomerMenuContent() {
 
       {/* Main Container */}
       <main className="max-w-xl mx-auto px-4 pt-4 space-y-4">
+        {/* Isolated Demo Sandbox Banner */}
+        {isDemoMode && (
+          <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <p className="text-[11px] font-medium leading-relaxed">
+                <strong>Interactive Demo Sandbox:</strong> Orders & assistance requests are simulated for evaluation. They will <strong>NOT</strong> dispatch to Nodedr Bistro or any live kitchen.
+              </p>
+            </div>
+            <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 text-[10px] font-bold shrink-0">
+              Safe to Test
+            </span>
+          </div>
+        )}
         {/* Active Order Banner (If customer has an ongoing order) */}
         {activeOrder && (
           <div className="p-4 rounded-xl bg-white border border-[#E5E1D9] shadow-2xs space-y-3">
@@ -700,23 +802,26 @@ function CustomerMenuContent() {
 
       {/* TABLE ASSISTANCE POPUP / BOTTOM SHEET MODAL */}
       {isServiceBellOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-end justify-center sm:justify-end sm:p-6 p-0">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity duration-200"
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-200"
             onClick={() => setIsServiceBellOpen(false)}
           />
 
-          {/* Action Sheet Card: Slides up from bottom on mobile, floating card on desktop */}
+          {/* Action Sheet Card: Bottom Sheet on Mobile, Centered Modal on Tablet/Desktop */}
           <div
-            className="relative z-10 w-full sm:w-92 max-w-lg sm:max-w-sm bg-white rounded-t-[32px] sm:rounded-3xl border-t sm:border border-[#E5E1D9] shadow-2xl p-5 pb-10 sm:pb-5 space-y-3.5 animate-in slide-in-from-bottom duration-250 sm:mb-20 max-h-[85vh] overflow-y-auto overscroll-contain touch-pan-y"
-            style={{ filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.25))" }}
+            className="relative z-10 w-full sm:max-w-md bg-white rounded-t-[28px] sm:rounded-2xl border-t sm:border border-[#E5E1D9] shadow-2xl p-5 pb-8 sm:p-6 space-y-4 max-h-[88vh] flex flex-col overflow-hidden"
+            style={{
+              paddingBottom: "max(2rem, env(safe-area-inset-bottom, 24px))",
+              filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.25))",
+            }}
           >
             {/* Mobile Drag Indicator Handle */}
-            <div className="w-12 h-1.5 rounded-full bg-[#E5E1D9] mx-auto -mt-1 mb-2 sm:hidden" />
+            <div className="w-12 h-1.5 rounded-full bg-[#E5E1D9] mx-auto -mt-1 mb-1 sm:hidden shrink-0" />
 
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D9]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D9] shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold shadow-xs">
                   <Bell className="w-5 h-5" />
@@ -735,8 +840,8 @@ function CustomerMenuContent() {
               </button>
             </div>
 
-            {/* Options List */}
-            <div className="space-y-2.5">
+            {/* Options List (Scrollable if height is constrained) */}
+            <div className="space-y-2.5 overflow-y-auto max-h-[55vh] pr-0.5 overscroll-contain">
               {/* Option 1: Clean Table */}
               <button
                 type="button"
@@ -813,11 +918,20 @@ function CustomerMenuContent() {
               </button>
             </div>
 
-            {/* Micro hint footer */}
-            <div className="pt-1 text-center">
-              <span className="text-xs text-[#64748B] font-medium">
-                Staff will be notified at the service station
-              </span>
+            {/* Bottom Actions & Dismiss */}
+            <div className="pt-1 shrink-0 space-y-2">
+              <button
+                type="button"
+                onClick={() => setIsServiceBellOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-[#F7F5F0] hover:bg-[#E9E3D8] text-xs font-semibold text-[#64748B] hover:text-[#20252B] border border-[#E5E1D9] transition cursor-pointer text-center active:scale-[0.99]"
+              >
+                Close Menu
+              </button>
+              <p className="text-[11px] text-[#64748B] text-center font-medium">
+                {isDemoMode
+                  ? "⚡ Sandbox Demo Mode: Staff alerts are simulated."
+                  : "Staff will be notified at the service station queue"}
+              </p>
             </div>
           </div>
         </div>
@@ -975,13 +1089,13 @@ function CustomerMenuContent() {
                 </div>
                 <div>
                   <label className="text-[11px] font-medium text-[#64748B] block mb-1">
-                    Phone (For Bill Updates)
+                    Phone (For WhatsApp / SMS Bill)
                   </label>
                   <input
                     type="tel"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="9876543210"
+                    placeholder="+91 98765 43210"
                     className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder-[#64748B] focus:outline-none focus:border-[#C46B4E]"
                   />
                 </div>
@@ -1029,8 +1143,14 @@ function CustomerMenuContent() {
 
       {/* Table Picker Modal */}
       {showTablePicker && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white border border-[#E5E1D9] p-5 space-y-4 shadow-lg text-[#20252B]">
+        <div
+          onClick={() => setShowTablePicker(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-sm rounded-2xl bg-white border border-[#E5E1D9] p-5 space-y-4 shadow-lg text-[#20252B] cursor-default"
+          >
             <div className="text-center space-y-1">
               <h3 className="font-bold text-base text-[#20252B] flex items-center justify-center gap-1.5">
                 <Utensils className="w-4 h-4 text-[#C46B4E]" />

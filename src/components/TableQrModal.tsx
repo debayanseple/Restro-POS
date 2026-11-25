@@ -177,8 +177,14 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-[#E5E1D9] rounded-2xl p-6 space-y-5 shadow-lg animate-in zoom-in-95 text-[#20252B]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-white border border-[#E5E1D9] rounded-2xl p-6 space-y-5 shadow-lg animate-in zoom-in-95 text-[#20252B]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#E5E1D9] pb-3">
           <div className="flex items-center gap-2.5">
@@ -451,8 +457,14 @@ export function AllTablesQrModal({ tables, onClose }: AllTablesQrModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-2xl bg-white border border-[#E5E1D9] rounded-2xl p-6 space-y-5 shadow-lg max-h-[90vh] flex flex-col text-[#20252B]">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-2xl bg-white border border-[#E5E1D9] rounded-2xl p-6 space-y-5 shadow-lg max-h-[90vh] flex flex-col text-[#20252B]"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-[#E5E1D9] pb-3">
           <div className="flex items-center gap-2.5">

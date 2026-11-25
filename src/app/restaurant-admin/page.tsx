@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, Suspense } from "react"
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { TableQrModal, AllTablesQrModal } from "@/components/TableQrModal"
@@ -849,6 +849,34 @@ function RestaurantAdminContent() {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false)
   const [serviceQueueFilter, setServiceQueueFilter] = useState<"all" | "waiter" | "clean" | "bill">("all")
   const [serviceToast, setServiceToast] = useState<string | null>(null)
+
+  // Refs for closing popups/dropdowns when clicked outside on free space
+  const profileMenuRef = useRef<HTMLDivElement>(null)
+  const serviceDropdownRef = useRef<HTMLDivElement>(null)
+  const selectedTableRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      const target = event.target as Node
+
+      if (showProfileMenu && profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        setShowProfileMenu(false)
+      }
+
+      if (showServiceDropdown && serviceDropdownRef.current && !serviceDropdownRef.current.contains(target)) {
+        setShowServiceDropdown(false)
+      }
+
+      if (selectedTableId !== null && selectedTableRef.current && !selectedTableRef.current.contains(target)) {
+        setSelectedTableId(null)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [showProfileMenu, showServiceDropdown, selectedTableId])
 
   // Fetch Service Requests from /api/service-requests
   useEffect(() => {
@@ -2142,8 +2170,8 @@ function RestaurantAdminContent() {
   const [reservations, setReservations] = useState<ReservationItem[]>([
     {
       id: "RES-101",
-      guestName: "Alexander Wright",
-      phone: "+1 (555) 234-8891",
+      guestName: "Aarav Mehta",
+      phone: "+91 98201 23456",
       guests: 4,
       time: "19:00 Today",
       table: "Table 3",
@@ -2152,8 +2180,8 @@ function RestaurantAdminContent() {
     },
     {
       id: "RES-102",
-      guestName: "Sophia Martinez",
-      phone: "+1 (555) 412-9903",
+      guestName: "Priya Sharma",
+      phone: "+91 98302 34567",
       guests: 2,
       time: "19:30 Today",
       table: "Table 1",
@@ -2162,18 +2190,18 @@ function RestaurantAdminContent() {
     },
     {
       id: "RES-103",
-      guestName: "Marcus Sterling",
-      phone: "+1 (555) 872-3310",
+      guestName: "Rohan Malhotra",
+      phone: "+91 98403 45678",
       guests: 6,
       time: "20:15 Today",
       table: "Table 6",
       status: "Confirmed",
-      notes: "Corporate dinner, pre-ordered wine",
+      notes: "Corporate dinner, pre-ordered mocktails",
     },
     {
       id: "RES-104",
-      guestName: "Emma Watson",
-      phone: "+1 (555) 601-7744",
+      guestName: "Ananya Iyer",
+      phone: "+91 98104 56789",
       guests: 2,
       time: "21:00 Today",
       table: "Table 2",
@@ -2338,7 +2366,7 @@ function RestaurantAdminContent() {
     const newResPayload = {
       id: `RES-${Math.floor(100 + Math.random() * 900)}`,
       guestName: newResGuest.trim(),
-      phone: newResPhone.trim() || "+1 (555) 987-6543",
+      phone: newResPhone.trim() || "+91 98765 43210",
       guests: newResSeats,
       time: `${newResTime} Today`,
       table: newResTable,
@@ -2386,9 +2414,9 @@ function RestaurantAdminContent() {
   const [customersList] = useState([
     {
       id: "CUST-01",
-      name: "Alexander Wright",
-      phone: "+1 (555) 234-8891",
-      email: "a.wright@corp.com",
+      name: "Aarav Mehta",
+      phone: "+91 98201 23456",
+      email: "aarav.mehta@corp.in",
       visits: 14,
       totalSpend: "₹14,250.00",
       loyalty: "VIP Platinum",
@@ -2398,9 +2426,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-02",
-      name: "Sophia Martinez",
-      phone: "+1 (555) 412-9903",
-      email: "sophia.m@design.org",
+      name: "Priya Sharma",
+      phone: "+91 98302 34567",
+      email: "priya.sharma@design.org",
       visits: 4,
       totalSpend: "₹3,980.00",
       loyalty: "Silver",
@@ -2410,9 +2438,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-03",
-      name: "Marcus Sterling",
-      phone: "+1 (555) 872-3310",
-      email: "m.sterling@capital.com",
+      name: "Rohan Malhotra",
+      phone: "+91 98403 45678",
+      email: "rohan.m@capital.in",
       visits: 22,
       totalSpend: "₹31,800.00",
       loyalty: "VIP Gold",
@@ -2422,9 +2450,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-04",
-      name: "David Chen",
-      phone: "+1 (555) 901-2244",
-      email: "dchen@tech.io",
+      name: "Rajesh Verma",
+      phone: "+91 98105 67890",
+      email: "rajesh.v@tech.in",
       visits: 8,
       totalSpend: "₹7,600.00",
       loyalty: "Gold",
@@ -2434,9 +2462,9 @@ function RestaurantAdminContent() {
     },
     {
       id: "CUST-05",
-      name: "Olivia Brown",
-      phone: "+1 (555) 345-6671",
-      email: "olivia.b@studio.net",
+      name: "Sunita Rao",
+      phone: "+91 98706 78901",
+      email: "sunita.r@studio.net",
       visits: 5,
       totalSpend: "₹3,900.00",
       loyalty: "Silver",
@@ -2815,7 +2843,7 @@ function RestaurantAdminContent() {
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>
 
-              <div className="relative">
+              <div className="relative" ref={serviceDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setShowServiceDropdown((prev) => !prev)}
@@ -2836,8 +2864,17 @@ function RestaurantAdminContent() {
 
                 {/* Dropdown Menu for Service Requests */}
                 {showServiceDropdown && (
-                  <div
-                    className={`absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl border p-4 space-y-3 z-50 animate-in fade-in zoom-in-95 ${
+                  <>
+                    {/* Free space click-outside backdrop */}
+                    <div
+                      className="fixed inset-0 z-40 bg-transparent cursor-default"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowServiceDropdown(false)
+                      }}
+                    />
+                    <div
+                      className={`absolute right-0 top-full mt-2 w-80 sm:w-96 rounded-2xl shadow-2xl border p-4 space-y-3 z-50 animate-in fade-in zoom-in-95 ${
                       isDarkMode
                         ? "bg-[#161822] border-[#292c3c] text-white"
                         : "bg-white border-[#E5E1D9] text-[#20252B]"
@@ -2902,8 +2939,9 @@ function RestaurantAdminContent() {
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
+            </div>
 
               {/* Night Mode Toggle Button (Interactive Moon / Sun) */}
               <button
@@ -2924,7 +2962,7 @@ function RestaurantAdminContent() {
               </button>
 
               {/* Profile Avatar & Interactive Sign Out Dropdown */}
-              <div className="relative">
+              <div className="relative" ref={profileMenuRef}>
                 <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className={`flex items-center gap-2 pl-2 border-l cursor-pointer transition ${
@@ -2983,33 +3021,43 @@ function RestaurantAdminContent() {
 
                 {/* Profile Popup Menu */}
                 {showProfileMenu && (
-                  <div
-                    className={`absolute right-0 mt-2 w-56 rounded-2xl shadow-2xl p-2 z-50 border text-xs animate-in fade-in zoom-in-95 duration-150 ${
-                      isDarkMode
-                        ? "bg-[#181a26] border-[#2b2e40] text-slate-200"
-                        : "bg-white border-slate-200 text-slate-800 shadow-xl"
-                    }`}
-                  >
-                    <div className="p-2 border-b border-inherit space-y-0.5">
-                      <p className="font-bold text-xs text-white">
-                        {userType === "super-admin"
-                          ? "Super Admin Account"
-                          : userType === "pos-staff"
-                          ? `POS ${posRole.toUpperCase()} Terminal`
-                          : "Restaurant Manager"}
-                      </p>
-                      <p className="text-[11px] text-slate-400 truncate">Nodedr Bistro • Main Outlet</p>
+                  <>
+                    {/* Free space click-outside backdrop */}
+                    <div
+                      className="fixed inset-0 z-40 bg-transparent cursor-default"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setShowProfileMenu(false)
+                      }}
+                    />
+                    <div
+                      className={`absolute right-0 mt-2 w-56 rounded-2xl shadow-2xl p-2 z-50 border text-xs animate-in fade-in zoom-in-95 duration-150 ${
+                        isDarkMode
+                          ? "bg-[#181a26] border-[#2b2e40] text-slate-200"
+                          : "bg-white border-slate-200 text-slate-800 shadow-xl"
+                      }`}
+                    >
+                      <div className="p-2 border-b border-inherit space-y-0.5">
+                        <p className="font-bold text-xs text-white">
+                          {userType === "super-admin"
+                            ? "Super Admin Account"
+                            : userType === "pos-staff"
+                            ? `POS ${posRole.toUpperCase()} Terminal`
+                            : "Restaurant Manager"}
+                        </p>
+                        <p className="text-[11px] text-slate-400 truncate">Nodedr Bistro • Main Outlet</p>
+                      </div>
+                      <div className="py-1">
+                        <button
+                          onClick={handleSignOut}
+                          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-semibold transition text-left cursor-pointer"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          <span>Sign Out of Session</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="py-1">
-                      <button
-                        onClick={handleSignOut}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 font-semibold transition text-left cursor-pointer"
-                      >
-                        <LogOut className="w-4 h-4" />
-                        <span>Sign Out of Session</span>
-                      </button>
-                    </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
@@ -3106,7 +3154,11 @@ function RestaurantAdminContent() {
                           const hasActiveRequest = activeTableRequests.length > 0
 
                           return (
-                            <div key={table.id} className="relative group">
+                            <div
+                              key={table.id}
+                              ref={isSelected ? selectedTableRef : undefined}
+                              className="relative group"
+                            >
                               {/* Active Service Call Badge */}
                               {hasActiveRequest && (
                                 <div className="absolute -top-2.5 -left-2 z-20 flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#C46B4E] text-white text-[9px] font-bold shadow-md animate-bounce border-2 border-white dark:border-[#14161f]">
@@ -3190,13 +3242,22 @@ function RestaurantAdminContent() {
 
                               {/* Dropdown Menu when Table 1 / Selected Table is tapped */}
                               {isSelected && (
-                                <div
-                                  className={`absolute top-full left-0 mt-2 w-48 rounded-xl shadow-2xl py-1.5 z-40 text-xs border ${
-                                    isDarkMode
-                                      ? "bg-[#181a24] border-[#2b2f40]"
-                                      : "bg-white border-slate-200 text-slate-800 shadow-lg"
-                                  }`}
-                                >
+                                <>
+                                  {/* Free space click-outside backdrop */}
+                                  <div
+                                    className="fixed inset-0 z-30 bg-transparent cursor-default"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setSelectedTableId(null)
+                                    }}
+                                  />
+                                  <div
+                                    className={`absolute top-full left-0 mt-2 w-48 rounded-xl shadow-2xl py-1.5 z-40 text-xs border ${
+                                      isDarkMode
+                                        ? "bg-[#181a24] border-[#2b2f40]"
+                                        : "bg-white border-slate-200 text-slate-800 shadow-lg"
+                                    }`}
+                                  >
                                   {/* Table active requests banner inside dropdown */}
                                   {hasActiveRequest && (
                                     <div className="p-1 border-b border-[#E5E1D9] bg-amber-50/90 dark:bg-amber-950/40">
@@ -3320,6 +3381,7 @@ function RestaurantAdminContent() {
                                     </button>
                                   </div>
                                 </div>
+                              </>
                               )}
                             </div>
                           )
@@ -6398,9 +6460,13 @@ function RestaurantAdminContent() {
 
                 {/* Add Reservation Modal */}
                 {showAddResModal && (
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                  <div
+                    onClick={() => setShowAddResModal(false)}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 cursor-pointer"
+                  >
                     <div
-                      className={`max-w-md w-full rounded-2xl p-6 border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 ${
+                      onClick={(e) => e.stopPropagation()}
+                      className={`max-w-md w-full rounded-2xl p-6 border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 cursor-default ${
                         isDarkMode
                           ? "bg-[#181a24] border-[#2c3042] text-white"
                           : "bg-white border-slate-200 text-slate-900"
@@ -6421,7 +6487,7 @@ function RestaurantAdminContent() {
                           <label className="font-semibold block mb-1">Guest Full Name</label>
                           <input
                             type="text"
-                            placeholder="e.g. John Doe"
+                            placeholder="e.g. Rahul Sharma"
                             value={newResGuest}
                             onChange={(e) => setNewResGuest(e.target.value)}
                             className={`w-full p-2.5 rounded-xl border text-xs ${
@@ -6436,7 +6502,7 @@ function RestaurantAdminContent() {
                             <label className="font-semibold block mb-1">Contact Phone</label>
                             <input
                               type="tel"
-                              placeholder="+1 (555) 000-0000"
+                              placeholder="+91 98765 43210"
                               value={newResPhone}
                               onChange={(e) => setNewResPhone(e.target.value)}
                               className={`w-full p-2.5 rounded-xl border text-xs ${
@@ -6518,9 +6584,13 @@ function RestaurantAdminContent() {
 
                 {/* Edit Reservation Modal */}
                 {editingReservation && (
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                  <div
+                    onClick={() => setEditingReservation(null)}
+                    className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 cursor-pointer"
+                  >
                     <div
-                      className={`max-w-md w-full rounded-2xl p-6 border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 ${
+                      onClick={(e) => e.stopPropagation()}
+                      className={`max-w-md w-full rounded-2xl p-6 border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 cursor-default ${
                         isDarkMode
                           ? "bg-[#181a24] border-[#2c3042] text-white"
                           : "bg-white border-slate-200 text-slate-900"
@@ -6567,6 +6637,7 @@ function RestaurantAdminContent() {
                             <label className="font-semibold block mb-1">Contact Phone</label>
                             <input
                               type="tel"
+                              placeholder="+91 98765 43210"
                               value={editingReservation.phone}
                               onChange={(e) =>
                                 setEditingReservation({ ...editingReservation, phone: e.target.value })
@@ -8185,8 +8256,12 @@ function RestaurantAdminContent() {
 
       {/* Waitlist Modal */}
       {showWaitlistModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowWaitlistModal(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
           <form
+            onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => {
               e.preventDefault()
               if (!waitlistName.trim()) return
@@ -8197,7 +8272,7 @@ function RestaurantAdminContent() {
               setWaitlistName("")
               setShowWaitlistModal(false)
             }}
-            className={`rounded-2xl p-6 max-w-sm w-full space-y-4 border ${
+            className={`rounded-2xl p-6 max-w-sm w-full space-y-4 border cursor-default ${
               isDarkMode
                 ? "bg-[#161822] border-[#272b3a]"
                 : "bg-white border-slate-200 shadow-2xl"
@@ -8291,9 +8366,13 @@ function RestaurantAdminContent() {
 
       {/* ADD MENU ITEM MODAL */}
       {showAddItemModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddItemModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
           <div
-            className={`w-full max-w-lg rounded-2xl border p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto ${
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-lg rounded-2xl border p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto cursor-default ${
               isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
             }`}
           >
@@ -8517,9 +8596,13 @@ function RestaurantAdminContent() {
 
       {/* ADD / EDIT RAW MATERIAL MODAL */}
       {showAddMaterialModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddMaterialModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
           <div
-            className={`w-full max-w-lg rounded-2xl border p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto ${
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-lg rounded-2xl border p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto cursor-default ${
               isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
             }`}
           >
@@ -8741,9 +8824,13 @@ function RestaurantAdminContent() {
 
       {/* QUICK STOCK ADJUSTMENT / RESTOCK MODAL */}
       {showAdjustmentModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAdjustmentModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
           <div
-            className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl ${
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-md rounded-2xl border p-6 space-y-4 shadow-2xl cursor-default ${
               isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
             }`}
           >
@@ -8955,9 +9042,13 @@ function RestaurantAdminContent() {
 
       {/* STOCK MOVEMENT AUDIT LOG MODAL */}
       {showMovementsLogModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowMovementsLogModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
           <div
-            className={`w-full max-w-2xl rounded-2xl border p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col ${
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-2xl rounded-2xl border p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col cursor-default ${
               isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
             }`}
           >
@@ -9089,9 +9180,13 @@ function RestaurantAdminContent() {
 
       {/* ADD / EDIT TEAM MEMBER MODAL */}
       {showAddStaffModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div
+          onClick={() => setShowAddStaffModal(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
           <div
-            className={`w-full max-w-lg rounded-2xl border p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto ${
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-lg rounded-2xl border p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto cursor-default ${
               isDarkMode
                 ? "bg-[#161822] border-[#292c3c] text-white"
                 : "bg-white border-[#E5E1D9] text-[#20252B]"
