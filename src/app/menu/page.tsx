@@ -701,13 +701,13 @@ function CustomerMenuContent() {
       {/* FLOATING SERVICE BELL BUTTON & CURVED POPUP MENU */}
       <div
         className={`fixed z-40 transition-all duration-300 ${
-          cartCount > 0 ? "bottom-20 right-4 sm:right-6" : "bottom-5 right-4 sm:right-6"
+          cartCount > 0 ? "bottom-24 right-4 sm:right-6" : "bottom-6 right-4 sm:right-6"
         }`}
       >
         {/* Backdrop for curved popup on mobile */}
         {isServiceBellOpen && (
           <div
-            className="fixed inset-0 z-40 bg-black/25 backdrop-blur-[2px] sm:bg-transparent"
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] sm:bg-transparent"
             onClick={() => setIsServiceBellOpen(false)}
           />
         )}
@@ -715,51 +715,51 @@ function CustomerMenuContent() {
         {/* Curved Popup Menu */}
         {isServiceBellOpen && (
           <div
-            className="absolute bottom-16 right-0 z-50 w-72 sm:w-80 rounded-3xl bg-white border border-[#E5E1D9] shadow-2xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-200"
-            style={{ filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.2))" }}
+            className="absolute bottom-18 sm:bottom-20 right-0 z-50 w-[calc(100vw-2rem)] max-w-[340px] sm:w-80 rounded-3xl bg-white border border-[#E5E1D9] shadow-2xl p-4 sm:p-5 space-y-3.5 animate-in fade-in zoom-in-95 duration-200"
+            style={{ filter: "drop-shadow(0 20px 35px rgba(32, 37, 43, 0.25))" }}
           >
             {/* Curved Header */}
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#E5E1D9]">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-2xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold">
-                  <Bell className="w-4 h-4" />
+            <div className="flex items-center justify-between pb-3 border-b border-[#E5E1D9]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-[#E9E3D8] text-[#C46B4E] flex items-center justify-center font-bold shadow-xs">
+                  <Bell className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-[#20252B]">Table Assistance</h4>
-                  <p className="text-[10px] text-[#64748B] font-medium">{selectedTable}</p>
+                  <h4 className="text-sm font-bold text-[#20252B]">Table Assistance</h4>
+                  <p className="text-xs text-[#64748B] font-medium">{selectedTable}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsServiceBellOpen(false)}
-                className="w-7 h-7 rounded-full bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#64748B] hover:text-[#20252B] flex items-center justify-center transition cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#64748B] hover:text-[#20252B] flex items-center justify-center transition cursor-pointer active:scale-95"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Options List */}
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {/* Option 1: Clean Table */}
               <button
                 type="button"
                 onClick={() => handleServiceRequest("clean")}
                 disabled={cleaningRequested}
-                className="w-full p-2.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] border border-[#E5E1D9] transition flex items-center gap-3 text-left group cursor-pointer disabled:opacity-60"
+                className="w-full p-3 sm:p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
-                <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Sparkles className="w-4 h-4" />
+                <div className="w-11 h-11 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                  <Sparkles className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-[#20252B] flex items-center justify-between">
+                  <div className="text-sm font-bold text-[#20252B] flex items-center justify-between">
                     <span>Clean Table</span>
                     {cleaningRequested && (
-                      <span className="text-[9px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
                         Requested
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-[#64748B] truncate">
+                  <p className="text-xs text-[#64748B] truncate mt-0.5">
                     Wipe surface & clear empty plates
                   </p>
                 </div>
@@ -770,21 +770,21 @@ function CustomerMenuContent() {
                 type="button"
                 onClick={() => handleServiceRequest("waiter")}
                 disabled={waiterCalled}
-                className="w-full p-2.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] border border-[#E5E1D9] transition flex items-center gap-3 text-left group cursor-pointer disabled:opacity-60"
+                className="w-full p-3 sm:p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
-                <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <BellRing className="w-4 h-4" />
+                <div className="w-11 h-11 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                  <BellRing className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-[#20252B] flex items-center justify-between">
+                  <div className="text-sm font-bold text-[#20252B] flex items-center justify-between">
                     <span>Call Waiter</span>
                     {waiterCalled && (
-                      <span className="text-[9px] font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                         Notified
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-[#64748B] truncate">
+                  <p className="text-xs text-[#64748B] truncate mt-0.5">
                     Need water, cutlery, or ordering help
                   </p>
                 </div>
@@ -795,21 +795,21 @@ function CustomerMenuContent() {
                 type="button"
                 onClick={() => handleServiceRequest("bill")}
                 disabled={billRequested}
-                className="w-full p-2.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] border border-[#E5E1D9] transition flex items-center gap-3 text-left group cursor-pointer disabled:opacity-60"
+                className="w-full p-3 sm:p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
-                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                  <Receipt className="w-4 h-4" />
+                <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                  <Receipt className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-bold text-[#20252B] flex items-center justify-between">
+                  <div className="text-sm font-bold text-[#20252B] flex items-center justify-between">
                     <span>Ask for Bill</span>
                     {billRequested && (
-                      <span className="text-[9px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                         Requested
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] text-[#64748B] truncate">
+                  <p className="text-xs text-[#64748B] truncate mt-0.5">
                     Ready to pay via UPI, Card, or Cash
                   </p>
                 </div>
@@ -818,7 +818,7 @@ function CustomerMenuContent() {
 
             {/* Micro hint footer */}
             <div className="pt-1 text-center">
-              <span className="text-[10px] text-[#64748B]">
+              <span className="text-[11px] text-[#64748B] font-medium">
                 Staff will be notified at the service station
               </span>
             </div>
@@ -831,21 +831,21 @@ function CustomerMenuContent() {
           onClick={() => setIsServiceBellOpen((prev) => !prev)}
           title="Table Service & Assistance"
           aria-label="Table Service Bell"
-          className={`relative w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-xl cursor-pointer ${
+          className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-2xl cursor-pointer ${
             isServiceBellOpen
-              ? "bg-[#C46B4E] text-white rotate-12 scale-105 shadow-[#C46B4E]/30"
-              : "bg-[#20252B] hover:bg-[#2e353e] text-white shadow-[#20252B]/30 hover:scale-105 active:scale-95"
-          } border-2 border-white`}
+              ? "bg-[#C46B4E] text-white rotate-12 scale-105 shadow-[#C46B4E]/40"
+              : "bg-[#20252B] hover:bg-[#2e353e] text-white shadow-black/30 hover:scale-105 active:scale-95"
+          } border-[3px] border-white`}
         >
           {isServiceBellOpen ? (
-            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+            <X className="w-7 h-7 sm:w-8 sm:h-8" />
           ) : (
             <>
-              <Bell className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+              <Bell className="w-7 h-7 sm:w-8 sm:h-8 animate-pulse" />
               {/* Pulsing indicator dot */}
-              <span className="absolute top-0 right-0 flex h-3.5 w-3.5">
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C46B4E] opacity-75" />
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-[#C46B4E] border-2 border-white" />
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-[#C46B4E] border-2 border-white" />
               </span>
             </>
           )}
