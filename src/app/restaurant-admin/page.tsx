@@ -319,6 +319,17 @@ interface CartItem {
   quantity: number
 }
 
+interface ReservationItem {
+  id: string
+  guestName: string
+  phone: string
+  guests: number
+  time: string
+  table: string
+  status: string
+  notes?: string
+}
+
 const DEFAULT_TABLES_LIST: TableItem[] = [
   { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
   { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
@@ -2127,7 +2138,7 @@ function RestaurantAdminContent() {
   }
 
   // --- RESERVATIONS STATE (For Reception & Admin) ---
-  const [reservations, setReservations] = useState([
+  const [reservations, setReservations] = useState<ReservationItem[]>([
     {
       id: "RES-101",
       guestName: "Alexander Wright",
@@ -2136,7 +2147,7 @@ function RestaurantAdminContent() {
       time: "19:00 Today",
       table: "Table 3",
       status: "Confirmed",
-      notes: "Window booth preferred, celebrating anniversary"
+      notes: "Window booth preferred, celebrating anniversary",
     },
     {
       id: "RES-102",
@@ -2145,8 +2156,8 @@ function RestaurantAdminContent() {
       guests: 2,
       time: "19:30 Today",
       table: "Table 1",
-      status: "Arrived",
-      notes: "First time dining, VIP guest"
+      status: "Confirmed",
+      notes: "First time dining, VIP guest",
     },
     {
       id: "RES-103",
@@ -2156,7 +2167,7 @@ function RestaurantAdminContent() {
       time: "20:15 Today",
       table: "Table 6",
       status: "Confirmed",
-      notes: "Corporate dinner, pre-ordered wine"
+      notes: "Corporate dinner, pre-ordered wine",
     },
     {
       id: "RES-104",
@@ -2165,16 +2176,195 @@ function RestaurantAdminContent() {
       guests: 2,
       time: "21:00 Today",
       table: "Table 2",
-      status: "Waitlist",
-      notes: "Requested quiet corner"
-    }
+      status: "Confirmed",
+      notes: "Requested quiet corner",
+    },
   ])
   const [showAddResModal, setShowAddResModal] = useState(false)
+  const [editingReservation, setEditingReservation] = useState<ReservationItem | null>(null)
+  const [reservationWarningToast, setReservationWarningToast] = useState<string | null>(null)
   const [newResGuest, setNewResGuest] = useState("")
   const [newResPhone, setNewResPhone] = useState("")
   const [newResSeats, setNewResSeats] = useState(2)
   const [newResTime, setNewResTime] = useState("19:30")
   const [newResTable, setNewResTable] = useState("Table 1")
+
+  // Helper to find table by name or ID
+  const getTableForReservation = (tableStr: string) => {
+    const clean = tableStr.trim().toLowerCase()
+    const num = parseInt(clean.replace(/\D/g, ""), 10)
+    return tables.find((t) => t.name.toLowerCase() === clean || t.id === num)
+  }
+
+  // Change reservation status with availability check & auto table occupancy
+  const handleReservationStatusChange = async (resId: string, targetStatus: string) => {
+    const resItem = reservations.find((r) => r.id === resId)
+    if (!resItem) return false
+
+    const currentStatus = resItem.status
+
+    // When marking as "Arrived" or "Seated":
+    if (targetStatus === "Arrived" || targetStatus === "Seated") {
+      const targetTable = getTableForReservation(resItem.table)
+
+      // Check if table is available (if not already occupied by this party)
+      if (
+        targetTable &&
+        targetTable.status !== "available" &&
+        currentStatus !== "Arrived" &&
+        currentStatus !== "Seated"
+      ) {
+        setReservationWarningToast(
+          `⚠️ ${resItem.table} is currently ${targetTable.status.toUpperCase()}! You cannot mark this reservation as ${targetStatus}. Please wait until the table becomes available, or edit the reservation to choose an open table.`
+        )
+        setTimeout(() => setReservationWarningToast(null), 6000)
+        return false
+      }
+
+      // Mark the table as occupied
+      if (targetTable) {
+        const nextOrderCode = targetTable.orderCode || `ORD-${Math.floor(100 + Math.random() * 900)}`
+        setTables((prev) =>
+          prev.map((t) =>
+            t.id === targetTable.id
+              ? {
+                  ...t,
+                  status: "occupied",
+                  isOpen: true,
+                  orderCode: nextOrderCode,
+                }
+              : t
+          )
+        )
+        try {
+          if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+            const bc = new BroadcastChannel("restro_sync_channel")
+            bc.postMessage({ type: "table_updated", table_id: targetTable.id, status: "occupied", isOpen: true })
+            bc.close()
+          }
+          await fetch("/api/tables", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ table_id: targetTable.id, status: "occupied", isOpen: true }),
+          })
+        } catch {}
+      }
+    } else if (targetStatus === "Completed" || targetStatus === "Cancelled") {
+      // Free up the table if it was previously occupied
+      if (currentStatus === "Arrived" || currentStatus === "Seated") {
+        const targetTable = getTableForReservation(resItem.table)
+        if (targetTable) {
+          setTables((prev) =>
+            prev.map((t) =>
+              t.id === targetTable.id ? { ...t, status: "available", isOpen: false } : t
+            )
+          )
+          try {
+            if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+              const bc = new BroadcastChannel("restro_sync_channel")
+              bc.postMessage({ type: "table_updated", table_id: targetTable.id, status: "available", isOpen: false })
+              bc.close()
+            }
+            await fetch("/api/tables", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ table_id: targetTable.id, status: "available", isOpen: false }),
+            })
+          } catch {}
+        }
+      }
+    }
+
+    // Update reservation state
+    setReservations((prev) =>
+      prev.map((item) => (item.id === resId ? { ...item, status: targetStatus } : item))
+    )
+
+    if (targetStatus === "Arrived") {
+      setReservationWarningToast(`✅ ${resItem.guestName} marked as Arrived! ${resItem.table} is now Occupied on the floor plan.`)
+      setTimeout(() => setReservationWarningToast(null), 4500)
+    } else if (targetStatus === "Seated") {
+      setReservationWarningToast(`✅ ${resItem.guestName} seated at ${resItem.table}! Floor map updated.`)
+      setTimeout(() => setReservationWarningToast(null), 4500)
+      setActiveTab("tables")
+    }
+
+    return true
+  }
+
+  // Handle saving an edited reservation
+  const handleSaveEditedReservation = async (updated: ReservationItem) => {
+    const original = reservations.find((r) => r.id === updated.id)
+    if (!original) return
+
+    // If table changed or status was set to Arrived / Seated
+    if (updated.status === "Arrived" || updated.status === "Seated") {
+      const newTable = getTableForReservation(updated.table)
+      const tableChanged = original.table !== updated.table
+      const statusChangedToOccupied = original.status !== "Arrived" && original.status !== "Seated"
+
+      if (tableChanged || statusChangedToOccupied) {
+        if (
+          newTable &&
+          newTable.status !== "available" &&
+          (!tableChanged && (original.status === "Arrived" || original.status === "Seated") ? false : true)
+        ) {
+          setReservationWarningToast(
+            `⚠️ ${updated.table} is currently ${newTable.status.toUpperCase()}! Please select an available table or keep status as Confirmed.`
+          )
+          setTimeout(() => setReservationWarningToast(null), 6000)
+          return
+        }
+
+        // Occupy the new table
+        if (newTable) {
+          setTables((prev) =>
+            prev.map((t) =>
+              t.id === newTable.id
+                ? {
+                    ...t,
+                    status: "occupied",
+                    isOpen: true,
+                    orderCode: t.orderCode || `ORD-${Math.floor(100 + Math.random() * 900)}`,
+                  }
+                : t
+            )
+          )
+          try {
+            await fetch("/api/tables", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ table_id: newTable.id, status: "occupied", isOpen: true }),
+            })
+          } catch {}
+        }
+
+        // If table changed and previous was occupied, free previous table
+        if (tableChanged && (original.status === "Arrived" || original.status === "Seated")) {
+          const oldTable = getTableForReservation(original.table)
+          if (oldTable) {
+            setTables((prev) =>
+              prev.map((t) => (t.id === oldTable.id ? { ...t, status: "available", isOpen: false } : t))
+            )
+            try {
+              await fetch("/api/tables", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ table_id: oldTable.id, status: "available", isOpen: false }),
+              })
+            } catch {}
+          }
+        }
+      }
+    }
+
+    setReservations((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    )
+    setEditingReservation(null)
+    setReservationWarningToast(`✅ Reservation ${updated.id} for ${updated.guestName} updated successfully!`)
+    setTimeout(() => setReservationWarningToast(null), 4500)
+  }
 
   // --- CUSTOMER DIRECTORY STATE (For Reception & Admin) ---
   const [customersSearch, setCustomersSearch] = useState("")
@@ -5852,6 +6042,21 @@ function RestaurantAdminContent() {
                 </div>
 
                 {/* Key Front Desk Metrics */}
+                {reservationWarningToast && (
+                  <div className="p-4 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 flex items-center justify-between gap-3 text-xs font-semibold animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>{reservationWarningToast}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReservationWarningToast(null)}
+                      className="p-1 rounded-md hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <div
                     className={`p-4 rounded-2xl border ${
@@ -5995,31 +6200,33 @@ function RestaurantAdminContent() {
                                 {r.guests} guests
                               </td>
                               <td className="py-3.5 px-4">
-                                <span className="px-2 py-1 rounded-lg bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] font-bold">
-                                  {r.table}
-                                </span>
+                                {(() => {
+                                  const targetTable = getTableForReservation(r.table)
+                                  const isBusy =
+                                    targetTable &&
+                                    targetTable.status !== "available" &&
+                                    r.status !== "Arrived" &&
+                                    r.status !== "Seated"
+
+                                  return (
+                                    <div>
+                                      <span className="px-2 py-1 rounded-lg bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] font-bold">
+                                        {r.table}
+                                      </span>
+                                      {isBusy && (
+                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-0.5 mt-1">
+                                          <AlertTriangle className="w-3 h-3 shrink-0" />
+                                          <span>Occupied</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                })()}
                               </td>
                               <td className="py-3.5 px-4">
                                 <select
                                   value={r.status}
-                                  onChange={(e) => {
-                                    const nextStatus = e.target.value
-                                    setReservations((prev) =>
-                                      prev.map((item) =>
-                                        item.id === r.id ? { ...item, status: nextStatus } : item
-                                      )
-                                    )
-                                    if (nextStatus === "Seated") {
-                                      const tNum = parseInt(r.table.replace(/\D/g, ""), 10)
-                                      if (tNum) {
-                                        setTables((prevT) =>
-                                          prevT.map((t) =>
-                                            t.id === tNum ? { ...t, status: "occupied", isOpen: true } : t
-                                          )
-                                        )
-                                      }
-                                    }
-                                  }}
+                                  onChange={(e) => handleReservationStatusChange(r.id, e.target.value)}
                                   className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition cursor-pointer appearance-none ${
                                     r.status === "Arrived"
                                       ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800"
@@ -6040,135 +6247,95 @@ function RestaurantAdminContent() {
                                 </select>
                               </td>
                               <td className="py-3.5 px-4 text-right">
-                                {r.status === "Confirmed" ? (
-                                  <div className="flex items-center justify-end gap-1.5">
+                                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                  {/* Dynamic Status Action Button */}
+                                  {r.status === "Confirmed" ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleReservationStatusChange(r.id, "Arrived")}
+                                        className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer active:scale-95"
+                                        title="Mark guest as arrived at reception (occupies table)"
+                                      >
+                                        Mark Arrived
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleReservationStatusChange(r.id, "Seated")}
+                                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer active:scale-95"
+                                        title="Directly seat guest"
+                                      >
+                                        Seat Now
+                                      </button>
+                                    </>
+                                  ) : r.status === "Arrived" ? (
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setReservations((prev) =>
-                                          prev.map((item) =>
-                                            item.id === r.id ? { ...item, status: "Arrived" } : item
-                                          )
-                                        )
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer"
-                                      title="Mark party arrived in lobby"
-                                    >
-                                      Mark Arrived
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setReservations((prev) =>
-                                          prev.map((item) =>
-                                            item.id === r.id ? { ...item, status: "Seated" } : item
-                                          )
-                                        )
-                                        const tNum = parseInt(r.table.replace(/\D/g, ""), 10)
-                                        if (tNum) {
-                                          setTables((prevT) =>
-                                            prevT.map((t) =>
-                                              t.id === tNum ? { ...t, status: "occupied", isOpen: true } : t
-                                            )
-                                          )
-                                        }
-                                        setActiveTab("tables")
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer"
-                                      title="Seat directly at table"
-                                    >
-                                      Seat Now
-                                    </button>
-                                  </div>
-                                ) : r.status === "Arrived" ? (
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setReservations((prev) =>
-                                          prev.map((item) =>
-                                            item.id === r.id ? { ...item, status: "Seated" } : item
-                                          )
-                                        )
-                                        const tNum = parseInt(r.table.replace(/\D/g, ""), 10)
-                                        if (tNum) {
-                                          setTables((prevT) =>
-                                            prevT.map((t) =>
-                                              t.id === tNum ? { ...t, status: "occupied", isOpen: true } : t
-                                            )
-                                          )
-                                        }
-                                        setActiveTab("tables")
-                                      }}
-                                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer"
+                                      onClick={() => handleReservationStatusChange(r.id, "Seated")}
+                                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                                       title="Seat party at assigned table"
                                     >
                                       <Utensils className="w-3 h-3" />
                                       <span>Seat Now</span>
                                     </button>
-                                  </div>
-                                ) : r.status === "Seated" ? (
-                                  <div className="flex items-center justify-end gap-1.5">
+                                  ) : r.status === "Seated" ? (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveTab("tables")}
+                                        className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer"
+                                        title="View table on floor map"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                        <span>View Table</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleReservationStatusChange(r.id, "Completed")}
+                                        className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px] transition cursor-pointer"
+                                        title="Mark reservation as completed"
+                                      >
+                                        <span>Complete</span>
+                                      </button>
+                                    </>
+                                  ) : r.status === "Completed" ? (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 py-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                                      <Check className="w-3 h-3" />
+                                      <span>Completed</span>
+                                    </span>
+                                  ) : r.status === "Cancelled" ? (
                                     <button
                                       type="button"
-                                      onClick={() => setActiveTab("tables")}
-                                      className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer"
-                                      title="View table on floor map"
+                                      onClick={() => handleReservationStatusChange(r.id, "Confirmed")}
+                                      className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 text-[11px] font-medium transition cursor-pointer"
+                                      title="Reactivate reservation"
                                     >
-                                      <Eye className="w-3 h-3" />
-                                      <span>View Table</span>
+                                      <span>Reopen</span>
                                     </button>
+                                  ) : (
                                     <button
                                       type="button"
-                                      onClick={() => {
-                                        setReservations((prev) =>
-                                          prev.map((item) =>
-                                            item.id === r.id ? { ...item, status: "Completed" } : item
-                                          )
-                                        )
-                                      }}
-                                      className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-[11px] transition cursor-pointer"
-                                      title="Mark reservation as completed"
+                                      onClick={() => handleReservationStatusChange(r.id, "Seated")}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer"
                                     >
-                                      <span>Complete</span>
+                                      <span>Seat Now</span>
                                     </button>
-                                  </div>
-                                ) : r.status === "Completed" ? (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 py-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-                                    <Check className="w-3 h-3" />
-                                    <span>Completed</span>
-                                  </span>
-                                ) : r.status === "Cancelled" ? (
+                                  )}
+
+                                  {/* Edit Reservation Button */}
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setReservations((prev) =>
-                                        prev.map((item) =>
-                                          item.id === r.id ? { ...item, status: "Confirmed" } : item
-                                        )
-                                      )
-                                    }}
-                                    className="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 text-[11px] font-medium transition cursor-pointer"
-                                    title="Reactivate reservation"
+                                    onClick={() => setEditingReservation(r)}
+                                    className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                                      isDarkMode
+                                        ? "border-[#2b2f40] hover:bg-[#202330] text-slate-300 hover:text-white"
+                                        : "border-slate-200 hover:bg-slate-100 text-slate-600 hover:text-slate-900"
+                                    }`}
+                                    title="Edit reservation details or change table"
                                   >
-                                    <span>Reopen</span>
+                                    <Edit3 className="w-3.5 h-3.5" />
                                   </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setReservations((prev) =>
-                                        prev.map((item) =>
-                                          item.id === r.id ? { ...item, status: "Seated" } : item
-                                        )
-                                      )
-                                      setActiveTab("tables")
-                                    }}
-                                    className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer"
-                                  >
-                                    <span>Seat Now</span>
-                                  </button>
-                                )}
+                                </div>
                               </td>
                             </tr>
                           ))}
@@ -6375,6 +6542,191 @@ function RestaurantAdminContent() {
                           className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
                         >
                           Confirm Reservation
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Edit Reservation Modal */}
+                {editingReservation && (
+                  <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                    <div
+                      className={`max-w-md w-full rounded-2xl p-6 border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 ${
+                        isDarkMode
+                          ? "bg-[#181a24] border-[#2c3042] text-white"
+                          : "bg-white border-slate-200 text-slate-900"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between border-b pb-3 border-inherit">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-xl bg-[#C46B4E]/10 text-[#C46B4E] flex items-center justify-center font-bold">
+                            <Edit3 className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-base">Edit Reservation</h3>
+                            <p className="text-[11px] text-slate-400 font-mono">{editingReservation.id}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReservation(null)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700/50 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 text-xs">
+                        <div>
+                          <label className="font-semibold block mb-1">Guest Full Name</label>
+                          <input
+                            type="text"
+                            value={editingReservation.guestName}
+                            onChange={(e) =>
+                              setEditingReservation({ ...editingReservation, guestName: e.target.value })
+                            }
+                            className={`w-full p-2.5 rounded-xl border text-xs ${
+                              isDarkMode
+                                ? "bg-[#111217] border-[#2b2f40] text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-900"
+                            }`}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-semibold block mb-1">Contact Phone</label>
+                            <input
+                              type="tel"
+                              value={editingReservation.phone}
+                              onChange={(e) =>
+                                setEditingReservation({ ...editingReservation, phone: e.target.value })
+                              }
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="font-semibold block mb-1">Party Size</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              value={editingReservation.guests}
+                              onChange={(e) =>
+                                setEditingReservation({
+                                  ...editingReservation,
+                                  guests: Math.max(1, Number(e.target.value)),
+                                })
+                              }
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="font-semibold block mb-1">Reservation Time</label>
+                            <input
+                              type="text"
+                              value={editingReservation.time}
+                              onChange={(e) =>
+                                setEditingReservation({ ...editingReservation, time: e.target.value })
+                              }
+                              placeholder="e.g. 19:30 Today"
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            />
+                          </div>
+                          <div>
+                            <label className="font-semibold block mb-1">Assigned Table</label>
+                            <select
+                              value={editingReservation.table}
+                              onChange={(e) =>
+                                setEditingReservation({ ...editingReservation, table: e.target.value })
+                              }
+                              className={`w-full p-2.5 rounded-xl border text-xs ${
+                                isDarkMode
+                                  ? "bg-[#111217] border-[#2b2f40] text-white"
+                                  : "bg-slate-50 border-slate-200 text-slate-900"
+                              }`}
+                            >
+                              {tables.map((t) => {
+                                const isCurrent = t.name.toLowerCase() === editingReservation.table.toLowerCase()
+                                return (
+                                  <option key={t.id} value={t.name}>
+                                    {t.name} ({t.seats} seats • {isCurrent ? "Current" : t.status})
+                                  </option>
+                                )
+                              })}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="font-semibold block mb-1">Status</label>
+                          <select
+                            value={editingReservation.status}
+                            onChange={(e) =>
+                              setEditingReservation({ ...editingReservation, status: e.target.value })
+                            }
+                            className={`w-full p-2.5 rounded-xl border text-xs ${
+                              isDarkMode
+                                ? "bg-[#111217] border-[#2b2f40] text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-900"
+                            }`}
+                          >
+                            <option value="Confirmed">Confirmed</option>
+                            <option value="Arrived">Arrived (Guest in lobby - occupies table)</option>
+                            <option value="Seated">Seated (Dining at table)</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="font-semibold block mb-1">Special Notes</label>
+                          <textarea
+                            rows={2}
+                            value={editingReservation.notes || ""}
+                            onChange={(e) =>
+                              setEditingReservation({ ...editingReservation, notes: e.target.value })
+                            }
+                            placeholder="Allergies, high chair, window seating, etc."
+                            className={`w-full p-2.5 rounded-xl border text-xs ${
+                              isDarkMode
+                                ? "bg-[#111217] border-[#2b2f40] text-white"
+                                : "bg-slate-50 border-slate-200 text-slate-900"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 justify-end pt-3 border-t border-inherit">
+                        <button
+                          type="button"
+                          onClick={() => setEditingReservation(null)}
+                          className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEditedReservation(editingReservation)}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition cursor-pointer shadow-xs active:scale-95"
+                        >
+                          Save Changes
                         </button>
                       </div>
                     </div>
