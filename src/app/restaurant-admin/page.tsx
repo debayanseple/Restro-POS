@@ -4,6 +4,27 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { TableQrModal, AllTablesQrModal } from "@/components/TableQrModal"
+import { AdminDashboard } from "@/components/AdminDashboard"
+import { AccountingModule } from "@/components/AccountingModule"
+import { ReportsModule } from "@/components/ReportsModule"
+import { MyDeliveriesModule } from "@/components/MyDeliveriesModule"
+import { SettingsModule, SettingsSection } from "@/components/SettingsModule"
+import { WaiterAlertOverlay } from "@/components/WaiterAlertOverlay"
+import { BillReceiptModal, BillReceiptOrder, BillReceiptOrderItem } from "@/components/BillReceiptModal"
+import {
+  buildTablesFromFloors,
+  DEFAULT_RESTAURANT_SETTINGS,
+  FloorConfig,
+} from "@/lib/restaurant-settings"
+import { PortalShellSkeleton, SectionContentSkeleton } from "@/components/ui/skeleton"
+import {
+  playBellAndSpeak,
+  playKitchenChimeAndSpeak,
+  playServiceBellRing,
+  stopKitchenVoice,
+  stopServiceVoice,
+  unlockBellAudio,
+} from "@/lib/bell-sound"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
 import {
   MASTER_INVENTORY_CATALOG,
@@ -51,7 +72,6 @@ import {
   CreditCard,
   Activity,
   CheckCircle2,
-  Bike,
   Truck,
   Megaphone,
   Sliders,
@@ -101,6 +121,9 @@ interface SupabaseOrder {
   payment_method: string
   source: string
   order_number: string
+  customer_name?: string | null
+  customer_phone?: string | null
+  billed_closed_at?: string | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -308,6 +331,8 @@ interface TableItem {
   status: "available" | "occupied" | "reserved" | "cleaning" | "out_of_service"
   orderCode?: string
   isOpen: boolean
+  floorNumber?: number
+  floorName?: string
 }
 
 interface CartItem {
@@ -328,27 +353,35 @@ interface ReservationItem {
   notes?: string
 }
 
-const DEFAULT_TABLES_LIST: TableItem[] = [
-  { id: 1, name: "Table 1", seats: 4, status: "available", isOpen: false },
-  { id: 2, name: "Table 2", seats: 4, status: "available", isOpen: false },
-  { id: 3, name: "Table 3", seats: 6, status: "available", isOpen: false },
-  { id: 4, name: "Table 4", seats: 4, status: "available", isOpen: false },
-  { id: 6, name: "Table 6", seats: 6, status: "available", isOpen: false },
-  { id: 7, name: "Table 7", seats: 4, status: "available", isOpen: false },
-  { id: 8, name: "Table 8", seats: 4, status: "available", isOpen: false },
-]
+const DEFAULT_TABLES_LIST: TableItem[] = buildTablesFromFloors(
+  DEFAULT_RESTAURANT_SETTINGS.floors,
+  []
+)
 
 function RestaurantAdminContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Hydration safety flag
+  // Hydration safety flag & initial skeleton state
   const [isMounted, setIsMounted] = useState(false)
+  const [isBootstrapping, setIsBootstrapping] = useState(true)
+  const [isTabLoading, setIsTabLoading] = useState(false)
+  const tabSwitchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleSelectTab = (nextTab: string) => {
+    if (nextTab === activeTab) return
+    setActiveTab(nextTab)
+    setIsTabLoading(true)
+    if (tabSwitchTimerRef.current) clearTimeout(tabSwitchTimerRef.current)
+    tabSwitchTimerRef.current = setTimeout(() => {
+      setIsTabLoading(false)
+    }, 180)
+  }
 
   // 1. Current Active User Type & POS Sub-role
   const [userType, setUserType] = useState<UserType>("restaurant-admin")
   const [posRole, setPosRole] = useState<PosRole>("orders")
-  const [activeTab, setActiveTab] = useState("tables")
+  const [activeTab, setActiveTab] = useState("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
 
@@ -483,7 +516,7 @@ function RestaurantAdminContent() {
         else if (determinedPosRole === "reception") setActiveTab("tables")
         else setActiveTab("pos")
       } else {
-        setActiveTab("tables")
+        setActiveTab("dashboard")
       }
     }
   }, [searchParams])
@@ -523,7 +556,7 @@ function RestaurantAdminContent() {
     setUserType(newType)
     if (newType === "restaurant-admin") {
       document.cookie = `user_role=restaurant-admin; path=/; max-age=86400`
-      setActiveTab("tables")
+      setActiveTab("dashboard")
     } else if (newType === "pos-staff") {
       document.cookie = `user_role=pos-${posRole}; path=/; max-age=86400`
       document.cookie = `pos_role=${posRole}; path=/; max-age=86400`
@@ -552,9 +585,14 @@ function RestaurantAdminContent() {
 
   // --- TABLES STATE ---
   const [tables, setTables] = useState<TableItem[]>(DEFAULT_TABLES_LIST)
+  const [floors, setFloors] = useState<FloorConfig[]>(DEFAULT_RESTAURANT_SETTINGS.floors)
+  const [selectedFloorFilter, setSelectedFloorFilter] = useState<number | "all">("all")
+  const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>("outlet")
   const [selectedTableId, setSelectedTableId] = useState<number | null>(null)
   const [tableValidationError, setTableValidationError] = useState(false)
   const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
+  const [viewBillTable, setViewBillTable] = useState<TableItem | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<{ title: string; orders: BillReceiptOrder[] } | null>(null)
   const [showAllQrModal, setShowAllQrModal] = useState(false)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
   const [waitlist, setWaitlist] = useState<Array<{ name: string; guests: number; time: string }>>([])
@@ -570,19 +608,114 @@ function RestaurantAdminContent() {
     }
   }, [tables])
 
-  const setTableStatus = async (status: TableItem["status"]) => {
-    if (selectedTableId === null) return
-    const targetId = selectedTableId
+  const matchesTableOrder = (table: TableItem, orderTableId?: string | null) => {
+    if (!orderTableId) return false
+    const normalized = String(orderTableId).toLowerCase().trim()
+    return (
+      normalized === table.name.toLowerCase().trim() ||
+      normalized === `table ${table.id}` ||
+      normalized === `table 0${table.id}` ||
+      normalized === String(table.id)
+    )
+  }
+
+  const resolveBillItemRate = (it: BillReceiptOrderItem): number => {
+    const explicit = Number(it.unit_price)
+    if (explicit > 0) return explicit
+    const rawName = String(it.MenuItem?.name || it.name || "").trim()
+    const isHalf = /\(half\)$/i.test(rawName)
+    const isFull = /\(full\)$/i.test(rawName)
+    const baseName = rawName.replace(/\s*\((half|full)\)$/i, "").toLowerCase().trim()
+    const baseMenuId = String(it.menu_item_id || "").replace(/__(half|full)$/i, "")
+    const match = menuCatalog.find(
+      (m) =>
+        (baseMenuId && m.id === baseMenuId) ||
+        (baseName && m.name.toLowerCase().trim() === baseName)
+    )
+    if (!match) return 0
+    if (isHalf && match.halfPrice) return Number(match.halfPrice)
+    if (isFull && match.fullPrice) return Number(match.fullPrice)
+    return Number(match.price) || 0
+  }
+
+  const closeTableOrdersLocally = (targetId: number, tableList?: TableItem[]) => {
+    const sourceTables = tableList || tables
+    const targetTable = sourceTables.find((t) => t.id === targetId)
+    const nowIso = new Date().toISOString()
+
+    setOrders((prev) => {
+      let modified = false
+      const updated = prev.map((o) => {
+        if (o.status === "CANCELLED" || o.status === "CLOSED" || !o.table_id) return o
+        const matches = targetTable
+          ? matchesTableOrder(targetTable, o.table_id)
+          : (() => {
+              const norm = String(o.table_id).toLowerCase().trim()
+              return norm === `table ${targetId}` || norm === `table 0${targetId}` || norm === String(targetId)
+            })()
+        if (!matches) return o
+
+        modified = true
+        return {
+          ...o,
+          status: "CLOSED",
+          payment_status: "PAID",
+          kds_stage: "completed" as const,
+          kitchen_stage: "completed" as const,
+          bar_stage: "completed" as const,
+          updated_at: nowIso,
+          billed_closed_at: nowIso,
+          order_items: (o.order_items || []).map((it) => ({ ...it, status: "completed" })),
+          Payment:
+            Array.isArray(o.Payment) && o.Payment.length > 0
+              ? o.Payment.map((p) => ({ ...p, status: "PAID" }))
+              : [
+                  {
+                    id: `pay_${Date.now()}`,
+                    order_id: o.id,
+                    amount: o.total_amount,
+                    status: "PAID",
+                    payment_method: o.payment_method || "MANUAL",
+                    recorded_at: nowIso,
+                  },
+                ],
+        }
+      })
+      if (modified && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("restro_pos_orders", JSON.stringify(updated))
+        } catch {}
+      }
+      return modified ? updated : prev
+    })
+  }
+
+  const updateSpecificTableStatus = async (targetId: number, status: TableItem["status"]) => {
     const nextIsOpen = status === "occupied"
+    const targetTable = tables.find((t) => t.id === targetId)
     setTables((prev) =>
       prev.map((t) => (t.id === targetId ? { ...t, status, isOpen: nextIsOpen } : t))
     )
     setSelectedTableId(null)
 
+    if (status === "available") {
+      closeTableOrdersLocally(targetId)
+      if (targetTable) {
+        handleClearAllTableRequests(targetTable.name).catch(() => {})
+      }
+    }
+
     try {
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         const bc = new BroadcastChannel("restro_sync_channel")
         bc.postMessage({ type: "table_updated", table_id: targetId, status, isOpen: nextIsOpen })
+        if (status === "available") {
+          bc.postMessage({
+            type: "table_cleared",
+            table_id: targetId,
+            table_name: targetTable?.name || `Table ${targetId}`,
+          })
+        }
         bc.close()
       }
       await fetch("/api/tables", {
@@ -591,6 +724,11 @@ function RestaurantAdminContent() {
         body: JSON.stringify({ table_id: targetId, status, isOpen: nextIsOpen }),
       })
     } catch {}
+  }
+
+  const setTableStatus = async (status: TableItem["status"]) => {
+    if (selectedTableId === null) return
+    await updateSpecificTableStatus(selectedTableId, status)
   }
 
   const toggleTableCode = async (tableId: number) => {
@@ -639,6 +777,9 @@ function RestaurantAdminContent() {
   const [posCategory, setPosCategory] = useState("all")
   const [posSearch, setPosSearch] = useState("")
   const [posOrderType, setPosOrderType] = useState<"dine-in" | "takeaway" | "delivery">("dine-in")
+  const [posCustomerName, setPosCustomerName] = useState("")
+  const [posCustomerPhone, setPosCustomerPhone] = useState("")
+  const [posGuestValidationError, setPosGuestValidationError] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [orderSentToast, setOrderSentToast] = useState(false)
 
@@ -653,6 +794,11 @@ function RestaurantAdminContent() {
   // Add Item Form State
   const [newItemName, setNewItemName] = useState("")
   const [newItemPrice, setNewItemPrice] = useState("")
+  const [newItemHasPortions, setNewItemHasPortions] = useState(false)
+  const [newItemHalfPrice, setNewItemHalfPrice] = useState("")
+  const [newItemFullPrice, setNewItemFullPrice] = useState("")
+  const [newItemImage, setNewItemImage] = useState("")
+  const [newItemPrepTime, setNewItemPrepTime] = useState("")
   const [newItemCategory, setNewItemCategory] = useState<"mains" | "sides" | "drinks" | "desserts">("mains")
   const [newItemStation, setNewItemStation] = useState<"kitchen" | "bar">("kitchen")
   const [newItemIsVeg, setNewItemIsVeg] = useState(true)
@@ -661,6 +807,48 @@ function RestaurantAdminContent() {
   const [newItemDescription, setNewItemDescription] = useState("")
   const [newItemIsAvailable, setNewItemIsAvailable] = useState(true)
   const [isSavingMenuItem, setIsSavingMenuItem] = useState(false)
+  const [editingMenuItem, setEditingMenuItem] = useState<MenuItem | null>(null)
+  const [selectedAdminMenuItem, setSelectedAdminMenuItem] = useState<MenuItem | null>(null)
+  const [posPortionItem, setPosPortionItem] = useState<MenuItem | null>(null)
+
+  const handleOpenAddMenuItem = () => {
+    setEditingMenuItem(null)
+    setNewItemName("")
+    setNewItemPrice("")
+    setNewItemHasPortions(false)
+    setNewItemHalfPrice("")
+    setNewItemFullPrice("")
+    setNewItemImage("")
+    setNewItemPrepTime("")
+    setNewItemCategory("mains")
+    setNewItemStation("kitchen")
+    setNewItemIsVeg(true)
+    setNewItemIcon("🍲")
+    setNewItemTag("")
+    setNewItemDescription("")
+    setNewItemIsAvailable(true)
+    setShowAddItemModal(true)
+  }
+
+  const handleOpenEditMenuItem = (item: MenuItem) => {
+    setEditingMenuItem(item)
+    setNewItemName(item.name || "")
+    setNewItemPrice(String(item.price ?? ""))
+    const hasPortions = Boolean(item.hasPortionOptions && item.halfPrice)
+    setNewItemHasPortions(hasPortions)
+    setNewItemHalfPrice(item.halfPrice ? String(item.halfPrice) : "")
+    setNewItemFullPrice(item.fullPrice ? String(item.fullPrice) : String(item.price ?? ""))
+    setNewItemImage(item.image || "")
+    setNewItemPrepTime(item.prepTime || "")
+    setNewItemCategory(item.category || "mains")
+    setNewItemStation(item.station || (item.category === "drinks" ? "bar" : "kitchen"))
+    setNewItemIsVeg(item.isVeg !== false)
+    setNewItemIcon(item.icon || "🍲")
+    setNewItemTag(item.tag || "")
+    setNewItemDescription(item.description || "")
+    setNewItemIsAvailable(item.isAvailable !== false)
+    setShowAddItemModal(true)
+  }
 
   // Load menu from /api/menu and listen for cross-tab sync
   useEffect(() => {
@@ -749,20 +937,36 @@ function RestaurantAdminContent() {
     }
   }
 
-  // Add New Menu Item
+  // Add or Edit Menu Item
   const handleAddMenuItem = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
-    if (!newItemName.trim() || !newItemPrice) {
+    const baseFullPrice = newItemHasPortions
+      ? parseFloat(newItemFullPrice || newItemPrice) || 0
+      : parseFloat(newItemPrice) || 0
+    const parsedHalfPrice = newItemHasPortions ? parseFloat(newItemHalfPrice) || 0 : 0
+
+    if (!newItemName.trim() || baseFullPrice <= 0) {
       alert("Please enter a dish name and valid price.")
+      return
+    }
+    if (newItemHasPortions && parsedHalfPrice <= 0) {
+      alert("Please enter a valid Half portion price or uncheck Half & Full options.")
       return
     }
 
     setIsSavingMenuItem(true)
     try {
+      const targetId = editingMenuItem ? editingMenuItem.id : `m_${Date.now()}`
       const itemPayload: MenuItem = {
-        id: `m_${Date.now()}`,
+        ...(editingMenuItem || {}),
+        id: targetId,
         name: newItemName.trim(),
-        price: parseFloat(newItemPrice) || 0,
+        price: baseFullPrice,
+        hasPortionOptions: newItemHasPortions,
+        halfPrice: newItemHasPortions ? parsedHalfPrice : undefined,
+        fullPrice: newItemHasPortions ? baseFullPrice : undefined,
+        image: newItemImage.trim() || undefined,
+        prepTime: newItemPrepTime.trim() || undefined,
         category: newItemCategory,
         station: newItemCategory === "drinks" ? "bar" : newItemStation,
         isVeg: newItemIsVeg,
@@ -772,8 +976,14 @@ function RestaurantAdminContent() {
         isAvailable: newItemIsAvailable,
       }
 
-      const updatedCatalog = [itemPayload, ...menuCatalog]
+      const updatedCatalog = editingMenuItem
+        ? menuCatalog.map((m) => (m.id === editingMenuItem.id ? itemPayload : m))
+        : [itemPayload, ...menuCatalog]
       setMenuCatalog(updatedCatalog)
+
+      if (selectedAdminMenuItem && selectedAdminMenuItem.id === targetId) {
+        setSelectedAdminMenuItem(itemPayload)
+      }
 
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         const bc = new BroadcastChannel("restro_sync_channel")
@@ -781,25 +991,57 @@ function RestaurantAdminContent() {
         bc.close()
       }
 
-      await fetch("/api/menu", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(itemPayload),
-      })
+      if (editingMenuItem) {
+        await fetch("/api/menu", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingMenuItem.id,
+            name: itemPayload.name,
+            price: itemPayload.price,
+            hasPortionOptions: itemPayload.hasPortionOptions,
+            halfPrice: itemPayload.halfPrice ?? null,
+            fullPrice: itemPayload.fullPrice ?? null,
+            image: itemPayload.image ?? "",
+            prepTime: itemPayload.prepTime ?? "",
+            category: itemPayload.category,
+            station: itemPayload.station,
+            isVeg: itemPayload.isVeg,
+            icon: itemPayload.icon,
+            tag: itemPayload.tag ?? "",
+            description: itemPayload.description ?? "",
+            isAvailable: itemPayload.isAvailable,
+          }),
+        })
+      } else {
+        await fetch("/api/menu", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(itemPayload),
+        })
+      }
+
+      const actionWord = editingMenuItem ? "Updated" : "Added"
 
       // Reset form
+      setEditingMenuItem(null)
       setNewItemName("")
       setNewItemPrice("")
+      setNewItemHasPortions(false)
+      setNewItemHalfPrice("")
+      setNewItemFullPrice("")
+      setNewItemImage("")
+      setNewItemPrepTime("")
       setNewItemTag("")
       setNewItemDescription("")
       setNewItemIcon("🍲")
       setNewItemIsAvailable(true)
       setShowAddItemModal(false)
 
-      setMenuToast(`Added "${itemPayload.name}" to menu!`)
+      setMenuToast(`${actionWord} "${itemPayload.name}" in menu!`)
       setTimeout(() => setMenuToast(null), 3500)
     } catch (err) {
-      console.error("Failed to add menu item:", err)
+      console.error("Failed to save menu item:", err)
       alert("Could not save menu item. Please try again.")
     } finally {
       setIsSavingMenuItem(false)
@@ -849,6 +1091,29 @@ function RestaurantAdminContent() {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false)
   const [serviceQueueFilter, setServiceQueueFilter] = useState<"all" | "waiter" | "clean" | "bill">("all")
   const [serviceToast, setServiceToast] = useState<string | null>(null)
+  const [showWaiterOverlay, setShowWaiterOverlay] = useState(false)
+  const [isBellMuted, setIsBellMuted] = useState(false)
+  const knownWaiterKeysRef = useRef<Set<string>>(new Set())
+
+  const isHostOrFrontDesk =
+    userType === "restaurant-admin" ||
+    (userType === "pos-staff" && posRole === "reception")
+
+  const isHostRef = useRef(isHostOrFrontDesk)
+  const isBellMutedRef = useRef(isBellMuted)
+  isHostRef.current = isHostOrFrontDesk
+  isBellMutedRef.current = isBellMuted
+
+  // Unlock Web Audio context on first interaction so bell chimes play reliably
+  useEffect(() => {
+    const handleUnlock = () => unlockBellAudio()
+    window.addEventListener("pointerdown", handleUnlock, { passive: true })
+    window.addEventListener("keydown", handleUnlock, { passive: true })
+    return () => {
+      window.removeEventListener("pointerdown", handleUnlock)
+      window.removeEventListener("keydown", handleUnlock)
+    }
+  }, [])
 
   // Refs for closing popups/dropdowns when clicked outside on free space
   const profileMenuRef = useRef<HTMLDivElement>(null)
@@ -913,6 +1178,17 @@ function RestaurantAdminContent() {
               : "Call Waiter"
           setServiceToast(`🔔 ${event.data.table}: ${actionLabel}`)
           setTimeout(() => setServiceToast(null), 5000)
+
+          if (isHostRef.current) {
+            setShowWaiterOverlay(true)
+            if (!isBellMutedRef.current) {
+              const sType: "waiter" | "clean" | "bill" =
+                event.data.serviceType === "clean" || event.data.serviceType === "bill"
+                  ? event.data.serviceType
+                  : "waiter"
+              playBellAndSpeak(event.data.table || "Table", sType, 3)
+            }
+          }
         }
       }
     }
@@ -977,10 +1253,48 @@ function RestaurantAdminContent() {
     }
   }
 
-  // Pending requests list
+  // Pending requests list (all 3 types: Call Waiter, Clean Table, Request Bill)
   const pendingServiceRequests = useMemo(() => {
     return serviceRequests.filter((r) => r.status === "pending")
   }, [serviceRequests])
+
+  // Trigger full-screen Host / Front Desk alert + ring bell when any new Waiter, Clean Table, or Bill request arrives
+  useEffect(() => {
+    if (!isHostOrFrontDesk) return
+    if (pendingServiceRequests.length === 0) {
+      setShowWaiterOverlay(false)
+      stopServiceVoice()
+      return
+    }
+
+    let newestReq: ServiceRequestItem | null = null
+    for (const req of pendingServiceRequests) {
+      const key = `${req.id}:${req.createdAt}`
+      if (!knownWaiterKeysRef.current.has(key)) {
+        knownWaiterKeysRef.current.add(key)
+        if (!newestReq) newestReq = req
+      }
+    }
+
+    if (newestReq) {
+      setShowWaiterOverlay(true)
+      if (!isBellMuted) {
+        playBellAndSpeak(newestReq.table, newestReq.type, 3)
+      }
+    }
+  }, [pendingServiceRequests, isHostOrFrontDesk, isBellMuted])
+
+  // Repeat bell chime + voice announcement every 6s while Host Service Alert is open and unmuted
+  useEffect(() => {
+    if (!showWaiterOverlay || pendingServiceRequests.length === 0 || isBellMuted || !isHostOrFrontDesk) {
+      return
+    }
+    const primary = pendingServiceRequests[0]
+    const ringTimer = setInterval(() => {
+      playBellAndSpeak(primary.table, primary.type, 2)
+    }, 6000)
+    return () => clearInterval(ringTimer)
+  }, [showWaiterOverlay, pendingServiceRequests, isBellMuted, isHostOrFrontDesk])
 
   // Map of tableNumber -> pending requests
   const tableRequestsMap = useMemo(() => {
@@ -1404,7 +1718,7 @@ function RestaurantAdminContent() {
         manager: "bg-slate-700",
         "pos-orders": "bg-blue-600",
         "pos-kitchen": "bg-amber-600",
-        "pos-reception": "bg-emerald-600",
+        "pos-reception": "bg-blue-600",
         bartender: "bg-purple-600",
         inventory: "bg-indigo-600",
       }
@@ -1612,20 +1926,36 @@ function RestaurantAdminContent() {
     })
   }, [teamMembers, teamRoleFilter, teamStatusFilter, teamSearch])
 
-  const addToCart = (item: MenuItem) => {
+  const addToCart = (item: MenuItem, portion?: "half" | "full") => {
     if (item.isAvailable === false) {
       alert(`${item.name} is currently Out of Stock and cannot be added.`)
       return
     }
 
+    if (!portion && item.hasPortionOptions && item.halfPrice) {
+      setPosPortionItem(item)
+      return
+    }
+
+    const effectivePrice =
+      portion === "half" && item.halfPrice
+        ? item.halfPrice
+        : portion === "full" && item.fullPrice
+        ? item.fullPrice
+        : item.price
+    const cartKey = portion ? `${item.id}__${portion}` : item.id
+    const displayName = portion
+      ? `${item.name} (${portion === "half" ? "Half" : "Full"})`
+      : item.name
+
     setCart((prev) => {
-      const exists = prev.find((i) => i.id === item.id)
+      const exists = prev.find((i) => i.id === cartKey)
       if (exists) {
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === cartKey ? { ...i, quantity: i.quantity + 1 } : i
         )
       }
-      return [...prev, { id: item.id, name: item.name, price: item.price, quantity: 1 }]
+      return [...prev, { id: cartKey, name: displayName, price: effectivePrice, quantity: 1 }]
     })
   }
 
@@ -1699,6 +2029,9 @@ function RestaurantAdminContent() {
         if (data.tables && Array.isArray(data.tables)) {
           setTables(data.tables)
         }
+        if (data.floors && Array.isArray(data.floors) && data.floors.length > 0) {
+          setFloors(data.floors)
+        }
       }
     } catch {}
   }
@@ -1717,15 +2050,19 @@ function RestaurantAdminContent() {
 
   // Fetch orders, tables, and reservations with 3s background polling
   useEffect(() => {
-    fetchOrders()
-    fetchTables()
-    fetchReservations()
+    let active = true
+    Promise.all([fetchOrders(), fetchTables(), fetchReservations()]).finally(() => {
+      if (active) setIsBootstrapping(false)
+    })
     const interval = setInterval(() => {
       fetchOrders()
       fetchTables()
       fetchReservations()
     }, 3000)
-    return () => clearInterval(interval)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
   }, [])
 
   // Cross-tab synchronization via BroadcastChannel
@@ -1757,16 +2094,29 @@ function RestaurantAdminContent() {
             })
           )
         }
-      } else if (event.data.type === "table_updated") {
+      } else if (event.data.type === "table_updated" || event.data.type === "table_cleared") {
         const { table_id, status } = event.data
+        const effectiveStatus = event.data.type === "table_cleared" ? "available" : status
         setTables((prev) =>
           prev.map((t) => {
             if (t.id === Number(table_id) || t.name.toLowerCase() === String(table_id).toLowerCase()) {
-              return { ...t, status }
+              return { ...t, status: effectiveStatus, isOpen: effectiveStatus === "occupied" }
             }
             return t
           })
         )
+        if (effectiveStatus === "available" && table_id) {
+          closeTableOrdersLocally(Number(table_id))
+        }
+      } else if (event.data.type === "tables_synced") {
+        if (Array.isArray(event.data.tables)) {
+          setTables(event.data.tables)
+        } else {
+          fetchTables()
+        }
+        if (Array.isArray(event.data.floors) && event.data.floors.length > 0) {
+          setFloors(event.data.floors)
+        }
       } else if (event.data.type === "order_updated") {
         const { order_id, station, stage, kitchen_stage, bar_stage, status, payment_status } = event.data
         setOrders((prev) => {
@@ -1950,11 +2300,71 @@ function RestaurantAdminContent() {
 
   // --- KDS TICKETS STATE (Kitchen/Bar Queue) ---
   const [kdsTickets, setKdsTickets] = useState<KdsTicket[]>([])
+  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">("all")
+  const [isKdsSoundMuted, setIsKdsSoundMuted] = useState(false)
+  const [kdsNewOrderBanner, setKdsNewOrderBanner] = useState<string | null>(null)
+  const knownKdsTicketIdsRef = useRef<Set<string>>(new Set())
+  const kdsInitializedRef = useRef(false)
 
   // Keep KDS tickets synchronized with orders list
   useEffect(() => {
     setKdsTickets(buildKdsTicketsFromOrders(orders))
   }, [orders])
+
+  // Play KDS chime whenever a brand-new order ticket enters the Kitchen/Bar queue
+  useEffect(() => {
+    if (isBootstrapping) return
+
+    if (!kdsInitializedRef.current) {
+      for (const t of kdsTickets) {
+        knownKdsTicketIdsRef.current.add(t.id)
+      }
+      kdsInitializedRef.current = true
+      return
+    }
+
+    const newlyAdded: KdsTicket[] = []
+    for (const t of kdsTickets) {
+      if (!knownKdsTicketIdsRef.current.has(t.id)) {
+        knownKdsTicketIdsRef.current.add(t.id)
+        const stationMatches = kdsStationFilter === "all" || t.station === kdsStationFilter
+        if (t.stage === "new" && stationMatches) {
+          newlyAdded.push(t)
+        }
+      }
+    }
+
+    const isKdsScreen =
+      activeTab === "kds" || (userType === "pos-staff" && posRole === "kitchen")
+
+    if (newlyAdded.length > 0 && isKdsScreen) {
+      if (!isKdsSoundMuted) {
+        unlockBellAudio()
+        playKitchenChimeAndSpeak(
+          newlyAdded.map((t) => ({
+            table: t.table,
+            station: t.station,
+            items: t.items.map((it) => ({
+              name: it.name,
+              quantity: it.quantity,
+              instructions: it.instructions,
+            })),
+          }))
+        )
+      }
+      const first = newlyAdded[0]
+      const itemsPreview = first.items
+        .slice(0, 3)
+        .map((it) => `${it.quantity}x ${it.name}`)
+        .join(", ")
+      setKdsNewOrderBanner(
+        newlyAdded.length === 1
+          ? `New ${first.station.toUpperCase()} Order (${first.id}) · ${first.table}${itemsPreview ? ` · ${itemsPreview}` : ""}`
+          : `${newlyAdded.length} New Orders Added to Kitchen Display`
+      )
+      setTimeout(() => setKdsNewOrderBanner(null), 5500)
+    }
+  }, [kdsTickets, isBootstrapping, kdsStationFilter, activeTab, userType, posRole, isKdsSoundMuted])
 
   const advanceKdsTicket = async (ticketId: string) => {
     const ticket = kdsTickets.find((t) => t.id === ticketId)
@@ -2474,9 +2884,6 @@ function RestaurantAdminContent() {
     }
   ])
 
-  // --- KDS STATIONS FILTER ---
-  const [kdsStationFilter, setKdsStationFilter] = useState<"all" | "kitchen" | "bar">("all")
-
   // --- MENUS PER USER TYPE & POS SUB-ROLES ---
   const adminMenuItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -2488,8 +2895,7 @@ function RestaurantAdminContent() {
     { id: "kds", label: "Kitchen Display", icon: ChefHat },
     { id: "customers", label: "Customers", icon: Users },
     { id: "inventory", label: "Inventory", icon: Boxes, badge: true },
-    { id: "my-deliveries", label: "My deliveries", icon: Bike },
-    { id: "delivery", label: "Delivery", icon: Truck },
+    { id: "my-deliveries", label: "My Deliveries", icon: Truck },
     { id: "team", label: "Team", icon: UserCheck },
     { id: "accounting", label: "Accounting", icon: Landmark },
     { id: "reports", label: "Reports", icon: BarChart3 },
@@ -2535,14 +2941,7 @@ function RestaurantAdminContent() {
       : adminMenuItems
 
   if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-[#20252B] flex items-center justify-center text-slate-400">
-        <div className="flex items-center gap-3">
-          <div className="w-5 h-5 border-2 border-[#C46B4E] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm font-medium">Loading POS...</span>
-        </div>
-      </div>
-    )
+    return <PortalShellSkeleton variant={activeTab} isDarkMode={isDarkMode} />
   }
 
   return (
@@ -2560,19 +2959,33 @@ function RestaurantAdminContent() {
         }`}
       >
         <div className="flex items-center gap-2.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-semibold text-white">Nodedr Bistro</span>
-          <span className="text-slate-500">•</span>
-          <span className="text-slate-400">Downtown Main Outlet</span>
+          <span
+            className={`w-2 h-2 rounded-full animate-pulse ${
+              isDarkMode ? "bg-blue-400" : "bg-[#C46B4E]"
+            }`}
+          />
+          <span className={`font-semibold ${isDarkMode ? "text-white" : "text-slate-900"}`}>
+            Nodedr Bistro
+          </span>
+          <span className={isDarkMode ? "text-slate-500" : "text-slate-400"}>•</span>
+          <span className={isDarkMode ? "text-slate-400" : "text-slate-600"}>
+            Downtown Main Outlet
+          </span>
         </div>
         <div className="flex items-center gap-3 text-xs">
           <span
-            className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${
+            className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold border ${
               userType === "super-admin"
-                ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                ? isDarkMode
+                  ? "bg-red-500/20 text-red-300 border-red-500/30"
+                  : "bg-red-100 text-red-800 border-red-200"
                 : userType === "restaurant-admin"
-                ? "bg-[#C46B4E]/15 text-[#E8C2B5] border border-[#C46B4E]/30"
-                : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                ? isDarkMode
+                  ? "bg-[#C46B4E]/15 text-[#E8C2B5] border-[#C46B4E]/30"
+                  : "bg-[#E9E3D8] text-[#20252B] border-[#D8CFC0]"
+                : isDarkMode
+                ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                : "bg-[#20252B] text-white border-[#20252B]"
             }`}
           >
             {userType === "super-admin"
@@ -2654,9 +3067,15 @@ function RestaurantAdminContent() {
               </button>
 
               {userType === "pos-staff" && (
-                <div className="mt-1.5 flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-semibold">
+                <div
+                  className={`mt-1.5 flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-[11px] font-semibold ${
+                    isDarkMode
+                      ? "bg-[#1a1d28] border-[#2b3042] text-slate-200"
+                      : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                  }`}
+                >
                   <div className="flex items-center gap-1.5 truncate">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#C46B4E] animate-pulse shrink-0" />
                     <span className="truncate">
                       {posRole === "orders"
                         ? "Orders Station"
@@ -2665,7 +3084,13 @@ function RestaurantAdminContent() {
                         : "Kitchen/Bar Queue"}
                     </span>
                   </div>
-                  <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 shrink-0">
+                  <span
+                    className={`text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded shrink-0 ${
+                      isDarkMode
+                        ? "bg-[#C46B4E]/25 text-[#F2B5A2]"
+                        : "bg-[#20252B] text-white"
+                    }`}
+                  >
                     {posRole}
                   </span>
                 </div>
@@ -2682,7 +3107,7 @@ function RestaurantAdminContent() {
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => handleSelectTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     isActive
                       ? "bg-[#C46B4E] text-white font-semibold shadow-xs"
@@ -2800,27 +3225,33 @@ function RestaurantAdminContent() {
                 <div
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border ${
                     posRole === "orders"
-                      ? "bg-blue-950/40 border-blue-800/40 text-blue-300"
+                      ? isDarkMode
+                        ? "bg-blue-950/40 border-blue-800/40 text-blue-300"
+                        : "bg-blue-50 border-blue-200 text-blue-900"
                       : posRole === "reception"
-                      ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-300"
-                      : "bg-amber-950/40 border-amber-800/40 text-amber-300"
+                      ? isDarkMode
+                        ? "bg-slate-800 border-slate-700 text-slate-200"
+                        : "bg-[#E9E3D8] border-[#E5E1D9] text-[#20252B]"
+                      : isDarkMode
+                      ? "bg-amber-950/40 border-amber-800/40 text-amber-300"
+                      : "bg-[#E9E3D8] border-[#E5E1D9] text-[#20252B]"
                   }`}
                 >
                   {posRole === "orders" ? (
                     <>
-                      <ShoppingCart className="w-3.5 h-3.5 text-blue-400" />
+                      <ShoppingCart className={`w-3.5 h-3.5 ${isDarkMode ? "text-blue-400" : "text-blue-700"}`} />
                       <span>Orders Station</span>
                       <span className="text-[10px] opacity-75 font-normal hidden sm:inline">• Counter POS</span>
                     </>
                   ) : posRole === "reception" ? (
                     <>
-                      <CalendarCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      <CalendarCheck className={`w-3.5 h-3.5 ${isDarkMode ? "text-amber-400" : "text-[#C46B4E]"}`} />
                       <span>Reception Desk</span>
                       <span className="text-[10px] opacity-75 font-normal hidden sm:inline">• Floor & Waitlist</span>
                     </>
                   ) : (
                     <>
-                      <ChefHat className="w-3.5 h-3.5 text-amber-400" />
+                      <ChefHat className={`w-3.5 h-3.5 ${isDarkMode ? "text-amber-400" : "text-[#C46B4E]"}`} />
                       <span>Kitchen Display Queue</span>
                       <span className="text-[10px] opacity-75 font-normal hidden sm:inline">• Bar & Cooking</span>
                     </>
@@ -2929,7 +3360,7 @@ function RestaurantAdminContent() {
                             <button
                               type="button"
                               onClick={(e) => handleClearServiceRequest(req.id, e)}
-                              className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] transition flex items-center gap-1 cursor-pointer"
                             >
                               <Check className="w-3 h-3" />
                               <span>Clear</span>
@@ -2977,7 +3408,7 @@ function RestaurantAdminContent() {
                         ? posRole === "orders"
                           ? "bg-blue-600"
                           : posRole === "reception"
-                          ? "bg-emerald-600"
+                          ? "bg-blue-600"
                           : "bg-amber-600"
                         : "bg-[#C46B4E]"
                     }`}
@@ -3079,7 +3510,9 @@ function RestaurantAdminContent() {
                 </button>
               </div>
             )}
-            {activeTab === "tables" ? (
+            {isBootstrapping || isTabLoading ? (
+              <SectionContentSkeleton tab={activeTab} isDarkMode={isDarkMode} />
+            ) : activeTab === "tables" ? (
               /* --- TABLES VIEW --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
                 <div className="flex items-start justify-between gap-4">
@@ -3096,7 +3529,7 @@ function RestaurantAdminContent() {
                         isDarkMode ? "text-slate-400" : "text-slate-500"
                       }`}
                     >
-                      Live floor status — tap a table to update it
+                      {floors.length} Floor{floors.length > 1 ? "s" : ""} · {tables.length} Tables — tap a table to update status or view bill
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -3120,19 +3553,64 @@ function RestaurantAdminContent() {
                       <Utensils className="w-3.5 h-3.5 text-[#C46B4E]" />
                       <span>Preview QR Menu</span>
                     </a>
-                    <button
-                      onClick={() => alert("Edit Floor Plan")}
-                      className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition ${
-                        isDarkMode
-                          ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-slate-300"
-                          : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs"
-                      }`}
-                    >
-                      <LayoutGrid className="w-3.5 h-3.5" />
-                      Edit floor plan
-                    </button>
+                    {userType === "restaurant-admin" && (
+                      <button
+                        onClick={() => {
+                          setSettingsInitialSection("qr")
+                          handleSelectTab("settings")
+                        }}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-medium transition cursor-pointer ${
+                          isDarkMode
+                            ? "border-[#272a38] bg-[#161822] hover:bg-[#1d202c] text-slate-300"
+                            : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs"
+                        }`}
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5 text-[#C46B4E]" />
+                        Configure Floors &amp; Tables
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {/* Floor Selector Bar */}
+                {floors.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFloorFilter("all")}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                        selectedFloorFilter === "all"
+                          ? "bg-[#C46B4E] border-[#C46B4E] text-white shadow-2xs"
+                          : isDarkMode
+                          ? "bg-[#14161f] border-[#252838] text-slate-300 hover:bg-[#1c1f2b]"
+                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      All Floors ({tables.length})
+                    </button>
+                    {floors.map((fl, fIdx) => {
+                      const floorNum = fIdx + 1
+                      const count = tables.filter((t) => (t.floorNumber || 1) === floorNum).length
+                      const active = selectedFloorFilter === floorNum
+                      return (
+                        <button
+                          key={fl.id || floorNum}
+                          type="button"
+                          onClick={() => setSelectedFloorFilter(floorNum)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                            active
+                              ? "bg-[#20252B] border-[#20252B] text-white shadow-2xs"
+                              : isDarkMode
+                              ? "bg-[#14161f] border-[#252838] text-slate-300 hover:bg-[#1c1f2b]"
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {fl.name} ({count})
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                   {/* Left: Floor Map Container */}
@@ -3145,7 +3623,13 @@ function RestaurantAdminContent() {
                       }`}
                     >
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-                        {tables.map((table) => {
+                        {tables
+                          .filter(
+                            (t) =>
+                              selectedFloorFilter === "all" ||
+                              (t.floorNumber || 1) === selectedFloorFilter
+                          )
+                          .map((table) => {
                           const isAvailable = table.status === "available"
                           const isOccupied = table.status === "occupied"
                           const isReserved = table.status === "reserved"
@@ -3203,12 +3687,12 @@ function RestaurantAdminContent() {
                                 } ${
                                   isAvailable
                                     ? isDarkMode
-                                      ? "bg-[#0b2920] border-[#10b981]/50 text-emerald-300 hover:border-emerald-400 shadow-lg shadow-emerald-950/20"
-                                      : "bg-emerald-50 border-emerald-300 text-emerald-800 hover:border-emerald-400 shadow-xs"
+                                      ? "bg-[#181b24] border-[#2c3142] text-slate-200 hover:border-slate-500 shadow-lg shadow-black/20"
+                                      : "bg-[#FAF8F4] border-[#D8CFC0] text-[#20252B] hover:border-[#C46B4E]/60 shadow-xs"
                                     : isOccupied
                                     ? isDarkMode
-                                      ? "bg-[#142340] border-[#3b82f6]/50 text-blue-300 hover:border-blue-400 shadow-lg shadow-blue-950/20"
-                                      : "bg-blue-50 border-blue-300 text-blue-800 hover:border-blue-400 shadow-xs"
+                                      ? "bg-[#142340] border-[#3b82f6]/60 text-blue-300 hover:border-blue-400 shadow-lg shadow-blue-950/20"
+                                      : "bg-blue-50 border-blue-400 text-blue-900 hover:border-blue-500 shadow-xs"
                                     : isReserved
                                     ? isDarkMode
                                       ? "bg-[#332014] border-[#f59e0b]/50 text-amber-300 hover:border-amber-400 shadow-lg shadow-amber-950/20"
@@ -3237,6 +3721,11 @@ function RestaurantAdminContent() {
                                 <div className="flex items-center gap-1 text-[11px] opacity-80">
                                   <Users className="w-3 h-3" />
                                   <span>{table.seats}</span>
+                                  {floors.length > 1 && table.floorName && (
+                                    <span className="ml-1 px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[9px] font-semibold">
+                                      {table.floorName}
+                                    </span>
+                                  )}
                                 </div>
                               </button>
 
@@ -3266,7 +3755,7 @@ function RestaurantAdminContent() {
                                         className="w-full text-left px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-amber-900 dark:text-amber-200 hover:bg-amber-100 dark:hover:bg-amber-900/40 flex items-center justify-between transition cursor-pointer"
                                       >
                                         <span>Clear Assistance ({activeTableRequests.length})</span>
-                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                        <Check className="w-3.5 h-3.5 text-blue-600" />
                                       </button>
                                     </div>
                                   )}
@@ -3292,7 +3781,7 @@ function RestaurantAdminContent() {
                                     >
                                       <span>Available</span>
                                       {table.status === "available" && (
-                                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                        <Check className="w-3.5 h-3.5 text-blue-500" />
                                       )}
                                     </button>
                                     <button
@@ -3354,12 +3843,28 @@ function RestaurantAdminContent() {
                                       isDarkMode ? "border-[#242735]" : "border-slate-100"
                                     }`}
                                   >
+                                    {isOccupied && (
+                                      <button
+                                        onClick={() => {
+                                          setViewBillTable(table)
+                                          setSelectedTableId(null)
+                                        }}
+                                        className={`w-full text-left px-3 py-1.5 flex items-center gap-2 font-semibold transition cursor-pointer ${
+                                          isDarkMode
+                                            ? "text-indigo-300 hover:bg-[#222533]"
+                                            : "text-indigo-700 hover:bg-indigo-50"
+                                        }`}
+                                      >
+                                        <Receipt className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                        <span>View bill</span>
+                                      </button>
+                                    )}
                                     <button
                                       onClick={() => {
                                         setShowQrModal(table)
                                         setSelectedTableId(null)
                                       }}
-                                      className={`w-full text-left px-3 py-1.5 flex items-center gap-2 ${
+                                      className={`w-full text-left px-3 py-1.5 flex items-center gap-2 cursor-pointer ${
                                         isDarkMode
                                           ? "text-slate-300 hover:bg-[#222533]"
                                           : "text-slate-700 hover:bg-slate-50"
@@ -3370,13 +3875,13 @@ function RestaurantAdminContent() {
                                     </button>
                                     <button
                                       onClick={() => setActiveTab("pos")}
-                                      className={`w-full text-left px-3 py-1.5 flex items-center gap-2 ${
+                                      className={`w-full text-left px-3 py-1.5 flex items-center gap-2 cursor-pointer ${
                                         isDarkMode
                                           ? "text-slate-300 hover:bg-[#222533]"
                                           : "text-slate-700 hover:bg-slate-50"
                                       }`}
                                     >
-                                      <Plus className="w-3.5 h-3.5 text-emerald-500" />
+                                      <Plus className="w-3.5 h-3.5 text-blue-500" />
                                       <span>+ New order</span>
                                     </button>
                                   </div>
@@ -3396,7 +3901,7 @@ function RestaurantAdminContent() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#10b981]" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#FAF8F4] border-2 border-[#C46B4E]" />
                         <span>Available</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -3523,7 +4028,7 @@ function RestaurantAdminContent() {
                               : "border-slate-200 bg-slate-50/50 text-slate-500"
                           }`}
                         >
-                          <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                          <CheckCircle2 className="w-6 h-6 text-blue-500" />
                           <p className="text-xs font-medium">All Tables Serviced</p>
                           <p className="text-[11px] opacity-70">
                             No pending requests in this filter. Calls from the QR menu appear here instantly.
@@ -3551,7 +4056,7 @@ function RestaurantAdminContent() {
                                       isWaiter
                                         ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
                                         : isClean
-                                        ? "bg-teal-500/15 text-teal-600 dark:text-teal-400"
+                                        ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                                         : "bg-purple-500/15 text-purple-600 dark:text-purple-400"
                                     }`}
                                   >
@@ -3604,7 +4109,7 @@ function RestaurantAdminContent() {
                                   type="button"
                                   onClick={(e) => handleClearServiceRequest(req.id, e)}
                                   title="Mark as resolved / cleared"
-                                  className="shrink-0 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                  className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
                                 >
                                   <Check className="w-3.5 h-3.5" />
                                   <span>Clear</span>
@@ -3716,18 +4221,15 @@ function RestaurantAdminContent() {
                         Guests can look at the menu from the table QR or NFC card, but they can only order after you open the table and give them its code. Paying the bill closes it.
                       </p>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2">
-                        {[
-                          { id: 4, name: "Table 4" },
-                          { id: 5, name: "Table 5" },
-                          { id: 6, name: "Table 6" },
-                          { id: 7, name: "Table 7" },
-                          { id: 8, name: "Table 8" },
-                          { id: 1, name: "Table 1" },
-                          { id: 2, name: "Table 2" },
-                          { id: 3, name: "Table 3" },
-                        ].map((t) => {
-                          const tableObj = tables.find((item) => item.id === t.id)
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-0.5">
+                        {tables
+                          .filter(
+                            (t) =>
+                              selectedFloorFilter === "all" ||
+                              (t.floorNumber || 1) === selectedFloorFilter
+                          )
+                          .map((t) => {
+                          const tableObj = t
                           const isOpen = tableObj?.isOpen || false
                           const code = tableObj?.orderCode
 
@@ -3800,11 +4302,11 @@ function RestaurantAdminContent() {
                   <span
                     className={`text-xs flex items-center gap-1.5 font-medium px-3 py-1.5 rounded-xl border ${
                       isDarkMode
-                        ? "text-emerald-400 bg-emerald-950/60 border-emerald-800"
-                        : "text-emerald-700 bg-emerald-50 border-emerald-200"
+                        ? "text-blue-400 bg-blue-950/60 border-blue-800"
+                        : "text-blue-700 bg-blue-50 border-blue-200"
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Register Active
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" /> Register Active
                   </span>
                 </div>
 
@@ -3871,11 +4373,12 @@ function RestaurantAdminContent() {
                         })
                         .map((item) => {
                           const isOutOfStock = item.isAvailable === false
+                          const hasHalfFull = Boolean(item.hasPortionOptions && item.halfPrice)
                           return (
                             <button
                               key={item.id}
                               onClick={() => addToCart(item)}
-                              className={`p-3.5 rounded-xl transition-all text-left flex flex-col justify-between group h-32 border relative ${
+                              className={`p-3 rounded-xl transition-all text-left flex flex-col justify-between group border relative overflow-hidden ${
                                 isOutOfStock
                                   ? isDarkMode
                                     ? "bg-[#181a24]/60 border-red-900/40 opacity-70"
@@ -3885,18 +4388,33 @@ function RestaurantAdminContent() {
                                   : "bg-white border-[#E5E1D9] hover:border-[#C46B4E] hover:shadow-md"
                               }`}
                             >
-                              <div>
-                                <div className="flex justify-between items-start">
-                                  <span className="text-2xl">{item.icon}</span>
-                                  {isOutOfStock ? (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 font-bold border border-red-200 dark:border-red-800">
-                                      Out of Stock
-                                    </span>
-                                  ) : item.tag ? (
-                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E9E3D8] text-[#20252B] font-semibold border border-[#E5E1D9]">
-                                      {item.tag}
-                                    </span>
-                                  ) : null}
+                              <div className="w-full">
+                                <div className="flex justify-between items-start gap-2">
+                                  {item.image ? (
+                                    <img
+                                      src={item.image}
+                                      alt={item.name}
+                                      className="w-12 h-12 rounded-lg object-cover border border-black/10 shrink-0"
+                                    />
+                                  ) : (
+                                    <span className="text-2xl">{item.icon}</span>
+                                  )}
+                                  <div className="flex flex-col items-end gap-1">
+                                    {isOutOfStock ? (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 font-bold border border-red-200 dark:border-red-800">
+                                        Out of Stock
+                                      </span>
+                                    ) : item.tag ? (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#E9E3D8] text-[#20252B] font-semibold border border-[#E5E1D9]">
+                                        {item.tag}
+                                      </span>
+                                    ) : null}
+                                    {hasHalfFull && (
+                                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-bold">
+                                        Half / Full
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <h4
                                   className={`font-semibold text-xs mt-2 truncate ${
@@ -3911,12 +4429,14 @@ function RestaurantAdminContent() {
                                 </h4>
                               </div>
                               <div
-                                className={`flex justify-between items-center pt-2 border-t ${
+                                className={`flex justify-between items-center pt-2 mt-2 w-full border-t ${
                                   isDarkMode ? "border-[#232635]" : "border-[#E5E1D9]"
                                 }`}
                               >
-                                <span className={`text-sm font-bold ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
-                                  ₹{item.price.toFixed(2)}
+                                <span className={`text-xs font-bold ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
+                                  {hasHalfFull
+                                    ? `₹${item.halfPrice} / ₹${item.fullPrice || item.price}`
+                                    : `₹${item.price.toFixed(2)}`}
                                 </span>
                                 {isOutOfStock ? (
                                   <span className="text-[10px] text-red-500 font-bold uppercase">Out</span>
@@ -4013,7 +4533,7 @@ function RestaurantAdminContent() {
                             <span className="text-red-400">*</span>
                           </label>
                           {selectedTableId ? (
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
                               Table {selectedTableId} Selected
                             </span>
                           ) : (
@@ -4065,6 +4585,67 @@ function RestaurantAdminContent() {
                         )}
                       </div>
                     )}
+
+                    {/* Mandatory Customer Details */}
+                    <div
+                      className={`p-2.5 rounded-xl border text-xs space-y-2 transition ${
+                        posGuestValidationError
+                          ? "border-red-500/80 bg-red-500/10"
+                          : isDarkMode
+                          ? "bg-[#181a24] border-[#252837]"
+                          : "bg-slate-50 border-slate-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`font-semibold text-[11px] flex items-center gap-1 ${
+                            isDarkMode ? "text-slate-200" : "text-slate-700"
+                          }`}
+                        >
+                          <Users className="w-3.5 h-3.5 text-[#C46B4E]" />
+                          <span>Guest Name &amp; Mobile</span>
+                          <span className="text-red-400">*</span>
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#C46B4E]">Required</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        <input
+                          type="text"
+                          required
+                          value={posCustomerName}
+                          onChange={(e) => {
+                            setPosCustomerName(e.target.value)
+                            if (posGuestValidationError) setPosGuestValidationError(null)
+                          }}
+                          placeholder="Guest Name *"
+                          className={`w-full text-xs rounded-lg px-2.5 py-1.5 border outline-hidden transition ${
+                            isDarkMode
+                              ? "bg-[#14161f] border-[#292c3c] text-white placeholder-slate-500 focus:border-[#C46B4E]"
+                              : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#C46B4E]"
+                          }`}
+                        />
+                        <input
+                          type="tel"
+                          required
+                          value={posCustomerPhone}
+                          onChange={(e) => {
+                            setPosCustomerPhone(e.target.value)
+                            if (posGuestValidationError) setPosGuestValidationError(null)
+                          }}
+                          placeholder="Mobile Number *"
+                          className={`w-full text-xs rounded-lg px-2.5 py-1.5 border outline-hidden transition ${
+                            isDarkMode
+                              ? "bg-[#14161f] border-[#292c3c] text-white placeholder-slate-500 focus:border-[#C46B4E]"
+                              : "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-[#C46B4E]"
+                          }`}
+                        />
+                      </div>
+                      {posGuestValidationError && (
+                        <p className="text-[10px] font-semibold text-red-400">
+                          ⚠️ {posGuestValidationError}
+                        </p>
+                      )}
+                    </div>
 
                     <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                       {cart.length === 0 ? (
@@ -4178,8 +4759,8 @@ function RestaurantAdminContent() {
                     </div>
 
                     {orderSentToast && (
-                      <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 dark:bg-emerald-950/80 dark:border-emerald-500/40 dark:text-emerald-300 text-xs flex items-center gap-2">
-                        <Check className="w-4 h-4 text-emerald-500" />
+                      <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-300 text-blue-800 dark:bg-blue-950/80 dark:border-blue-500/40 dark:text-blue-300 text-xs flex items-center gap-2">
+                        <Check className="w-4 h-4 text-blue-500" />
                         Ticket dispatched to Kitchen Display!
                       </div>
                     )}
@@ -4194,6 +4775,18 @@ function RestaurantAdminContent() {
                       <button
                         onClick={async () => {
                           if (cart.length === 0) return
+                          const trimmedGuestName = posCustomerName.trim()
+                          const trimmedGuestPhone = posCustomerPhone.trim()
+                          if (!trimmedGuestName) {
+                            setPosGuestValidationError("Customer name is mandatory before placing an order.")
+                            return
+                          }
+                          if (trimmedGuestPhone.replace(/\D/g, "").length < 7) {
+                            setPosGuestValidationError("Valid mobile number (at least 7 digits) is mandatory.")
+                            return
+                          }
+                          setPosGuestValidationError(null)
+
                           if (posOrderType === "dine-in" && !selectedTableId) {
                             setTableValidationError(true)
                             return
@@ -4217,6 +4810,7 @@ function RestaurantAdminContent() {
                           }))
 
                           const generatedOrderNum = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
+                          const guestNotes = `Guest: ${trimmedGuestName} | Phone: ${trimmedGuestPhone}`
                           const optimisticOrder: SupabaseOrder = {
                             id: `ord_${Date.now()}`,
                             restaurant_id: restaurantId || "demo-restaurant-1",
@@ -4235,7 +4829,9 @@ function RestaurantAdminContent() {
                             payment_method: "MANUAL",
                             source: "pos",
                             order_number: generatedOrderNum,
-                            notes: null,
+                            customer_name: trimmedGuestName,
+                            customer_phone: trimmedGuestPhone,
+                            notes: guestNotes,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString(),
                             order_items: orderItems.map((it, idx) => ({
@@ -4287,6 +4883,9 @@ function RestaurantAdminContent() {
                           }
                           setSelectedTableId(null)
                           setTableValidationError(false)
+                          setPosCustomerName("")
+                          setPosCustomerPhone("")
+                          setPosGuestValidationError(null)
                           setCart([])
                           setActiveTab("orders")
 
@@ -4305,6 +4904,9 @@ function RestaurantAdminContent() {
                                 orderType: posOrderType,
                                 table_id: tableId,
                                 tableId: tableId,
+                                customer_name: trimmedGuestName,
+                                customer_phone: trimmedGuestPhone,
+                                notes: guestNotes,
                                 items: orderItems,
                                 total_amount: total,
                                 totalAmount: total,
@@ -4350,6 +4952,18 @@ function RestaurantAdminContent() {
                       <button
                         onClick={async () => {
                           if (cart.length === 0) return
+                          const trimmedGuestName = posCustomerName.trim()
+                          const trimmedGuestPhone = posCustomerPhone.trim()
+                          if (!trimmedGuestName) {
+                            setPosGuestValidationError("Customer name is mandatory before placing an order.")
+                            return
+                          }
+                          if (trimmedGuestPhone.replace(/\D/g, "").length < 7) {
+                            setPosGuestValidationError("Valid mobile number (at least 7 digits) is mandatory.")
+                            return
+                          }
+                          setPosGuestValidationError(null)
+
                           if (posOrderType === "dine-in" && !selectedTableId) {
                             setTableValidationError(true)
                             return
@@ -4373,6 +4987,7 @@ function RestaurantAdminContent() {
                           }))
 
                           const generatedOrderNum = `ORD-${Math.floor(1000 + Math.random() * 9000)}`
+                          const guestNotes = `Guest: ${trimmedGuestName} | Phone: ${trimmedGuestPhone}`
                           const optimisticOrder: SupabaseOrder = {
                             id: `ord_${Date.now()}`,
                             restaurant_id: restaurantId || "demo-restaurant-1",
@@ -4391,7 +5006,9 @@ function RestaurantAdminContent() {
                             payment_method: "MANUAL",
                             source: "pos",
                             order_number: generatedOrderNum,
-                            notes: null,
+                            customer_name: trimmedGuestName,
+                            customer_phone: trimmedGuestPhone,
+                            notes: guestNotes,
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString(),
                             order_items: orderItems.map((it, idx) => ({
@@ -4452,6 +5069,9 @@ function RestaurantAdminContent() {
                           }
                           setSelectedTableId(null)
                           setTableValidationError(false)
+                          setPosCustomerName("")
+                          setPosCustomerPhone("")
+                          setPosGuestValidationError(null)
                           setCart([])
                           setActiveTab("orders")
 
@@ -4470,6 +5090,9 @@ function RestaurantAdminContent() {
                                 orderType: posOrderType,
                                 table_id: tableId,
                                 tableId: tableId,
+                                customer_name: trimmedGuestName,
+                                customer_phone: trimmedGuestPhone,
+                                notes: guestNotes,
                                 items: orderItems,
                                 total_amount: total,
                                 totalAmount: total,
@@ -4504,7 +5127,7 @@ function RestaurantAdminContent() {
                           }
                         }}
                         disabled={cart.length === 0}
-                        className="py-2.5 rounded-xl bg-[#10b981] hover:bg-[#059669] text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
+                        className="py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition disabled:opacity-50 shadow-xs"
                       >
                         Checkout
                       </button>
@@ -4639,6 +5262,11 @@ function RestaurantAdminContent() {
                                     </span>
                                   )}
                                 </div>
+                                {(o.customer_name || o.customer_phone) && (
+                                  <div className="text-[10px] text-slate-500 mt-0.5 truncate">
+                                    {[o.customer_name, o.customer_phone].filter(Boolean).join(" · ")}
+                                  </div>
+                                )}
                               </td>
                               <td
                                 className={`py-3.5 px-4 max-w-xs ${
@@ -4660,7 +5288,7 @@ function RestaurantAdminContent() {
                                       <span
                                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                           kStage === "ready"
-                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                            ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                                             : kStage === "preparing"
                                             ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                                             : kStage === "completed"
@@ -4680,7 +5308,7 @@ function RestaurantAdminContent() {
                                       <span
                                         className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                                           bStage === "ready"
-                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                            ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                                             : bStage === "preparing"
                                             ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
                                             : bStage === "completed"
@@ -4698,7 +5326,7 @@ function RestaurantAdminContent() {
                                         o.status === "CLOSED"
                                           ? "bg-slate-500/20 text-slate-400 border border-slate-500/30"
                                           : o.status === "READY"
-                                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                          ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                                           : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
                                       }`}
                                     >
@@ -4712,14 +5340,14 @@ function RestaurantAdminContent() {
                                   onClick={() => updatePaymentStatus(o.id, o.payment_status === "PAID" ? "UNPAID" : "PAID")}
                                   className={`px-2.5 py-1 rounded-full text-[10px] font-bold inline-flex items-center gap-1.5 transition hover:scale-105 active:scale-95 cursor-pointer ${
                                     o.payment_status === "PAID"
-                                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30"
+                                      ? "bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30"
                                       : "bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30"
                                   }`}
                                   title={`Click to mark as ${o.payment_status === "PAID" ? "Unpaid" : "Paid"}`}
                                 >
                                   <span
                                     className={`w-1.5 h-1.5 rounded-full ${
-                                      o.payment_status === "PAID" ? "bg-emerald-400" : "bg-amber-400"
+                                      o.payment_status === "PAID" ? "bg-blue-400" : "bg-amber-400"
                                     }`}
                                   />
                                   {o.payment_status === "PAID" ? "Paid" : "Unpaid"}
@@ -4758,9 +5386,9 @@ function RestaurantAdminContent() {
                                       {o.payment_status !== "PAID" ? (
                                         <button
                                           onClick={() => updatePaymentStatus(o.id, "PAID")}
-                                          className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 flex items-center gap-2 transition cursor-pointer"
+                                          className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-blue-400 hover:bg-blue-500/10 flex items-center gap-2 transition cursor-pointer"
                                         >
-                                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                          <CheckCircle2 className="w-4 h-4 text-blue-400" />
                                           <span>Mark as Paid</span>
                                         </button>
                                       ) : (
@@ -4776,7 +5404,10 @@ function RestaurantAdminContent() {
                                       <button
                                         onClick={() => {
                                           setActiveOrderMenuId(null)
-                                          window.print()
+                                          setReceiptPreview({
+                                            title: o.table_id || o.order_number || "Order Receipt",
+                                            orders: [o],
+                                          })
                                         }}
                                         className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 transition cursor-pointer ${
                                           isDarkMode ? "hover:bg-slate-800 text-slate-300" : "hover:bg-slate-100 text-slate-700"
@@ -4831,9 +5462,9 @@ function RestaurantAdminContent() {
               <div className="space-y-6 max-w-[1440px] mx-auto">
                 {/* Toast Notification Banner */}
                 {menuToast && (
-                  <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+                  <div className="p-3.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-800 dark:text-blue-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>{menuToast}</span>
                     </div>
                     <button
@@ -4865,7 +5496,7 @@ function RestaurantAdminContent() {
                   </div>
 
                   <button
-                    onClick={() => setShowAddItemModal(true)}
+                    onClick={handleOpenAddMenuItem}
                     className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold shadow-md transition cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
@@ -4905,9 +5536,9 @@ function RestaurantAdminContent() {
                       <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">
                         Available (In Stock)
                       </span>
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <CheckCircle2 className="w-4 h-4 text-blue-500" />
                     </div>
-                    <div className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">
+                    <div className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-400">
                       {menuCatalog.filter((i) => i.isAvailable !== false).length}
                     </div>
                     <p className="text-[11px] text-[#64748B] mt-0.5">Orderable by customers & staff</p>
@@ -4982,11 +5613,11 @@ function RestaurantAdminContent() {
                         onClick={() => setMenuStockFilter("in-stock")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1.5 ${
                           menuStockFilter === "in-stock"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "text-emerald-700 dark:text-emerald-400 hover:text-emerald-900"
+                            ? "bg-blue-600 text-white shadow-2xs"
+                            : "text-blue-700 dark:text-blue-400 hover:text-blue-900"
                         }`}
                       >
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="w-2 h-2 rounded-full bg-blue-500" />
                         In Stock ({menuCatalog.filter((i) => i.isAvailable !== false).length})
                       </button>
                       <button
@@ -5050,10 +5681,12 @@ function RestaurantAdminContent() {
                     })
                     .map((item) => {
                       const isOutOfStock = item.isAvailable === false
+                      const hasHalfFull = Boolean(item.hasPortionOptions && item.halfPrice)
                       return (
                         <div
                           key={item.id}
-                          className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                          onClick={() => setSelectedAdminMenuItem(item)}
+                          className={`rounded-2xl border transition-all flex flex-col justify-between overflow-hidden cursor-pointer ${
                             isOutOfStock
                               ? isDarkMode
                                 ? "bg-[#181a24]/60 border-red-900/30 opacity-80"
@@ -5063,25 +5696,56 @@ function RestaurantAdminContent() {
                               : "bg-white border-[#E5E1D9] hover:border-[#C46B4E] shadow-2xs"
                           }`}
                         >
-                          <div className="space-y-3">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-center gap-2.5">
-                                <span className="text-3xl p-2 rounded-xl bg-[#F7F5F0] dark:bg-[#1f2231] border border-[#E5E1D9] dark:border-[#2b2f42] shrink-0">
-                                  {item.icon}
+                          {/* Food Photo Header */}
+                          <div className="relative h-40 w-full bg-[#F7F5F0] dark:bg-[#1f2231] overflow-hidden flex items-center justify-center">
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className={`w-full h-full object-cover transition-transform duration-300 hover:scale-105 ${isOutOfStock ? "grayscale" : ""}`}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <span className="text-5xl">{item.icon}</span>
+                            )}
+                            <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                              {hasHalfFull && (
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-black/75 text-white backdrop-blur-xs">
+                                  Half / Full
                                 </span>
+                              )}
+                            </div>
+                            <div className="absolute top-2.5 right-2.5">
+                              {isOutOfStock ? (
+                                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-600/95 text-white flex items-center gap-1 shadow-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                  Out of Stock
+                                </span>
+                              ) : (
+                                <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-600/95 text-white flex items-center gap-1 shadow-xs">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                                  In Stock
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="p-4 flex-1 flex flex-col justify-between">
+                            <div className="space-y-3">
+                              <div className="flex items-start justify-between gap-2">
                                 <div>
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     <span
                                       className={`w-3 h-3 rounded-xs border flex items-center justify-center shrink-0 ${
                                         item.isVeg
-                                          ? "border-emerald-600 bg-emerald-50"
+                                          ? "border-sky-600 bg-sky-50"
                                           : "border-amber-700 bg-amber-50"
                                       }`}
                                       title={item.isVeg ? "Vegetarian" : "Non-Vegetarian"}
                                     >
                                       <span
                                         className={`w-1.5 h-1.5 rounded-full ${
-                                          item.isVeg ? "bg-emerald-600" : "bg-amber-700"
+                                          item.isVeg ? "bg-sky-600" : "bg-amber-700"
                                         }`}
                                       />
                                     </span>
@@ -5098,87 +5762,87 @@ function RestaurantAdminContent() {
                                     </h3>
                                   </div>
                                   <div className="text-sm font-extrabold text-[#C46B4E] mt-1">
-                                    ₹{item.price.toFixed(2)}
+                                    {hasHalfFull
+                                      ? `Half ₹${item.halfPrice} · Full ₹${item.fullPrice || item.price}`
+                                      : `₹${item.price.toFixed(2)}`}
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Stock Status Badge */}
-                              <div>
-                                {isOutOfStock ? (
-                                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400 border border-red-200 dark:border-red-800 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                                    Out of Stock
-                                  </span>
-                                ) : (
-                                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                                    In Stock
+                              {/* Tags & Routing Station */}
+                              <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
+                                <span className="px-2 py-0.5 rounded-md bg-[#E9E3D8] text-[#20252B] font-medium border border-[#E5E1D9] capitalize">
+                                  {item.category}
+                                </span>
+                                <span
+                                  className={`px-2 py-0.5 rounded-md font-medium border ${
+                                    item.station === "bar" || item.category === "drinks"
+                                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                      : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                  }`}
+                                >
+                                  {item.station === "bar" || item.category === "drinks" ? "Bar Station" : "Kitchen Station"}
+                                </span>
+                                {item.tag && (
+                                  <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-medium">
+                                    {item.tag}
                                   </span>
                                 )}
                               </div>
+
+                              {item.description && (
+                                <p className="text-xs text-[#64748B] line-clamp-2 leading-relaxed">
+                                  {item.description}
+                                </p>
+                              )}
                             </div>
 
-                            {/* Tags & Routing Station */}
-                            <div className="flex items-center gap-1.5 flex-wrap text-[11px]">
-                              <span className="px-2 py-0.5 rounded-md bg-[#E9E3D8] text-[#20252B] font-medium border border-[#E5E1D9] capitalize">
-                                {item.category}
-                              </span>
-                              <span
-                                className={`px-2 py-0.5 rounded-md font-medium border ${
-                                  item.station === "bar" || item.category === "drinks"
-                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                            {/* Action Buttons: Toggle Stock & Delete */}
+                            <div
+                              onClick={(e) => e.stopPropagation()}
+                              className="pt-3 mt-3 border-t border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-between gap-2"
+                            >
+                              {/* Toggle Availability Button */}
+                              <button
+                                onClick={() => handleToggleItemAvailability(item)}
+                                className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
+                                  isOutOfStock
+                                    ? "bg-blue-600 hover:bg-blue-500 text-white border-blue-500 shadow-2xs"
+                                    : "bg-white dark:bg-[#12141c] hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40"
                                 }`}
                               >
-                                {item.station === "bar" || item.category === "drinks" ? "Bar Station" : "Kitchen Station"}
-                              </span>
-                              {item.tag && (
-                                <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-medium">
-                                  {item.tag}
-                                </span>
-                              )}
+                                {isOutOfStock ? (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Mark In Stock</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <AlertTriangle className="w-3.5 h-3.5" />
+                                    <span>Mark Out of Stock</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Edit Item Button */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditMenuItem(item)}
+                                title="Edit Item"
+                                className="p-1.5 rounded-xl border border-[#E5E1D9] dark:border-[#2c3144] bg-white dark:bg-[#12141c] text-[#20252B] dark:text-slate-200 hover:border-[#C46B4E] hover:text-[#C46B4E] transition cursor-pointer"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+
+                              {/* Remove Item Button */}
+                              <button
+                                onClick={() => handleRemoveMenuItem(item)}
+                                title="Delete Item"
+                                className="p-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-white dark:bg-[#12141c] text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
-
-                            {item.description && (
-                              <p className="text-xs text-[#64748B] line-clamp-2 leading-relaxed">
-                                {item.description}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Action Buttons: Toggle Stock & Delete */}
-                          <div className="pt-3 mt-3 border-t border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-between gap-2">
-                            {/* Toggle Availability Button */}
-                            <button
-                              onClick={() => handleToggleItemAvailability(item)}
-                              className={`flex-1 py-1.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
-                                isOutOfStock
-                                  ? "bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-500 shadow-2xs"
-                                  : "bg-white dark:bg-[#12141c] hover:bg-red-50 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900/40"
-                              }`}
-                            >
-                              {isOutOfStock ? (
-                                <>
-                                  <CheckCircle2 className="w-3.5 h-3.5" />
-                                  <span>Mark In Stock</span>
-                                </>
-                              ) : (
-                                <>
-                                  <AlertTriangle className="w-3.5 h-3.5" />
-                                  <span>Mark Out of Stock</span>
-                                </>
-                              )}
-                            </button>
-
-                            {/* Remove Item Button */}
-                            <button
-                              onClick={() => handleRemoveMenuItem(item)}
-                              title="Delete Item"
-                              className="p-1.5 rounded-xl border border-red-200 dark:border-red-900/40 bg-white dark:bg-[#12141c] text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
                           </div>
                         </div>
                       )
@@ -5190,9 +5854,9 @@ function RestaurantAdminContent() {
               <div className="space-y-6 max-w-[1440px] mx-auto">
                 {/* Toast Notification Banner */}
                 {inventoryToast && (
-                  <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+                  <div className="p-3.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-800 dark:text-blue-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>{inventoryToast}</span>
                     </div>
                     <button
@@ -5299,7 +5963,7 @@ function RestaurantAdminContent() {
                   >
                     <div className="flex items-center justify-between text-xs text-[#64748B] mb-1">
                       <span>Tracked Ingredients</span>
-                      <Package className="w-4 h-4 text-emerald-500" />
+                      <Package className="w-4 h-4 text-blue-500" />
                     </div>
                     <div
                       className={`text-xl font-bold ${
@@ -5425,10 +6089,10 @@ function RestaurantAdminContent() {
                         onClick={() => setInventoryStockFilter("healthy")}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1 ${
                           inventoryStockFilter === "healthy"
-                            ? "bg-emerald-600 text-white"
+                            ? "bg-blue-600 text-white"
                             : isDarkMode
-                            ? "bg-[#12141c] text-emerald-400 hover:bg-[#1a1d29]"
-                            : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/60"
+                            ? "bg-[#12141c] text-blue-400 hover:bg-[#1a1d29]"
+                            : "bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100/60"
                         }`}
                       >
                         <Check className="w-3 h-3" />
@@ -5617,7 +6281,7 @@ function RestaurantAdminContent() {
                                           ? "bg-red-500"
                                           : isLow
                                           ? "bg-amber-500"
-                                          : "bg-emerald-500"
+                                          : "bg-blue-500"
                                       }`}
                                       style={{ width: `${isExpired ? 100 : Math.max(5, pct)}%` }}
                                     />
@@ -5712,7 +6376,7 @@ function RestaurantAdminContent() {
                                       Low Stock
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 inline-flex items-center gap-1">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 inline-flex items-center gap-1">
                                       <Check className="w-2.5 h-2.5" />
                                       Adequate
                                     </span>
@@ -5804,7 +6468,7 @@ function RestaurantAdminContent() {
                                   Low Stock
                                 </span>
                               ) : (
-                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/40 flex items-center gap-1">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 flex items-center gap-1">
                                   <Check className="w-2.5 h-2.5" />
                                   Adequate
                                 </span>
@@ -5841,7 +6505,7 @@ function RestaurantAdminContent() {
                                       ? "bg-red-500"
                                       : isLow
                                       ? "bg-amber-500"
-                                      : "bg-emerald-500"
+                                      : "bg-blue-500"
                                   }`}
                                   style={{ width: `${isExpired ? 100 : Math.max(5, pct)}%` }}
                                 />
@@ -5952,7 +6616,7 @@ function RestaurantAdminContent() {
                     >
                       14
                     </div>
-                    <span className="text-xs text-emerald-500 mt-1 block">12 Active, 2 Trial</span>
+                    <span className="text-xs text-blue-500 mt-1 block">12 Active, 2 Trial</span>
                   </div>
                   <div
                     className={`p-5 rounded-2xl border ${
@@ -5979,8 +6643,8 @@ function RestaurantAdminContent() {
                     }`}
                   >
                     <span className="text-xs font-semibold uppercase text-slate-400">Platform MRR</span>
-                    <div className="text-3xl font-bold text-emerald-500 mt-2">₹3,95,000</div>
-                    <span className="text-xs text-emerald-500 mt-1 block">+18.4% MoM</span>
+                    <div className="text-3xl font-bold text-blue-500 mt-2">₹3,95,000</div>
+                    <span className="text-xs text-blue-500 mt-1 block">+18.4% MoM</span>
                   </div>
                   <div
                     className={`p-5 rounded-2xl border ${
@@ -5990,8 +6654,8 @@ function RestaurantAdminContent() {
                     }`}
                   >
                     <span className="text-xs font-semibold uppercase text-slate-400">System Health</span>
-                    <div className="text-3xl font-bold text-emerald-500 mt-2">99.98%</div>
-                    <span className="text-xs text-emerald-500 mt-1 block">Operational</span>
+                    <div className="text-3xl font-bold text-blue-500 mt-2">99.98%</div>
+                    <span className="text-xs text-blue-500 mt-1 block">Operational</span>
                   </div>
                 </div>
 
@@ -6040,7 +6704,7 @@ function RestaurantAdminContent() {
                         <span className="text-[#C46B4E] font-semibold">
                           {r.plan}
                         </span>
-                        <span className="text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-300 dark:border-emerald-800 font-bold">
+                        <span className="text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-950/80 px-2 py-0.5 rounded border border-blue-300 dark:border-blue-800 font-bold">
                           {r.status}
                         </span>
                       </div>
@@ -6081,7 +6745,7 @@ function RestaurantAdminContent() {
                     </button>
                     <button
                       onClick={() => setShowAddResModal(true)}
-                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs"
+                      className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs"
                     >
                       <Plus className="w-3.5 h-3.5" /> New Reservation
                     </button>
@@ -6120,7 +6784,7 @@ function RestaurantAdminContent() {
                     >
                       {reservations.reduce((sum, r) => sum + (r.guests || 2), 0)} Guests
                     </div>
-                    <span className="text-xs text-emerald-500 mt-0.5 block">
+                    <span className="text-xs text-blue-500 mt-0.5 block">
                       {reservations.filter((r) => r.status !== "Cancelled").length} Parties Scheduled
                     </span>
                   </div>
@@ -6223,7 +6887,7 @@ function RestaurantAdminContent() {
                                 isDarkMode ? "hover:bg-[#1a1c26]" : "hover:bg-slate-50"
                               }`}
                             >
-                              <td className="py-3.5 px-4 font-bold text-emerald-500">{r.time}</td>
+                              <td className="py-3.5 px-4 font-bold text-blue-500">{r.time}</td>
                               <td className="py-3.5 px-4">
                                 <span
                                   className={`font-semibold block ${
@@ -6278,7 +6942,7 @@ function RestaurantAdminContent() {
                                     r.status === "Arrived"
                                       ? "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 dark:border-amber-800"
                                       : r.status === "Confirmed"
-                                      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800"
                                       : r.status === "Seated"
                                       ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border-blue-300 dark:border-blue-800"
                                       : r.status === "Completed"
@@ -6309,7 +6973,7 @@ function RestaurantAdminContent() {
                                       <button
                                         type="button"
                                         onClick={() => handleReservationStatusChange(r.id, "Seated")}
-                                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer active:scale-95"
+                                        className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer active:scale-95"
                                         title="Directly seat guest"
                                       >
                                         Seat Now
@@ -6319,7 +6983,7 @@ function RestaurantAdminContent() {
                                     <button
                                       type="button"
                                       onClick={() => handleReservationStatusChange(r.id, "Seated")}
-                                      className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
+                                      className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
                                       title="Seat party at assigned table"
                                     >
                                       <Utensils className="w-3 h-3" />
@@ -6346,7 +7010,7 @@ function RestaurantAdminContent() {
                                       </button>
                                     </>
                                   ) : r.status === "Completed" ? (
-                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 py-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 py-1 px-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
                                       <Check className="w-3 h-3" />
                                       <span>Completed</span>
                                     </span>
@@ -6363,7 +7027,7 @@ function RestaurantAdminContent() {
                                     <button
                                       type="button"
                                       onClick={() => handleReservationStatusChange(r.id, "Seated")}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer"
+                                      className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-[11px] transition shadow-xs cursor-pointer"
                                     >
                                       <span>Seat Now</span>
                                     </button>
@@ -6409,7 +7073,7 @@ function RestaurantAdminContent() {
                       </h3>
                       <button
                         onClick={() => setShowWaitlistModal(true)}
-                        className="text-emerald-500 hover:underline text-xs font-semibold"
+                        className="text-blue-500 hover:underline text-xs font-semibold"
                       >
                         + Add Guest
                       </button>
@@ -6573,7 +7237,7 @@ function RestaurantAdminContent() {
                         </button>
                         <button
                           onClick={handleSaveNewReservation}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs"
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs"
                         >
                           Confirm Reservation
                         </button>
@@ -6763,7 +7427,7 @@ function RestaurantAdminContent() {
                         <button
                           type="button"
                           onClick={() => handleSaveEditedReservation(editingReservation)}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition cursor-pointer shadow-xs active:scale-95"
+                          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition cursor-pointer shadow-xs active:scale-95"
                         >
                           Save Changes
                         </button>
@@ -6942,56 +7606,112 @@ function RestaurantAdminContent() {
                     </p>
                   </div>
 
-                  {/* Station Filters: All / Kitchen / Bar */}
-                  <div
-                    className={`flex items-center p-1 rounded-xl border ${
-                      isDarkMode
-                        ? "bg-[#161821] border-[#252838]"
-                        : "bg-slate-100 border-slate-200"
-                    }`}
-                  >
-                    <button
-                      onClick={() => setKdsStationFilter("all")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                        kdsStationFilter === "all"
-                          ? "bg-amber-600 text-white shadow-xs"
-                          : "text-slate-400 hover:text-white"
+                  {/* Station Filters & KDS Sound Controls */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <div
+                      className={`flex items-center p-1 rounded-xl border ${
+                        isDarkMode
+                          ? "bg-[#161821] border-[#252838]"
+                          : "bg-slate-100 border-slate-200"
                       }`}
                     >
-                      All Stations ({kdsTickets.length})
-                    </button>
+                      <button
+                        onClick={() => setKdsStationFilter("all")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                          kdsStationFilter === "all"
+                            ? "bg-amber-600 text-white shadow-xs"
+                            : isDarkMode
+                              ? "text-slate-400 hover:text-white"
+                              : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        All Stations ({kdsTickets.length})
+                      </button>
+                      <button
+                        onClick={() => setKdsStationFilter("kitchen")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                          kdsStationFilter === "kitchen"
+                            ? "bg-amber-600 text-white shadow-xs"
+                            : isDarkMode
+                              ? "text-slate-400 hover:text-white"
+                              : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        🍳 Kitchen Cook
+                      </button>
+                      <button
+                        onClick={() => setKdsStationFilter("bar")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                          kdsStationFilter === "bar"
+                            ? "bg-amber-600 text-white shadow-xs"
+                            : isDarkMode
+                              ? "text-slate-400 hover:text-white"
+                              : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        🍸 Bar Station
+                      </button>
+                    </div>
+
                     <button
-                      onClick={() => setKdsStationFilter("kitchen")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                        kdsStationFilter === "kitchen"
-                          ? "bg-amber-600 text-white shadow-xs"
-                          : "text-slate-400 hover:text-white"
+                      type="button"
+                      onClick={() => {
+                        setIsKdsSoundMuted((prev) => {
+                          const next = !prev
+                          if (next) {
+                            stopKitchenVoice()
+                          } else {
+                            unlockBellAudio()
+                          }
+                          return next
+                        })
+                      }}
+                      className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-xs ${
+                        isKdsSoundMuted
+                          ? isDarkMode
+                            ? "bg-red-500/20 border-red-500/40 text-red-300 hover:bg-red-500/30"
+                            : "bg-red-600 border-red-600 text-white hover:bg-red-700"
+                          : isDarkMode
+                            ? "bg-slate-800 border-slate-700 text-white hover:bg-slate-700"
+                            : "bg-[#20252B] border-[#20252B] text-white hover:bg-[#2f363f]"
                       }`}
                     >
-                      🍳 Kitchen Cook
-                    </button>
-                    <button
-                      onClick={() => setKdsStationFilter("bar")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                        kdsStationFilter === "bar"
-                          ? "bg-amber-600 text-white shadow-xs"
-                          : "text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      🍸 Bar Station
+                      <span>{isKdsSoundMuted ? "🔇 Muted" : "🔊 Voice & Sound On"}</span>
                     </button>
                   </div>
                 </div>
+
+                {kdsNewOrderBanner && (
+                  <div
+                    className={`p-3.5 rounded-xl border text-xs font-bold flex items-center justify-between animate-in fade-in ${
+                      isDarkMode
+                        ? "bg-amber-500/15 border-amber-500/40 text-amber-300"
+                        : "bg-amber-50 border-amber-300 text-amber-900"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <BellRing className="w-4 h-4 animate-bounce shrink-0" />
+                      <span>{kdsNewOrderBanner}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setKdsNewOrderBanner(null)}
+                      className={isDarkMode ? "text-amber-300 hover:text-white cursor-pointer" : "text-amber-800 hover:text-slate-900 cursor-pointer"}
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Stage 1: New Queue */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-blue-500" />
+                      <div className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDarkMode ? "text-blue-400" : "text-blue-700"}`}>
+                        <span className={`w-2 h-2 rounded-full ${isDarkMode ? "bg-blue-500" : "bg-blue-600"}`} />
                         <span>New Queue</span>
                       </div>
-                      <span className="text-xs text-slate-400">
+                      <span className={`text-xs font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>
                         {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "new").length}
                       </span>
                     </div>
@@ -7028,7 +7748,9 @@ function RestaurantAdminContent() {
                                   className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     t.station === "bar"
                                       ? "bg-[#E9E3D8] text-[#20252B]"
-                                      : "bg-amber-500/20 text-amber-400"
+                                      : isDarkMode
+                                        ? "bg-amber-500/20 text-amber-400"
+                                        : "bg-amber-100 text-amber-800 border border-amber-200"
                                   }`}
                                 >
                                   {t.station}
@@ -7044,8 +7766,8 @@ function RestaurantAdminContent() {
                                   className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${
                                     it.status === "ready" || it.status === "completed"
                                       ? isDarkMode
-                                        ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300 line-through opacity-80"
-                                        : "bg-emerald-50 border-emerald-200 text-emerald-800 line-through opacity-80"
+                                        ? "bg-indigo-950/40 border-indigo-500/30 text-indigo-300 line-through opacity-80"
+                                        : "bg-indigo-50 border-indigo-200 text-indigo-900 line-through"
                                       : isDarkMode
                                         ? "bg-[#181a24] border-[#252838] text-slate-200 hover:border-slate-600"
                                         : "bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300"
@@ -7056,7 +7778,9 @@ function RestaurantAdminContent() {
                                     <span
                                       className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border shrink-0 transition ${
                                         it.status === "ready" || it.status === "completed"
-                                          ? "bg-emerald-500 border-emerald-500 text-white"
+                                          ? isDarkMode
+                                            ? "bg-indigo-500 border-indigo-500 text-white"
+                                            : "bg-indigo-700 border-indigo-700 text-white"
                                           : isDarkMode
                                             ? "border-slate-600 text-transparent"
                                             : "border-slate-400 text-transparent"
@@ -7069,8 +7793,12 @@ function RestaurantAdminContent() {
                                   <span
                                     className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 px-1.5 py-0.5 rounded ${
                                       it.status === "ready" || it.status === "completed"
-                                        ? "bg-emerald-500/20 text-emerald-400"
-                                        : "bg-slate-500/20 text-slate-400"
+                                        ? isDarkMode
+                                          ? "bg-indigo-500/20 text-indigo-300"
+                                          : "bg-indigo-100 text-indigo-900 border border-indigo-300"
+                                        : isDarkMode
+                                          ? "bg-slate-500/20 text-slate-400"
+                                          : "bg-slate-200 text-slate-700"
                                     }`}
                                   >
                                     {it.status === "ready" || it.status === "completed" ? "Done" : "Pending"}
@@ -7097,11 +7825,11 @@ function RestaurantAdminContent() {
                   {/* Stage 2: In Cook Station */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <div className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDarkMode ? "text-amber-400" : "text-amber-800"}`}>
+                        <span className={`w-2 h-2 rounded-full animate-pulse ${isDarkMode ? "bg-amber-500" : "bg-amber-600"}`} />
                         <span>In Cook Station</span>
                       </div>
-                      <span className="text-xs text-slate-400">
+                      <span className={`text-xs font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>
                         {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "preparing").length}
                       </span>
                     </div>
@@ -7138,7 +7866,9 @@ function RestaurantAdminContent() {
                                   className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     t.station === "bar"
                                       ? "bg-[#E9E3D8] text-[#20252B]"
-                                      : "bg-amber-500/20 text-amber-400"
+                                      : isDarkMode
+                                        ? "bg-amber-500/20 text-amber-400"
+                                        : "bg-amber-100 text-amber-800 border border-amber-200"
                                   }`}
                                 >
                                   {t.station}
@@ -7154,8 +7884,8 @@ function RestaurantAdminContent() {
                                   className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${
                                     it.status === "ready" || it.status === "completed"
                                       ? isDarkMode
-                                        ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300 line-through opacity-80"
-                                        : "bg-emerald-50 border-emerald-200 text-emerald-800 line-through opacity-80"
+                                        ? "bg-indigo-950/40 border-indigo-500/30 text-indigo-300 line-through opacity-80"
+                                        : "bg-indigo-50 border-indigo-200 text-indigo-900 line-through"
                                       : isDarkMode
                                         ? "bg-[#181a24] border-[#252838] text-slate-200 hover:border-slate-600"
                                         : "bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300"
@@ -7166,7 +7896,9 @@ function RestaurantAdminContent() {
                                     <span
                                       className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border shrink-0 transition ${
                                         it.status === "ready" || it.status === "completed"
-                                          ? "bg-emerald-500 border-emerald-500 text-white"
+                                          ? isDarkMode
+                                            ? "bg-indigo-500 border-indigo-500 text-white"
+                                            : "bg-indigo-700 border-indigo-700 text-white"
                                           : isDarkMode
                                             ? "border-slate-600 text-transparent"
                                             : "border-slate-400 text-transparent"
@@ -7179,8 +7911,12 @@ function RestaurantAdminContent() {
                                   <span
                                     className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 px-1.5 py-0.5 rounded ${
                                       it.status === "ready" || it.status === "completed"
-                                        ? "bg-emerald-500/20 text-emerald-400"
-                                        : "bg-slate-500/20 text-slate-400"
+                                        ? isDarkMode
+                                          ? "bg-indigo-500/20 text-indigo-300"
+                                          : "bg-indigo-100 text-indigo-900 border border-indigo-300"
+                                        : isDarkMode
+                                          ? "bg-slate-500/20 text-slate-400"
+                                          : "bg-slate-200 text-slate-700"
                                     }`}
                                   >
                                     {it.status === "ready" || it.status === "completed" ? "Done" : "Pending"}
@@ -7203,18 +7939,18 @@ function RestaurantAdminContent() {
                   {/* Stage 3: Ready for Table */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <div className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${isDarkMode ? "text-indigo-300" : "text-indigo-900"}`}>
+                        <span className={`w-2 h-2 rounded-full ${isDarkMode ? "bg-indigo-400" : "bg-indigo-700"}`} />
                         <span>Ready for Table</span>
                       </div>
-                      <span className="text-xs text-slate-400">
+                      <span className={`text-xs font-semibold ${isDarkMode ? "text-slate-400" : "text-slate-600"}`}>
                         {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready").length}
                       </span>
                     </div>
 
                     {kdsTickets.filter((t) => (kdsStationFilter === "all" || t.station === kdsStationFilter) && t.stage === "ready").length === 0 ? (
                       <div className={`p-8 rounded-2xl border border-dashed text-center ${
-                        isDarkMode ? "border-slate-800 text-slate-500" : "border-slate-200 text-slate-400"
+                        isDarkMode ? "border-slate-800 text-slate-500" : "border-slate-300 text-slate-500"
                       }`}>
                         <span className="text-2xl block mb-1">✓</span>
                         <p className="text-xs font-medium">All orders served</p>
@@ -7227,8 +7963,8 @@ function RestaurantAdminContent() {
                             key={t.id}
                             className={`p-4 rounded-2xl border space-y-3 ${
                               isDarkMode
-                                ? "bg-[#14161f] border-emerald-500/40"
-                                : "bg-white border-emerald-200 shadow-xs"
+                                ? "bg-[#14161f] border-indigo-500/40"
+                                : "bg-white border-indigo-200 shadow-xs"
                             }`}
                           >
                             <div className="flex justify-between items-center text-xs">
@@ -7244,13 +7980,15 @@ function RestaurantAdminContent() {
                                   className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${
                                     t.station === "bar"
                                       ? "bg-[#E9E3D8] text-[#20252B]"
-                                      : "bg-amber-500/20 text-amber-400"
+                                      : isDarkMode
+                                        ? "bg-amber-500/20 text-amber-400"
+                                        : "bg-amber-100 text-amber-800 border border-amber-200"
                                   }`}
                                 >
                                   {t.station}
                                 </span>
                               </div>
-                              <span className="text-emerald-500 font-semibold">Ready!</span>
+                              <span className={`font-bold ${isDarkMode ? "text-indigo-300" : "text-indigo-900"}`}>Ready!</span>
                             </div>
                             <div className="space-y-1.5">
                               {t.items.map((it) => (
@@ -7260,8 +7998,8 @@ function RestaurantAdminContent() {
                                   className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition ${
                                     it.status === "ready" || it.status === "completed"
                                       ? isDarkMode
-                                        ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-300 line-through opacity-80"
-                                        : "bg-emerald-50 border-emerald-200 text-emerald-800 line-through opacity-80"
+                                        ? "bg-indigo-950/40 border-indigo-500/30 text-indigo-300 line-through opacity-80"
+                                        : "bg-indigo-50 border-indigo-200 text-indigo-900 line-through"
                                       : isDarkMode
                                         ? "bg-[#181a24] border-[#252838] text-slate-200 hover:border-slate-600"
                                         : "bg-slate-50 border-slate-200 text-slate-800 hover:border-slate-300"
@@ -7272,7 +8010,9 @@ function RestaurantAdminContent() {
                                     <span
                                       className={`w-4 h-4 rounded flex items-center justify-center text-[10px] font-bold border shrink-0 transition ${
                                         it.status === "ready" || it.status === "completed"
-                                          ? "bg-emerald-500 border-emerald-500 text-white"
+                                          ? isDarkMode
+                                            ? "bg-indigo-500 border-indigo-500 text-white"
+                                            : "bg-indigo-700 border-indigo-700 text-white"
                                           : isDarkMode
                                             ? "border-slate-600 text-transparent"
                                             : "border-slate-400 text-transparent"
@@ -7285,8 +8025,12 @@ function RestaurantAdminContent() {
                                   <span
                                     className={`text-[10px] font-bold uppercase tracking-wider shrink-0 ml-2 px-1.5 py-0.5 rounded ${
                                       it.status === "ready" || it.status === "completed"
-                                        ? "bg-emerald-500/20 text-emerald-400"
-                                        : "bg-slate-500/20 text-slate-400"
+                                        ? isDarkMode
+                                          ? "bg-indigo-500/20 text-indigo-300"
+                                          : "bg-indigo-100 text-indigo-900 border border-indigo-300"
+                                        : isDarkMode
+                                          ? "bg-slate-500/20 text-slate-400"
+                                          : "bg-slate-200 text-slate-700"
                                     }`}
                                   >
                                     {it.status === "ready" || it.status === "completed" ? "Done" : "Pending"}
@@ -7296,7 +8040,7 @@ function RestaurantAdminContent() {
                             </div>
                             <button
                               onClick={() => advanceKdsTicket(t.id)}
-                              className="w-full py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                              className="w-full py-1.5 rounded-xl bg-[#20252B] hover:bg-[#2F363F] text-white text-xs font-bold transition shadow-xs flex items-center justify-center gap-1.5"
                             >
                               <span>Served / Clear</span>
                               <span className="text-[10px] opacity-80 uppercase">({t.station})</span>
@@ -7308,115 +8052,67 @@ function RestaurantAdminContent() {
                 </div>
               </div>
             ) : activeTab === "dashboard" ? (
-              /* --- DASHBOARD VIEW --- */
-              <div className="space-y-6 max-w-[1440px] mx-auto">
-                <div>
-                  <h1
-                    className={`text-3xl font-bold tracking-tight ${
-                      isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
-                  >
-                    Dashboard Overview
-                  </h1>
-                  <p
-                    className={`text-sm mt-1 ${
-                      isDarkMode ? "text-slate-400" : "text-slate-500"
-                    }`}
-                  >
-                    Real-time revenue, orders & table metrics
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Today's Revenue</span>
-                    <div
-                      className={`text-3xl font-bold mt-2 ${
-                        isDarkMode ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      ₹84,250.00
-                    </div>
-                    <span className="text-xs text-emerald-500 mt-1 block">+12% vs yesterday</span>
-                  </div>
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Total Orders</span>
-                    <div
-                      className={`text-3xl font-bold mt-2 ${
-                        isDarkMode ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      48
-                    </div>
-                    <span
-                      className={`text-xs mt-1 block ${
-                        isDarkMode ? "text-slate-400" : "text-slate-500"
-                      }`}
-                    >
-                      32 Dine-in, 16 Takeaway
-                    </span>
-                  </div>
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Active Tables</span>
-                    <div
-                      className={`text-3xl font-bold mt-2 ${
-                        isDarkMode ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      6 / 12
-                    </div>
-                    <span className="text-xs text-[#C46B4E] mt-1 block">50% Occupancy</span>
-                  </div>
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Connected Outlets</span>
-                    <div className="text-3xl font-bold text-emerald-500 mt-2">1 Active</div>
-                    <span
-                      className={`text-xs mt-1 block ${
-                        isDarkMode ? "text-slate-400" : "text-slate-500"
-                      }`}
-                    >
-                      Main Downtown Outlet
-                    </span>
-                  </div>
-                </div>
-              </div>
+              /* --- LIVE ADMIN DASHBOARD --- */
+              <AdminDashboard
+                isDarkMode={isDarkMode}
+                orders={orders}
+                tables={tables}
+                reservations={reservations}
+                waitlist={waitlist}
+                customersList={customersList}
+                inventoryItems={inventoryItems}
+                stockMovements={stockMovements}
+                menuCatalog={menuCatalog}
+                teamMembers={teamMembers}
+                serviceRequests={serviceRequests}
+                kdsTickets={kdsTickets}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+                onRestockItem={(item) => handleOpenAdjustment(item)}
+                onBookCustomerTable={(c) => {
+                  setNewResGuest(c.name)
+                  setNewResPhone(c.phone)
+                  setShowAddResModal(true)
+                }}
+                onRefreshAll={async () => {
+                  await Promise.all([
+                    fetchOrders(),
+                    fetchTables(),
+                    fetchReservations(),
+                    fetch("/api/inventory")
+                      .then((r) => (r.ok ? r.json() : null))
+                      .then((d) => {
+                        if (d?.items) setInventoryItems(d.items)
+                        if (d?.movements) setStockMovements(d.movements)
+                      })
+                      .catch(() => {}),
+                    fetch("/api/service-requests")
+                      .then((r) => (r.ok ? r.json() : null))
+                      .then((d) => {
+                        if (d?.requests) setServiceRequests(d.requests)
+                      })
+                      .catch(() => {}),
+                    fetch("/api/team")
+                      .then((r) => (r.ok ? r.json() : null))
+                      .then((d) => {
+                        if (d?.members) setTeamMembers(d.members)
+                      })
+                      .catch(() => {}),
+                  ])
+                }}
+              />
             ) : activeTab === "team" ? (
               /* --- RESTAURANT TEAM & STAFF DIRECTORY --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
                 {/* Toast Notification Banner */}
                 {teamToast && (
-                  <div className="p-3.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
+                  <div className="p-3.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-800 dark:text-blue-300 text-xs font-semibold flex items-center justify-between shadow-2xs animate-in fade-in">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       <span>{teamToast}</span>
                     </div>
                     <button
                       onClick={() => setTeamToast(null)}
-                      className="text-emerald-700 dark:text-emerald-300 hover:opacity-75 p-0.5 cursor-pointer"
+                      className="text-blue-700 dark:text-blue-300 hover:opacity-75 p-0.5 cursor-pointer"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -7495,12 +8191,12 @@ function RestaurantAdminContent() {
                       <span className="text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
                         On Shift Now
                       </span>
-                      <UserCheck className="w-4 h-4 text-emerald-500" />
+                      <UserCheck className="w-4 h-4 text-blue-500" />
                     </div>
-                    <div className="text-2xl font-bold mt-2 text-emerald-600 dark:text-emerald-400">
+                    <div className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-400">
                       {teamMembers.filter((m) => m.status === "active").length}
                     </div>
-                    <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 mt-0.5 block font-medium">
+                    <span className="text-[11px] text-blue-600/80 dark:text-blue-400/80 mt-0.5 block font-medium">
                       Active duty stations
                     </span>
                   </div>
@@ -7706,11 +8402,11 @@ function RestaurantAdminContent() {
                           onClick={() => setTeamStatusFilter("active")}
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
                             teamStatusFilter === "active"
-                              ? "bg-white text-emerald-700 shadow-2xs dark:bg-[#20252B] dark:text-emerald-400"
-                              : "text-[#64748B] hover:text-emerald-700"
+                              ? "bg-white text-blue-700 shadow-2xs dark:bg-[#20252B] dark:text-blue-400"
+                              : "text-[#64748B] hover:text-blue-700"
                           }`}
                         >
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                           On Shift ({teamMembers.filter((m) => m.status === "active").length})
                         </button>
                         <button
@@ -7836,8 +8532,8 @@ function RestaurantAdminContent() {
                               roleIcon = <ShoppingCart className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             } else if (member.role === "pos-reception") {
                               roleBadgeClass =
-                                "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40"
-                              roleIcon = <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40"
+                              roleIcon = <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                             } else if (member.role === "bartender") {
                               roleBadgeClass =
                                 "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40"
@@ -7878,7 +8574,7 @@ function RestaurantAdminContent() {
                                         .slice(0, 2)
                                         .join("")}
                                       {isOnShift && (
-                                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#161822]" />
+                                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-blue-500 border-2 border-white dark:border-[#161822]" />
                                       )}
                                     </div>
                                     <div>
@@ -7944,13 +8640,13 @@ function RestaurantAdminContent() {
                                     title="Click to toggle Shift Status"
                                     className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition cursor-pointer ${
                                       isOnShift
-                                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                        ? "bg-blue-500/15 border-blue-500/30 text-blue-700 dark:text-blue-400 hover:bg-blue-500/25"
                                         : "bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-200"
                                     }`}
                                   >
                                     <span
                                       className={`w-1.5 h-1.5 rounded-full ${
-                                        isOnShift ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                        isOnShift ? "bg-blue-500 animate-pulse" : "bg-slate-400"
                                       }`}
                                     />
                                     {isOnShift ? "On Shift" : "Off Duty"}
@@ -8025,8 +8721,8 @@ function RestaurantAdminContent() {
                         roleIcon = <ShoppingCart className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       } else if (member.role === "pos-reception") {
                         roleBadgeClass =
-                          "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40"
-                        roleIcon = <Users className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          "bg-blue-50 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800/40"
+                        roleIcon = <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
                       } else if (member.role === "bartender") {
                         roleBadgeClass =
                           "bg-purple-50 text-purple-800 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800/40"
@@ -8066,7 +8762,7 @@ function RestaurantAdminContent() {
                                   .slice(0, 2)
                                   .join("")}
                                 {isOnShift && (
-                                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white dark:border-[#161822]" />
+                                  <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-blue-500 border-2 border-white dark:border-[#161822]" />
                                 )}
                               </div>
                               <div>
@@ -8090,13 +8786,13 @@ function RestaurantAdminContent() {
                               onClick={() => handleToggleStaffStatus(member)}
                               className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition cursor-pointer flex items-center gap-1 ${
                                 isOnShift
-                                  ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                                  ? "bg-blue-500/15 border-blue-500/30 text-blue-700 dark:text-blue-400"
                                   : "bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                               }`}
                             >
                               <span
                                 className={`w-1.5 h-1.5 rounded-full ${
-                                  isOnShift ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+                                  isOnShift ? "bg-blue-500 animate-pulse" : "bg-slate-400"
                                 }`}
                               />
                               {isOnShift ? "On Shift" : "Off Duty"}
@@ -8186,6 +8882,105 @@ function RestaurantAdminContent() {
                   </div>
                 )}
               </div>
+            ) : activeTab === "accounting" ? (
+              /* --- ACCOUNTING & FINANCIAL LEDGER --- */
+              <AccountingModule
+                isDarkMode={isDarkMode}
+                orders={orders}
+                inventoryItems={inventoryItems}
+                stockMovements={stockMovements}
+                teamMembers={teamMembers}
+                onUpdateOrderPaymentStatus={(orderId, status) => updatePaymentStatus(orderId, status)}
+                onNavigateTab={(tab) => setActiveTab(tab)}
+              />
+            ) : activeTab === "reports" ? (
+              /* --- RESTAURANT REPORTS & EXCEL EXPORT --- */
+              <ReportsModule
+                isDarkMode={isDarkMode}
+                orders={orders}
+                menuCatalog={menuCatalog}
+                serviceRequests={serviceRequests}
+                tables={tables}
+                reservations={reservations}
+                customersList={customersList}
+                inventoryItems={inventoryItems}
+                teamMembers={teamMembers}
+              />
+            ) : activeTab === "my-deliveries" || activeTab === "delivery" ? (
+              /* --- MY DELIVERIES & TAKEAWAY DISPATCH --- */
+              <MyDeliveriesModule
+                isDarkMode={isDarkMode}
+                orders={orders}
+                onUpdatePaymentStatus={(orderId, status) => updatePaymentStatus(orderId, status)}
+                onAdvanceKdsTicket={(ticketId) => advanceKdsTicket(ticketId)}
+                onCompleteDispatchOrder={async (orderId) => {
+                  setOrders((prev) =>
+                    prev.map((o) =>
+                      o.id === orderId || o.order_number === orderId
+                        ? {
+                            ...o,
+                            status: "CLOSED",
+                            kitchen_stage: "completed",
+                            bar_stage: "completed",
+                            updated_at: new Date().toISOString(),
+                          }
+                        : o
+                    )
+                  )
+                  try {
+                    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+                      const bc = new BroadcastChannel("restro_sync_channel")
+                      bc.postMessage({
+                        type: "order_updated",
+                        order_id: orderId,
+                        kitchen_stage: "completed",
+                        bar_stage: "completed",
+                        status: "CLOSED",
+                      })
+                      bc.close()
+                    }
+                    await fetch("/api/orders", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        order_id: orderId,
+                        kitchen_stage: "completed",
+                        bar_stage: "completed",
+                        status: "CLOSED",
+                      }),
+                    })
+                  } catch {}
+                }}
+                onUpdateOrderNotes={async (orderId, notes) => {
+                  setOrders((prev) =>
+                    prev.map((o) =>
+                      o.id === orderId || o.order_number === orderId ? { ...o, notes } : o
+                    )
+                  )
+                  try {
+                    await fetch("/api/orders", {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ order_id: orderId, notes }),
+                    })
+                  } catch {}
+                }}
+                onStartNewOrder={(type) => {
+                  setPosOrderType(type)
+                  setActiveTab("pos")
+                }}
+              />
+            ) : activeTab === "settings" ? (
+              /* --- RESTAURANT SETTINGS --- */
+              <SettingsModule
+                isDarkMode={isDarkMode}
+                onToggleTheme={toggleTheme}
+                initialSection={settingsInitialSection}
+                onTablesSynced={(syncedTables, syncedFloors) => {
+                  setTables(syncedTables)
+                  setFloors(syncedFloors)
+                }}
+              />
             ) : (
               /* --- GENERIC RELEVANT MODULE --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
@@ -8382,9 +9177,13 @@ function RestaurantAdminContent() {
                   <Utensils className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-base">Add New Menu Item</h3>
+                  <h3 className="font-bold text-base">
+                    {editingMenuItem ? "Edit Menu Item" : "Add New Menu Item"}
+                  </h3>
                   <p className="text-xs text-[#64748B]">
-                    Item will immediately appear in POS and Customer QR Menus
+                    {editingMenuItem
+                      ? `Editing "${editingMenuItem.name}" — updates sync immediately to POS & QR menus`
+                      : "Item will immediately appear in POS and Customer QR Menus"}
                   </p>
                 </div>
               </div>
@@ -8412,39 +9211,189 @@ function RestaurantAdminContent() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                {/* Price */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold">Price in ₹ (INR) *</label>
+              {/* Optional Half & Full Pricing Toggle */}
+              <div className="p-3 rounded-xl bg-[#F7F5F0] dark:bg-[#12141c] border border-[#E5E1D9] dark:border-[#272b3b] flex items-center justify-between text-xs">
+                <div>
+                  <div className="font-semibold">Half &amp; Full Portion Pricing (Optional)</div>
+                  <div className="text-[11px] text-[#64748B]">Enable if customers can choose Half or Full plates</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !newItemHasPortions
+                    setNewItemHasPortions(next)
+                    if (next && !newItemFullPrice && newItemPrice) {
+                      setNewItemFullPrice(newItemPrice)
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
+                    newItemHasPortions
+                      ? "bg-[#C46B4E] text-white"
+                      : "bg-white dark:bg-[#1a1d28] text-[#64748B] border border-[#E5E1D9] dark:border-[#2c3144]"
+                  }`}
+                >
+                  {newItemHasPortions ? "Enabled" : "Single Price"}
+                </button>
+              </div>
+
+              {newItemHasPortions ? (
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Half Price */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold">Half Price (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="0.01"
+                      value={newItemHalfPrice}
+                      onChange={(e) => setNewItemHalfPrice(e.target.value)}
+                      placeholder="e.g. 179"
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                        isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Full Price */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold">Full Price (₹) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="0.01"
+                      value={newItemFullPrice}
+                      onChange={(e) => {
+                        setNewItemFullPrice(e.target.value)
+                        setNewItemPrice(e.target.value)
+                      }}
+                      placeholder="e.g. 299"
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                        isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold">Category</label>
+                    <select
+                      value={newItemCategory}
+                      onChange={(e: any) => setNewItemCategory(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                        isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                      }`}
+                    >
+                      <option value="mains">Mains &amp; Pizza</option>
+                      <option value="sides">Sides &amp; Fries</option>
+                      <option value="drinks">Drinks &amp; Bar</option>
+                      <option value="desserts">Desserts</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Single Price */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold">Price in ₹ (INR) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="0"
+                      step="0.01"
+                      value={newItemPrice}
+                      onChange={(e) => setNewItemPrice(e.target.value)}
+                      placeholder="e.g. 299"
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                        isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                      }`}
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold">Category</label>
+                    <select
+                      value={newItemCategory}
+                      onChange={(e: any) => setNewItemCategory(e.target.value)}
+                      className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                        isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                      }`}
+                    >
+                      <option value="mains">Mains &amp; Pizza</option>
+                      <option value="sides">Sides &amp; Fries</option>
+                      <option value="drinks">Drinks &amp; Bar</option>
+                      <option value="desserts">Desserts</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Dish Image URL or Local Upload + Quick Gallery */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold">Real Food Photo (Optional URL or Upload)</label>
+                  <label className="text-[11px] font-semibold text-[#C46B4E] hover:underline cursor-pointer">
+                    <span>Upload Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        const reader = new FileReader()
+                        reader.onload = () => {
+                          if (typeof reader.result === "string") {
+                            setNewItemImage(reader.result)
+                          }
+                        }
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                  </label>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  {newItemImage && (
+                    <img
+                      src={newItemImage}
+                      alt="Preview"
+                      className="w-10 h-10 rounded-xl object-cover border border-[#E5E1D9] dark:border-[#272b3b] shrink-0"
+                    />
+                  )}
                   <input
-                    type="number"
-                    required
-                    min="0"
-                    step="0.01"
-                    value={newItemPrice}
-                    onChange={(e) => setNewItemPrice(e.target.value)}
-                    placeholder="e.g. 299"
-                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                    type="text"
+                    value={newItemImage}
+                    onChange={(e) => setNewItemImage(e.target.value)}
+                    placeholder="Paste image URL or select preset below..."
+                    className={`flex-1 px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
                       isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
                     }`}
                   />
                 </div>
-
-                {/* Category */}
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold">Category</label>
-                  <select
-                    value={newItemCategory}
-                    onChange={(e: any) => setNewItemCategory(e.target.value)}
-                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
-                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
-                    }`}
-                  >
-                    <option value="mains">Mains & Pizza</option>
-                    <option value="sides">Sides & Fries</option>
-                    <option value="drinks">Drinks & Bar</option>
-                    <option value="desserts">Desserts</option>
-                  </select>
+                <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+                  {[
+                    "/images/menu/wagyu-burger.jpg",
+                    "/images/menu/truffle-pasta.jpg",
+                    "/images/menu/margherita-pizza.jpg",
+                    "/images/menu/truffle-fries.jpg",
+                    "/images/menu/caesar-salad.jpg",
+                    "/images/menu/chicken-wings.jpg",
+                    "/images/menu/caramel-macchiato.jpg",
+                    "/images/menu/lava-cake.jpg",
+                  ].map((imgPath) => (
+                    <button
+                      key={imgPath}
+                      type="button"
+                      onClick={() => setNewItemImage(imgPath)}
+                      className={`w-10 h-10 rounded-lg overflow-hidden border shrink-0 cursor-pointer transition ${
+                        newItemImage === imgPath ? "ring-2 ring-[#C46B4E] border-[#C46B4E]" : "border-[#E5E1D9] dark:border-[#272b3b] opacity-80 hover:opacity-100"
+                      }`}
+                    >
+                      <img src={imgPath} alt="Preset dish" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               </div>
 
@@ -8474,11 +9423,11 @@ function RestaurantAdminContent() {
                       onClick={() => setNewItemIsVeg(true)}
                       className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 border cursor-pointer ${
                         newItemIsVeg
-                          ? "bg-emerald-600 text-white border-emerald-600"
+                          ? "bg-blue-600 text-white border-blue-600"
                           : "bg-[#F7F5F0] dark:bg-[#12141c] text-[#64748B] border-[#E5E1D9] dark:border-[#272b3b]"
                       }`}
                     >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
                       Veg
                     </button>
                     <button
@@ -8525,18 +9474,32 @@ function RestaurantAdminContent() {
                 </div>
               </div>
 
-              {/* Badge Tag */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold">Special Tag (Optional)</label>
-                <input
-                  type="text"
-                  value={newItemTag}
-                  onChange={(e) => setNewItemTag(e.target.value)}
-                  placeholder="e.g. Chef Special, Popular, Spicy..."
-                  className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
-                    isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
-                  }`}
-                />
+              {/* Badge Tag & Prep Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Special Tag (Optional)</label>
+                  <input
+                    type="text"
+                    value={newItemTag}
+                    onChange={(e) => setNewItemTag(e.target.value)}
+                    placeholder="e.g. Chef Special, Popular..."
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold">Prep Time (Optional)</label>
+                  <input
+                    type="text"
+                    value={newItemPrepTime}
+                    onChange={(e) => setNewItemPrepTime(e.target.value)}
+                    placeholder="e.g. 12–15 mins"
+                    className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none focus:border-[#C46B4E] ${
+                      isDarkMode ? "bg-[#12141c] border-[#272b3b] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+                    }`}
+                  />
+                </div>
               </div>
 
               {/* Description */}
@@ -8564,7 +9527,7 @@ function RestaurantAdminContent() {
                   onClick={() => setNewItemIsAvailable(!newItemIsAvailable)}
                   className={`px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer ${
                     newItemIsAvailable
-                      ? "bg-emerald-600 text-white"
+                      ? "bg-blue-600 text-white"
                       : "bg-red-600 text-white"
                   }`}
                 >
@@ -8586,7 +9549,11 @@ function RestaurantAdminContent() {
                   disabled={isSavingMenuItem}
                   className="px-5 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
                 >
-                  {isSavingMenuItem ? "Saving Item..." : "Add Item to Menu"}
+                  {isSavingMenuItem
+                    ? "Saving Item..."
+                    : editingMenuItem
+                    ? "Save Changes"
+                    : "Add Item to Menu"}
                 </button>
               </div>
             </form>
@@ -8893,7 +9860,7 @@ function RestaurantAdminContent() {
                     onClick={() => setAdjType("RESTOCK")}
                     className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 border ${
                       adjType === "RESTOCK"
-                        ? "bg-emerald-600 text-white border-emerald-600 shadow-2xs"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
                         : isDarkMode
                         ? "bg-[#12141c] border-[#272b3b] text-slate-300"
                         : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
@@ -9091,7 +10058,7 @@ function RestaurantAdminContent() {
                         <div
                           className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
                             isRestock
-                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                               : isUsage
                               ? "bg-blue-500/15 text-blue-600 dark:text-blue-400"
                               : isWaste
@@ -9116,7 +10083,7 @@ function RestaurantAdminContent() {
                             <span
                               className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
                                 isRestock
-                                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                                  ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
                                   : isUsage
                                   ? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300"
                                   : isWaste
@@ -9138,7 +10105,7 @@ function RestaurantAdminContent() {
                         <div
                           className={`font-bold ${
                             isRestock
-                              ? "text-emerald-600 dark:text-emerald-400"
+                              ? "text-blue-600 dark:text-blue-400"
                               : isUsage || isWaste
                               ? "text-red-600 dark:text-red-400"
                               : "text-purple-600 dark:text-purple-400"
@@ -9378,11 +10345,11 @@ function RestaurantAdminContent() {
                     onClick={() => setStaffStatus("active")}
                     className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border cursor-pointer ${
                       staffStatus === "active"
-                        ? "bg-emerald-600 text-white border-emerald-600"
+                        ? "bg-blue-600 text-white border-blue-600"
                         : "bg-[#F7F5F0] dark:bg-[#12141c] text-[#64748B] border-[#E5E1D9] dark:border-[#272b3b]"
                     }`}
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-full bg-blue-400" />
                     On Shift (Active)
                   </button>
                   <button
@@ -9425,13 +10392,549 @@ function RestaurantAdminContent() {
           </div>
         </div>
       )}
+
+      {/* ADMIN MENU ITEM DETAILS MODAL */}
+      {selectedAdminMenuItem && (
+        <div
+          onClick={() => setSelectedAdminMenuItem(null)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-md rounded-3xl border overflow-hidden shadow-2xl cursor-default ${
+              isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="relative h-56 w-full bg-[#F7F5F0] dark:bg-[#1f2231] flex items-center justify-center overflow-hidden">
+              {selectedAdminMenuItem.image ? (
+                <img
+                  src={selectedAdminMenuItem.image}
+                  alt={selectedAdminMenuItem.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-7xl">{selectedAdminMenuItem.icon}</span>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedAdminMenuItem(null)}
+                className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-3 left-4 flex items-center gap-2">
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    selectedAdminMenuItem.isVeg ? "bg-sky-600 text-white" : "bg-amber-600 text-white"
+                  }`}
+                >
+                  {selectedAdminMenuItem.isVeg ? "Pure Veg" : "Non-Veg"}
+                </span>
+                {selectedAdminMenuItem.tag && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#C46B4E] text-white">
+                    {selectedAdminMenuItem.tag}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <div className="flex items-center justify-between text-[11px] font-semibold text-[#C46B4E] uppercase tracking-wider">
+                  <span>
+                    {selectedAdminMenuItem.category} · {selectedAdminMenuItem.station === "bar" ? "Bar Station" : "Kitchen Station"}
+                  </span>
+                  {selectedAdminMenuItem.prepTime && (
+                    <span className="text-[#64748B] flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {selectedAdminMenuItem.prepTime}
+                    </span>
+                  )}
+                </div>
+                <h3 className="text-xl font-bold mt-1">{selectedAdminMenuItem.name}</h3>
+                <p className="text-xs text-[#64748B] leading-relaxed mt-1.5">
+                  {selectedAdminMenuItem.description || "No detailed description recorded."}
+                </p>
+              </div>
+
+              {selectedAdminMenuItem.ingredients && selectedAdminMenuItem.ingredients.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedAdminMenuItem.ingredients.map((ing) => (
+                    <span
+                      key={ing}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-medium border ${
+                        isDarkMode ? "bg-[#1e2230] border-[#2c3144] text-slate-300" : "bg-[#F7F5F0] border-[#E5E1D9] text-[#20252B]"
+                      }`}
+                    >
+                      {ing}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {selectedAdminMenuItem.hasPortionOptions && selectedAdminMenuItem.halfPrice ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={`p-3 rounded-xl border ${isDarkMode ? "bg-[#12141c] border-[#272b3b]" : "bg-[#F7F5F0] border-[#E5E1D9]"}`}>
+                    <div className="text-[11px] text-[#64748B] font-semibold">Half Portion</div>
+                    <div className="text-base font-extrabold text-[#C46B4E]">₹{selectedAdminMenuItem.halfPrice.toFixed(2)}</div>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${isDarkMode ? "bg-[#12141c] border-[#272b3b]" : "bg-[#F7F5F0] border-[#E5E1D9]"}`}>
+                    <div className="text-[11px] text-[#64748B] font-semibold">Full Portion</div>
+                    <div className="text-base font-extrabold text-[#C46B4E]">₹{(selectedAdminMenuItem.fullPrice || selectedAdminMenuItem.price).toFixed(2)}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className={`p-3 rounded-xl border flex items-center justify-between ${isDarkMode ? "bg-[#12141c] border-[#272b3b]" : "bg-[#F7F5F0] border-[#E5E1D9]"}`}>
+                  <span className="text-xs text-[#64748B] font-semibold">Standard Menu Price</span>
+                  <span className="text-base font-extrabold text-[#C46B4E]">₹{selectedAdminMenuItem.price.toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleToggleItemAvailability(selectedAdminMenuItem)
+                    setSelectedAdminMenuItem((prev) =>
+                      prev ? { ...prev, isAvailable: prev.isAvailable === false ? true : false } : null
+                    )
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer ${
+                    selectedAdminMenuItem.isAvailable === false
+                      ? "bg-blue-600 text-white"
+                      : "bg-[#C46B4E] text-white"
+                  }`}
+                >
+                  {selectedAdminMenuItem.isAvailable === false ? "Mark In Stock" : "Mark Out of Stock"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedAdminMenuItem
+                    setSelectedAdminMenuItem(null)
+                    handleOpenEditMenuItem(target)
+                  }}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-[#C46B4E]/40 text-[#C46B4E] hover:bg-[#C46B4E]/10 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAdminMenuItem(null)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-semibold border cursor-pointer ${
+                    isDarkMode ? "border-[#2b2f3e] text-slate-300" : "border-[#E5E1D9] text-[#64748B]"
+                  }`}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* POS HALF / FULL PORTION PICKER MODAL */}
+      {posPortionItem && (
+        <div
+          onClick={() => setPosPortionItem(null)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`w-full max-w-sm rounded-2xl border p-5 space-y-4 shadow-2xl cursor-default ${
+              isDarkMode ? "bg-[#161822] border-[#292c3c] text-white" : "bg-white border-[#E5E1D9] text-[#20252B]"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              {posPortionItem.image ? (
+                <img src={posPortionItem.image} alt={posPortionItem.name} className="w-12 h-12 rounded-xl object-cover shrink-0" />
+              ) : (
+                <span className="text-3xl">{posPortionItem.icon}</span>
+              )}
+              <div>
+                <h4 className="font-bold text-sm">{posPortionItem.name}</h4>
+                <p className="text-xs text-[#64748B]">Select portion size for POS ticket</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  addToCart(posPortionItem, "half")
+                  setPosPortionItem(null)
+                }}
+                className="p-3.5 rounded-xl border border-[#C46B4E]/40 bg-[#C46B4E]/10 hover:bg-[#C46B4E] hover:text-white transition text-left cursor-pointer group"
+              >
+                <div className="text-xs font-bold">Half Portion</div>
+                <div className="text-base font-extrabold text-[#C46B4E] group-hover:text-white mt-0.5">
+                  ₹{posPortionItem.halfPrice?.toFixed(2)}
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  addToCart(posPortionItem, "full")
+                  setPosPortionItem(null)
+                }}
+                className="p-3.5 rounded-xl border border-[#C46B4E]/40 bg-[#C46B4E]/10 hover:bg-[#C46B4E] hover:text-white transition text-left cursor-pointer group"
+              >
+                <div className="text-xs font-bold">Full Portion</div>
+                <div className="text-base font-extrabold text-[#C46B4E] group-hover:text-white mt-0.5">
+                  ₹{(posPortionItem.fullPrice || posPortionItem.price).toFixed(2)}
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Occupied Table Bill Modal */}
+      {viewBillTable && (() => {
+        const billOrders = orders.filter(
+          (o) =>
+            o.status !== "CANCELLED" &&
+            o.status !== "CLOSED" &&
+            matchesTableOrder(viewBillTable, o.table_id)
+        )
+
+        const subtotal = billOrders.reduce((acc, ord) => {
+          const itemsSum = (ord.order_items || []).reduce(
+            (s, it) => s + resolveBillItemRate(it) * (Number(it.quantity) || 1),
+            0
+          )
+          if (itemsSum > 0) return acc + itemsSum
+          const computed = (Number(ord.total_amount) || 0) - (Number(ord.tax_amount) || 0) + (Number(ord.discount_amount) || 0)
+          return acc + Math.max(0, computed)
+        }, 0)
+        const totalTax = billOrders.reduce((acc, ord) => acc + (Number(ord.tax_amount) || 0), 0)
+        const totalDiscount = billOrders.reduce((acc, ord) => acc + (Number(ord.discount_amount) || 0), 0)
+        const grandTotal = billOrders.reduce((acc, ord) => acc + (Number(ord.total_amount) || 0), 0)
+        const hasUnpaid = billOrders.some((o) => o.payment_status !== "PAID")
+
+        return (
+          <div
+            onClick={() => setViewBillTable(null)}
+            className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer animate-in fade-in"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden cursor-default flex flex-col max-h-[90dvh] ${
+                isDarkMode
+                  ? "bg-[#161822] border-[#262a3a] text-white"
+                  : "bg-white border-[#E5E1D9] text-[#20252B]"
+              }`}
+            >
+              {/* Header */}
+              <div
+                className={`px-5 py-4 border-b flex items-center justify-between ${
+                  isDarkMode ? "border-[#252938] bg-[#1a1d28]" : "border-[#E5E1D9] bg-[#FAF8F4]"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center border border-indigo-500/25">
+                    <Receipt className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-sm">{viewBillTable.name} · Current Bill</h3>
+                      {billOrders.length > 0 && (
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                            hasUnpaid
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30"
+                              : "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                          }`}
+                        >
+                          {hasUnpaid ? "Payment Due" : "Paid"}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-[#64748B]">
+                      {billOrders.length > 0
+                        ? `${billOrders.length} active order${billOrders.length > 1 ? "s" : ""} · ${viewBillTable.seats} seats`
+                        : `Occupied table · ${viewBillTable.seats} seats`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewBillTable(null)}
+                  className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15 flex items-center justify-center cursor-pointer transition"
+                  aria-label="Close table bill"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
+                {billOrders.length === 0 ? (
+                  <div
+                    className={`p-6 rounded-xl border border-dashed text-center space-y-2 ${
+                      isDarkMode ? "border-[#2a2e3f] text-slate-400" : "border-[#E5E1D9] text-[#64748B]"
+                    }`}
+                  >
+                    <Receipt className="w-7 h-7 mx-auto opacity-50" />
+                    <div className="text-xs font-semibold">No active orders found for {viewBillTable.name}</div>
+                    <p className="text-[11px]">
+                      Create an order in Point of Sale or wait for a QR order from guests at this table.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      {billOrders.map((ord) => (
+                        <div
+                          key={ord.id}
+                          className={`rounded-xl border p-3.5 space-y-2.5 ${
+                            isDarkMode ? "bg-[#12141c] border-[#242838]" : "bg-[#FAF8F4] border-[#E5E1D9]"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-[11px] pb-2 border-b border-dashed border-[#E5E1D9] dark:border-[#262a3a]">
+                            <div className="flex flex-wrap items-center gap-2 font-bold">
+                              <span>{ord.order_number || `#${ord.id.slice(-4)}`}</span>
+                              <span className="font-normal text-[#64748B]">• {formatTimeAgo(ord.created_at)}</span>
+                              {(ord.customer_name || ord.customer_phone) && (
+                                <span className="font-medium text-[#64748B]">
+                                  · {[ord.customer_name, ord.customer_phone].filter(Boolean).join(" (")}
+                                  {ord.customer_name && ord.customer_phone ? ")" : ""}
+                                </span>
+                              )}
+                            </div>
+                            <span
+                              className={`px-2 py-0.5 rounded-md font-bold uppercase text-[10px] ${
+                                ord.payment_status === "PAID"
+                                  ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                              }`}
+                            >
+                              {ord.payment_status === "PAID" ? "Paid" : "Unpaid"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-1.5 text-xs">
+                            {(ord.order_items || []).map((it) => {
+                              const itemName = it.MenuItem?.name || it.name || "Menu Item"
+                              const qty = Number(it.quantity) || 1
+                              const unitPrice = resolveBillItemRate(it)
+                              const lineTotal = unitPrice * qty
+                              return (
+                                <div key={it.id} className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <div className="font-medium truncate">
+                                      <span className="font-bold text-[#C46B4E]">{qty}×</span> {itemName}
+                                      {qty > 1 && unitPrice > 0 && (
+                                        <span className="text-[10px] text-[#64748B] font-normal ml-1.5">
+                                          (@ ₹{unitPrice.toFixed(2)})
+                                        </span>
+                                      )}
+                                    </div>
+                                    {it.special_instructions && (
+                                      <div className="text-[10px] text-[#64748B] italic">
+                                        Note: {it.special_instructions}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="font-semibold shrink-0">
+                                    ₹{lineTotal.toFixed(2)}
+                                  </span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Totals Summary */}
+                    <div
+                      className={`rounded-xl border p-3.5 space-y-1.5 text-xs ${
+                        isDarkMode ? "bg-[#12141c] border-[#252938]" : "bg-white border-[#E5E1D9]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-[#64748B]">
+                        <span>Subtotal</span>
+                        <span>₹{subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[#64748B]">
+                        <span>Taxes &amp; GST</span>
+                        <span>₹{totalTax.toFixed(2)}</span>
+                      </div>
+                      {totalDiscount > 0 && (
+                        <div className="flex items-center justify-between text-blue-600 dark:text-blue-400">
+                          <span>Discount</span>
+                          <span>-₹{totalDiscount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="pt-2 mt-1 border-t border-[#E5E1D9] dark:border-[#252938] flex items-center justify-between text-sm font-extrabold">
+                        <span>Total Bill</span>
+                        <span className="text-[#C46B4E]">₹{grandTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer Actions */}
+              <div
+                className={`px-5 py-3.5 border-t flex flex-wrap items-center justify-between gap-2 ${
+                  isDarkMode ? "border-[#252938] bg-[#1a1d28]" : "border-[#E5E1D9] bg-[#FAF8F4]"
+                }`}
+              >
+                {billOrders.length === 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateSpecificTableStatus(viewBillTable.id, "available")
+                        setViewBillTable(null)
+                      }}
+                      className={`px-3.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                        isDarkMode
+                          ? "border-[#2e3244] text-slate-300 hover:bg-[#222636]"
+                          : "border-[#E5E1D9] bg-white text-[#20252B] hover:bg-slate-50"
+                      }`}
+                    >
+                      Mark Available
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTableId(viewBillTable.id)
+                        setViewBillTable(null)
+                        setActiveTab("pos")
+                      }}
+                      className="px-4 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Order</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setReceiptPreview({
+                            title: viewBillTable.name,
+                            orders: billOrders,
+                          })
+                        }
+                        className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer ${
+                          isDarkMode
+                            ? "border-[#2e3244] bg-[#14161f] text-slate-200 hover:bg-[#222636]"
+                            : "border-[#E5E1D9] bg-white text-[#20252B] hover:bg-slate-50"
+                        }`}
+                      >
+                        <Receipt className="w-3.5 h-3.5 text-[#C46B4E]" />
+                        <span>Print Bill</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateSpecificTableStatus(viewBillTable.id, "available")
+                          setViewBillTable(null)
+                        }}
+                        className={`px-3.5 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                          isDarkMode
+                            ? "border-[#2e3244] text-slate-300 hover:bg-[#222636]"
+                            : "border-[#E5E1D9] bg-white text-[#20252B] hover:bg-slate-50"
+                        }`}
+                      >
+                        Clear Table
+                      </button>
+                    </div>
+                    {hasUnpaid ? (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await Promise.all(
+                            billOrders
+                              .filter((o) => o.payment_status !== "PAID")
+                              .map((o) => updatePaymentStatus(o.id, "PAID"))
+                          )
+                        }}
+                        className="px-4 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Mark Paid</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setViewBillTable(null)}
+                        className="px-4 py-2 rounded-xl bg-[#20252B] hover:bg-[#2F363F] text-white text-xs font-bold transition cursor-pointer"
+                      >
+                        Done
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Formatted Restaurant Bill / Thermal Receipt Print Preview */}
+      {receiptPreview && (
+        <BillReceiptModal
+          title={receiptPreview.title}
+          orders={receiptPreview.orders}
+          resolveItemRate={resolveBillItemRate}
+          onClose={() => setReceiptPreview(null)}
+          isDarkMode={isDarkMode}
+        />
+      )}
+
+      {/* Full-Screen Host / Front Desk Service Call Alert (Waiter, Clean Table, Bill) + Bell Ring + Voice */}
+      {isHostOrFrontDesk && showWaiterOverlay && pendingServiceRequests.length > 0 && (
+        <WaiterAlertOverlay
+          requests={pendingServiceRequests}
+          isMuted={isBellMuted}
+          onToggleMute={() => {
+            setIsBellMuted((prev) => {
+              const next = !prev
+              if (next) stopServiceVoice()
+              return next
+            })
+          }}
+          onRingAgain={() => {
+            unlockBellAudio()
+            const primary = pendingServiceRequests[0]
+            if (primary) {
+              playBellAndSpeak(primary.table, primary.type, 3)
+            } else {
+              playServiceBellRing(3)
+            }
+          }}
+          onAcknowledgeRequest={async (id) => {
+            stopServiceVoice()
+            await handleClearServiceRequest(id)
+          }}
+          onAcknowledgeAll={async () => {
+            stopServiceVoice()
+            await Promise.all(
+              pendingServiceRequests.map((req) => handleClearServiceRequest(req.id))
+            )
+            setShowWaiterOverlay(false)
+          }}
+          onDismissOverlay={() => {
+            stopServiceVoice()
+            setShowWaiterOverlay(false)
+          }}
+        />
+      )}
     </div>
   )
 }
 
 export default function RestaurantAdminHome() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#20252B]" />}>
+    <Suspense fallback={<PortalShellSkeleton variant="dashboard" isDarkMode={true} />}>
       <RestaurantAdminContent />
     </Suspense>
   )

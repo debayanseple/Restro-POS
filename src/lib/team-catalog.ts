@@ -151,7 +151,7 @@ export const MASTER_TEAM_MEMBERS: TeamMember[] = [
     shift: "Morning (7 AM - 3 PM)",
     joinedDate: "2025-06-18",
     lastActive: "5h ago",
-    avatarColor: "bg-teal-600",
+    avatarColor: "bg-sky-600",
   },
   {
     id: "staff_9",
@@ -167,7 +167,7 @@ export const MASTER_TEAM_MEMBERS: TeamMember[] = [
     shift: "Full Day",
     joinedDate: "2025-04-01",
     lastActive: "5m ago",
-    avatarColor: "bg-emerald-600",
+    avatarColor: "bg-[#C46B4E]",
   },
   {
     id: "staff_10",

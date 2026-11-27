@@ -1,8 +1,31 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { readStore, writeStore } from "@/lib/serverless-store"
+import { MASTER_MENU_CATALOG } from "@/lib/menu-catalog"
 
 export const dynamic = "force-dynamic"
+
+function resolveCatalogItemPrice(
+  item: any,
+  catalog: any[]
+): number {
+  const rawPrice = Number(item?.unit_price ?? item?.unitPrice ?? item?.price ?? 0)
+  if (rawPrice > 0) return rawPrice
+
+  const rawName = String(item?.MenuItem?.name || item?.name || item?.title || "").trim()
+  const isHalf = /\(half\)$/i.test(rawName)
+  const isFull = /\(full\)$/i.test(rawName)
+  const baseName = rawName.replace(/\s*\((half|full)\)$/i, "").toLowerCase().trim()
+  const rawId = String(item?.menu_item_id || item?.menuItemId || item?.id || "").replace(/__(half|full)$/i, "")
+
+  const found = catalog.find(
+    (m: any) => (rawId && m.id === rawId) || (baseName && String(m.name || "").toLowerCase().trim() === baseName)
+  )
+  if (!found) return 0
+  if (isHalf && found.halfPrice) return Number(found.halfPrice)
+  if (isFull && found.fullPrice) return Number(found.fullPrice)
+  return Number(found.price) || 0
+}
 
 function loadSavedOrders(): any[] {
   return readStore<any[]>("orders.json", [])
@@ -107,6 +130,8 @@ export async function POST(request: Request) {
     const payment_status = body.payment_status || body.paymentStatus || "UNPAID"
     const payment_method = body.payment_method || body.paymentMethod || "MANUAL"
     const source = body.source || "pos"
+    const customer_name = (body.customer_name || body.customerName || "").trim() || null
+    const customer_phone = (body.customer_phone || body.customerPhone || "").trim() || null
     const notes = body.notes || null
 
     // Validate that items exist
@@ -117,10 +142,13 @@ export async function POST(request: Request) {
       )
     }
 
+    // Resolve live catalog for authoritative item price fallback
+    const liveCatalog = readStore<any[]>("menu.json", MASTER_MENU_CATALOG)
+
     // Fallback: calculate total if not provided
     if (total_amount <= 0) {
       total_amount = items.reduce((sum: number, it: any) => {
-        const p = Number(it.unitPrice ?? it.price ?? 0)
+        const p = resolveCatalogItemPrice(it, liveCatalog)
         const q = Number(it.quantity ?? 1)
         return sum + p * q
       }, 0) + tax_amount
@@ -137,13 +165,13 @@ export async function POST(request: Request) {
     // Format order items with station categorization
     const formattedItems = items.map((item: any, idx: number) => {
       const itemName = item.name || item.title || "Menu Item"
-      const unitPrice = Number(item.unitPrice ?? item.price ?? 0)
+      const unitPrice = resolveCatalogItemPrice(item, liveCatalog)
       const quantity = Number(item.quantity ?? 1)
       const station = isBarItem(itemName) ? "bar" : "kitchen"
       return {
         id: `it_${Date.now()}_${idx}`,
         order_id: orderId,
-        menu_item_id: item.menuItemId || item.id || `m_${idx}`,
+        menu_item_id: item.menu_item_id || item.menuItemId || item.id || `m_${idx}`,
         quantity,
         unit_price: unitPrice,
         special_instructions: item.specialInstructions || item.special_instructions || null,
@@ -183,6 +211,8 @@ export async function POST(request: Request) {
       payment_method,
       source,
       order_number: generatedOrderNumber,
+      customer_name,
+      customer_phone,
       notes,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -225,12 +255,12 @@ export async function POST(request: Request) {
       if (!orderError && dbOrder) {
         newOrder.id = dbOrder.id
 
-        const dbItems = items.map((item: any) => ({
+        const dbItems = formattedItems.map((item) => ({
           order_id: dbOrder.id,
-          menu_item_id: item.menuItemId || item.id,
+          menu_item_id: item.menu_item_id,
           quantity: item.quantity,
-          unit_price: item.unitPrice || item.price,
-          special_instructions: item.specialInstructions,
+          unit_price: item.unit_price,
+          special_instructions: item.special_instructions,
         }))
 
         await supabase.from("OrderItem").insert(dbItems)
@@ -255,7 +285,8 @@ export async function POST(request: Request) {
       })
     } catch {}
 
-    // 3. Prepend to in-memory orders cache & persist to disk
+    // 3. Prepend to latest orders store & persist to disk
+    cachedOrders = loadSavedOrders()
     cachedOrders.unshift(newOrder)
     saveOrdersToDisk(cachedOrders)
     if (newOrder.table_id) {
@@ -309,11 +340,19 @@ export async function GET(request: Request) {
       console.warn("Supabase fetch fallback to cached orders:", dbErr)
     }
 
-    // 2. Return cached orders from memory/disk
-    if (cachedOrders.length === 0) {
-      cachedOrders = loadSavedOrders()
-    }
-    let result = [...cachedOrders]
+    // 2. Return latest orders from shared store (hydrating any legacy 0-priced item rates from catalog)
+    const liveCatalog = readStore<any[]>("menu.json", MASTER_MENU_CATALOG)
+    cachedOrders = loadSavedOrders()
+    let result = cachedOrders.map((o) => {
+      if (!Array.isArray(o?.order_items)) return o
+      return {
+        ...o,
+        order_items: o.order_items.map((it: any) => ({
+          ...it,
+          unit_price: resolveCatalogItemPrice(it, liveCatalog),
+        })),
+      }
+    })
     if (restaurant_id) result = result.filter((o) => o.restaurant_id === restaurant_id)
     if (outlet_id) result = result.filter((o) => o.outlet_id === outlet_id)
     if (status) result = result.filter((o) => o.status === status)
@@ -347,6 +386,7 @@ export async function PATCH(request: Request) {
       item_id,
       item_status,
       payment_status,
+      notes,
     } = body
     const targetId = order_id || id
     const targetStage = kds_stage || stage
@@ -355,10 +395,14 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "order_id is required" }, { status: 400 })
     }
 
+    cachedOrders = loadSavedOrders()
     const order = cachedOrders.find((o) => o.id === targetId || o.order_number === targetId)
     if (order) {
       if (payment_status) {
         order.payment_status = payment_status
+      }
+      if (notes !== undefined) {
+        order.notes = notes
       }
       // 1. Station-specific stage updates (Kitchen vs Bar are completely separate)
       if (station === "kitchen") {

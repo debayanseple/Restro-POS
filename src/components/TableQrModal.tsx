@@ -194,7 +194,7 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
             <div>
               <h3 className="font-bold text-sm text-[#20252B] flex items-center gap-2">
                 <span>{table.name} QR Code</span>
-                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9]">
                   {table.seats} Seats
                 </span>
               </h3>
@@ -259,8 +259,8 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
           >
             {copied ? (
               <>
-                <Check className="w-3 h-3 text-emerald-700" />
-                <span className="text-emerald-700">Copied</span>
+                <Check className="w-3 h-3 text-[#C46B4E]" />
+                <span className="text-[#C46B4E]">Copied</span>
               </>
             ) : (
               <>
@@ -280,7 +280,7 @@ export function TableQrModal({ table, onClose }: TableQrModalProps) {
             className="py-2.5 rounded-lg bg-white hover:bg-[#F7F5F0] text-[#20252B] text-xs font-semibold border border-[#20252B] transition flex items-center justify-center gap-1.5 text-center cursor-pointer"
           >
             <ExternalLink className="w-3.5 h-3.5 text-[#64748B]" />
-            <span>Test Menu</span>
+            <span>Open Menu</span>
           </a>
 
           <button

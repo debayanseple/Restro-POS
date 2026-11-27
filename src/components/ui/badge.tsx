@@ -21,7 +21,7 @@ export const Badge = React.forwardRef<HTMLSpanElement, BadgeProps>(
       secondary: "bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9]",
       destructive: "bg-red-700 text-white",
       outline: "border border-[#E5E1D9] text-[#20252B] bg-white",
-      success: "bg-emerald-50 text-emerald-800 border border-emerald-200",
+      success: "bg-[#E9E3D8] text-[#20252B] border border-[#D8CFC0]",
       warning: "bg-amber-50 text-amber-800 border border-amber-200",
       info: "bg-[#F7F5F0] text-[#20252B] border border-[#E5E1D9]",
     }

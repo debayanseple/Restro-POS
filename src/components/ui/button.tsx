@@ -30,7 +30,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ghost: "hover:bg-[#E9E3D8]/50 text-[#20252B] transition-colors",
       danger: "bg-red-700 text-white hover:bg-red-800 shadow-sm transition-colors",
       destructive: "bg-red-700 text-white hover:bg-red-800 shadow-sm transition-colors",
-      success: "bg-emerald-700 text-white hover:bg-emerald-800 shadow-sm transition-colors",
+      success: "bg-[#20252B] text-white hover:bg-[#2E353D] shadow-sm transition-colors",
       link: "text-[#C46B4E] underline-offset-4 hover:underline",
     }
 

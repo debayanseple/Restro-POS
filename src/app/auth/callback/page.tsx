@@ -4,45 +4,51 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
+import { PortalShellSkeleton } from "@/components/ui/skeleton"
 
 export default function AuthCallback() {
   const router = useRouter()
   const [onboarded, setOnboarded] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Exchange OAuth code for session
     const fetchSession = async () => {
-      const { data, error } = await supabase.auth.getSession()
-      if (error) {
-        setError("Authentication failed. Please try again.")
-        return
+      try {
+        const { data, error } = await supabase.auth.getSession()
+        if (error) {
+          setError("Authentication failed. Please try again.")
+          return
+        }
+
+        if (!data.session) {
+          setError("No session found. Please login again.")
+          return
+        }
+
+        // Get user metadata
+        const { data: user } = await supabase.auth.getUser()
+
+        if (user?.user?.app_metadata?.onboarded) {
+          setOnboarded(true)
+          router.push("/restaurant-admin")
+          return
+        }
+
+        // Show onboarding for new users
+        setOnboarded(false)
+      } finally {
+        setCheckingSession(false)
       }
-
-      if (!data.session) {
-        setError("No session found. Please login again.")
-        return
-      }
-
-      // Get user metadata
-      const { data: user } = await supabase.auth.getUser()
-
-      if (user?.user?.app_metadata?.onboarded) {
-        setOnboarded(true)
-        router.push("/restaurant-admin")
-        return
-      }
-
-      // Show onboarding for new users
-      setOnboarded(false)
     }
 
     fetchSession()
   }, [router])
 
-  if (onboarded) {
-    router.push("/restaurant-admin")
-    return null
+  if (checkingSession || onboarded) {
+    if (onboarded) router.push("/restaurant-admin")
+    return <PortalShellSkeleton variant="dashboard" isDarkMode={true} />
   }
 
   if (error) {

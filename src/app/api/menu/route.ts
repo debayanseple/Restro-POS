@@ -1,19 +1,36 @@
 import { NextResponse } from "next/server"
-import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
+import { MASTER_MENU_CATALOG, MENU_IMAGE_MAP, MenuItem } from "@/lib/menu-catalog"
 import { readStore, writeStore } from "@/lib/serverless-store"
 
 export const dynamic = "force-dynamic"
 
-function getInitialMenu(): MenuItem[] {
-  return MASTER_MENU_CATALOG.map((item) => ({
+function enrichMenuItem(item: MenuItem): MenuItem {
+  const master = MASTER_MENU_CATALOG.find(
+    (m) => m.id === item.id || m.name.toLowerCase() === item.name.toLowerCase()
+  )
+  const mappedImg =
+    item.image ||
+    master?.image ||
+    MENU_IMAGE_MAP[item.id] ||
+    MENU_IMAGE_MAP[item.name.toLowerCase()] ||
+    undefined
+
+  return {
+    ...master,
     ...item,
+    image: mappedImg,
     isAvailable: item.isAvailable !== undefined ? item.isAvailable : true,
     station: item.station || (item.category === "drinks" ? "bar" : "kitchen"),
-  }))
+  }
+}
+
+function getInitialMenu(): MenuItem[] {
+  return MASTER_MENU_CATALOG.map((item) => enrichMenuItem(item))
 }
 
 function getMenuItems(): MenuItem[] {
-  return readStore<MenuItem[]>("menu.json", getInitialMenu())
+  const stored = readStore<MenuItem[]>("menu.json", getInitialMenu())
+  return stored.map((item) => enrichMenuItem(item))
 }
 
 function saveMenuItems(items: MenuItem[]) {
@@ -41,7 +58,7 @@ export async function POST(request: Request) {
 
     // If batch replace
     if (Array.isArray(body.items)) {
-      const sorted = sortMenuItems(body.items)
+      const sorted = sortMenuItems(body.items.map(enrichMenuItem))
       saveMenuItems(sorted)
       return NextResponse.json({ success: true, items: sorted })
     }
@@ -49,10 +66,23 @@ export async function POST(request: Request) {
     // Add single item
     const items = getMenuItems()
     const itemData = body.item || body
-    const newItem: MenuItem = {
+    const hasPortionOptions = Boolean(itemData.hasPortionOptions)
+    const fullPrice = Number(itemData.fullPrice ?? itemData.price) || 0
+    const halfPrice = hasPortionOptions && itemData.halfPrice !== undefined && itemData.halfPrice !== ""
+      ? Number(itemData.halfPrice) || undefined
+      : undefined
+
+    const newItem: MenuItem = enrichMenuItem({
       id: itemData.id || `m_${Date.now()}`,
       name: itemData.name || "New Dish",
-      price: Number(itemData.price) || 0,
+      price: fullPrice,
+      hasPortionOptions,
+      halfPrice,
+      fullPrice: hasPortionOptions ? fullPrice : undefined,
+      image: itemData.image ? String(itemData.image).trim() : undefined,
+      prepTime: itemData.prepTime ? String(itemData.prepTime).trim() : undefined,
+      calories: itemData.calories ? String(itemData.calories).trim() : undefined,
+      ingredients: Array.isArray(itemData.ingredients) ? itemData.ingredients : undefined,
       category: itemData.category || "mains",
       icon: itemData.icon || "🍽️",
       tag: itemData.tag || undefined,
@@ -60,7 +90,7 @@ export async function POST(request: Request) {
       isVeg: Boolean(itemData.isVeg),
       isAvailable: itemData.isAvailable !== undefined ? Boolean(itemData.isAvailable) : true,
       station: itemData.station || (itemData.category === "drinks" ? "bar" : "kitchen"),
-    }
+    })
 
     const updated = sortMenuItems([newItem, ...items])
     saveMenuItems(updated)
@@ -86,11 +116,37 @@ export async function PATCH(request: Request) {
 
     const updated = items.map((item) => {
       if (item.id === id) {
-        updatedItem = {
+        const nextHasPortions =
+          rest.hasPortionOptions !== undefined
+            ? Boolean(rest.hasPortionOptions)
+            : item.hasPortionOptions
+        const nextItem: MenuItem = {
           ...item,
           ...rest,
+          price: rest.price !== undefined ? Number(rest.price) : item.price,
+          hasPortionOptions: nextHasPortions,
+          halfPrice: nextHasPortions
+            ? rest.halfPrice !== undefined
+              ? Number(rest.halfPrice) || undefined
+              : item.halfPrice
+            : undefined,
+          fullPrice: nextHasPortions
+            ? rest.fullPrice !== undefined
+              ? Number(rest.fullPrice) || undefined
+              : item.fullPrice
+            : undefined,
+          tag: rest.tag === "" || rest.tag === null ? undefined : (rest.tag ?? item.tag),
+          prepTime:
+            rest.prepTime === "" || rest.prepTime === null
+              ? undefined
+              : (rest.prepTime ?? item.prepTime),
+          image:
+            rest.image === "" || rest.image === null
+              ? undefined
+              : (rest.image ?? item.image),
           isAvailable: isAvailable !== undefined ? Boolean(isAvailable) : item.isAvailable,
         }
+        updatedItem = enrichMenuItem(nextItem)
         return updatedItem
       }
       return item

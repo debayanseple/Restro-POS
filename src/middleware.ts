@@ -50,6 +50,7 @@ export async function middleware(request: NextRequest) {
     "kds",
     "customers",
     "inventory",
+    "my-deliveries",
     "team",
     "accounting",
     "reports",

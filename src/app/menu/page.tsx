@@ -17,12 +17,16 @@ import {
   Bell,
   Sparkles,
   CheckCircle2,
+  Clock,
+  Flame,
 } from "lucide-react"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
 
 interface CartItem extends MenuItem {
   quantity: number
   notes?: string
+  baseItemId?: string
+  portion?: "half" | "full"
 }
 
 function CustomerMenuContent() {
@@ -46,10 +50,7 @@ function CustomerMenuContent() {
     return trimmed
   }, [rawTableParam, isDemoUrl])
 
-  const [selectedTable, setSelectedTable] = useState<string>(
-    normalizedTable || (isDemoUrl ? "Demo Table 01" : "Table 01")
-  )
-  const [showTablePicker, setShowTablePicker] = useState<boolean>(!normalizedTable && !isDemoUrl)
+  const selectedTable = normalizedTable || (isDemoUrl ? "Demo Table 01" : "Table 01")
   const isDemoMode = useMemo(() => {
     return isDemoUrl || selectedTable.toLowerCase().includes("demo")
   }, [isDemoUrl, selectedTable])
@@ -60,6 +61,7 @@ function CustomerMenuContent() {
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [customerName, setCustomerName] = useState("")
   const [customerPhone, setCustomerPhone] = useState("")
+  const [contactValidationError, setContactValidationError] = useState<string | null>(null)
   const [orderNotes, setOrderNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeOrder, setActiveOrder] = useState<any | null>(null)
@@ -68,6 +70,66 @@ function CustomerMenuContent() {
   const [cleaningRequested, setCleaningRequested] = useState(false)
   const [isServiceBellOpen, setIsServiceBellOpen] = useState(false)
   const [serviceActionStatus, setServiceActionStatus] = useState<string | null>(null)
+  const [selectedDetailItem, setSelectedDetailItem] = useState<MenuItem | null>(null)
+  const [detailPortion, setDetailPortion] = useState<"half" | "full">("full")
+  const [detailQty, setDetailQty] = useState(1)
+
+  const openItemDetails = (item: MenuItem) => {
+    setSelectedDetailItem(item)
+    setDetailPortion("full")
+    setDetailQty(1)
+  }
+
+  // Lock background page scroll (including iOS Safari & Android Chrome) while any modal/sheet is open
+  const isAnyModalOpen = Boolean(
+    selectedDetailItem || isCartOpen || isServiceBellOpen
+  )
+
+  useEffect(() => {
+    if (!isAnyModalOpen || typeof window === "undefined") return
+
+    const html = document.documentElement
+    const body = document.body
+    const scrollY = window.scrollY
+
+    const prevHtmlOverflow = html.style.overflow
+    const prevHtmlOverscroll = html.style.overscrollBehavior
+    const prevHtmlScrollBehavior = html.style.scrollBehavior
+    const prevBodyOverflow = body.style.overflow
+    const prevBodyPosition = body.style.position
+    const prevBodyTop = body.style.top
+    const prevBodyLeft = body.style.left
+    const prevBodyRight = body.style.right
+    const prevBodyWidth = body.style.width
+    const prevBodyOverscroll = body.style.overscrollBehavior
+
+    html.style.overflow = "hidden"
+    html.style.overscrollBehavior = "none"
+    body.style.overflow = "hidden"
+    body.style.overscrollBehavior = "none"
+    body.style.position = "fixed"
+    body.style.top = `-${scrollY}px`
+    body.style.left = "0"
+    body.style.right = "0"
+    body.style.width = "100%"
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow
+      html.style.overscrollBehavior = prevHtmlOverscroll
+      html.style.scrollBehavior = "auto"
+      body.style.overflow = prevBodyOverflow
+      body.style.overscrollBehavior = prevBodyOverscroll
+      body.style.position = prevBodyPosition
+      body.style.top = prevBodyTop
+      body.style.left = prevBodyLeft
+      body.style.right = prevBodyRight
+      body.style.width = prevBodyWidth
+      window.scrollTo(0, scrollY)
+      requestAnimationFrame(() => {
+        html.style.scrollBehavior = prevHtmlScrollBehavior
+      })
+    }
+  }, [isAnyModalOpen])
 
   const handleServiceRequest = (type: "clean" | "waiter" | "bill") => {
     let msg = ""
@@ -164,59 +226,167 @@ function CustomerMenuContent() {
     }
   }, [])
 
-  // Load existing active order from localStorage on table change
+  const matchesTableIdentifier = (candidate?: string | null, tableLabel?: string) => {
+    if (!candidate || !tableLabel) return false
+    const a = String(candidate).toLowerCase().trim()
+    const b = String(tableLabel).toLowerCase().trim()
+    const numA = a.replace(/\D/g, "")
+    const numB = b.replace(/\D/g, "")
+    return a === b || (Boolean(numA) && Boolean(numB) && Number(numA) === Number(numB))
+  }
+
+  const clearTableSession = () => {
+    setActiveOrder(null)
+    setCart([])
+    setCustomerName("")
+    setCustomerPhone("")
+    setOrderNotes("")
+    setContactValidationError(null)
+    if (typeof window !== "undefined" && selectedTable) {
+      try {
+        localStorage.removeItem(`restro_qr_order_${selectedTable}`)
+      } catch {}
+    }
+  }
+
+  // Load existing active order from localStorage on table change, discarding closed sessions
   useEffect(() => {
     if (typeof window !== "undefined" && selectedTable) {
       try {
         const saved = localStorage.getItem(`restro_qr_order_${selectedTable}`)
         if (saved) {
           const parsed = JSON.parse(saved)
-          if (parsed && parsed.status !== "CLOSED") {
+          if (parsed && parsed.status !== "CLOSED" && parsed.status !== "CANCELLED") {
             setActiveOrder(parsed)
+          } else {
+            localStorage.removeItem(`restro_qr_order_${selectedTable}`)
+            setActiveOrder(null)
           }
         }
       } catch {}
     }
   }, [selectedTable])
 
-  // Sync active order with server polling every 4 seconds (skip for demo sandbox orders)
+  // Sync active order & table clear events (skip demo sandbox)
   useEffect(() => {
-    if (!activeOrder?.id || activeOrder?.isDemo) return
+    if (!selectedTable || isDemoMode) return
 
-    const pollInterval = setInterval(async () => {
+    const checkSessionSync = async () => {
       try {
-        const res = await fetch("/api/orders")
-        if (res.ok) {
-          const data = await res.json()
+        const [ordersRes, tablesRes] = await Promise.all([
+          fetch("/api/orders"),
+          fetch("/api/tables"),
+        ])
+
+        let tableCleared = false
+        if (tablesRes.ok) {
+          const tData = await tablesRes.json()
+          if (Array.isArray(tData.tables)) {
+            const matchedTable = tData.tables.find((t: any) =>
+              matchesTableIdentifier(t.name || `Table ${t.id}`, selectedTable)
+            )
+            if (matchedTable && matchedTable.status === "available") {
+              tableCleared = true
+            }
+          }
+        }
+
+        if (tableCleared) {
+          if (activeOrder && !activeOrder.isDemo) {
+            clearTableSession()
+          } else if (typeof window !== "undefined") {
+            localStorage.removeItem(`restro_qr_order_${selectedTable}`)
+          }
+          return
+        }
+
+        if (activeOrder?.id && ordersRes.ok) {
+          const data = await ordersRes.json()
           if (Array.isArray(data.orders)) {
-            const found = data.orders.find((o: any) => o.id === activeOrder.id || o.order_number === activeOrder.order_number)
+            const found = data.orders.find(
+              (o: any) => o.id === activeOrder.id || o.order_number === activeOrder.order_number
+            )
             if (found) {
-              setActiveOrder(found)
-              localStorage.setItem(`restro_qr_order_${selectedTable}`, JSON.stringify(found))
+              if (found.status === "CLOSED" || found.status === "CANCELLED") {
+                clearTableSession()
+              } else {
+                setActiveOrder(found)
+                localStorage.setItem(`restro_qr_order_${selectedTable}`, JSON.stringify(found))
+              }
             }
           }
         }
       } catch {}
-    }, 4000)
+    }
 
-    return () => clearInterval(pollInterval)
-  }, [activeOrder?.id, activeOrder?.order_number, selectedTable])
+    checkSessionSync()
+    const pollInterval = setInterval(checkSessionSync, 3500)
+
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+      bc = new BroadcastChannel("restro_sync_channel")
+      bc.onmessage = (event) => {
+        if (!event.data) return
+        if (
+          event.data.type === "table_cleared" &&
+          matchesTableIdentifier(event.data.table_name || `Table ${event.data.table_id}`, selectedTable)
+        ) {
+          clearTableSession()
+        } else if (
+          event.data.type === "table_updated" &&
+          event.data.status === "available" &&
+          matchesTableIdentifier(String(event.data.table_id), selectedTable)
+        ) {
+          clearTableSession()
+        }
+      }
+    }
+
+    return () => {
+      clearInterval(pollInterval)
+      if (bc) bc.close()
+    }
+  }, [activeOrder?.id, activeOrder?.order_number, selectedTable, isDemoMode])
 
   // Cart operations
-  const addToCart = (item: MenuItem) => {
+  const addToCart = (item: MenuItem, portion?: "half" | "full", qty = 1) => {
     if (item.isAvailable === false) {
       alert(`Sorry, ${item.name} is currently Out of Stock and cannot be ordered.`)
       return
     }
 
+    const hasHalfFull = Boolean(item.hasPortionOptions && item.halfPrice)
+    const chosenPortion: "half" | "full" | undefined = hasHalfFull ? portion || "full" : undefined
+    const effectivePrice =
+      chosenPortion === "half" && item.halfPrice
+        ? item.halfPrice
+        : chosenPortion === "full" && item.fullPrice
+        ? item.fullPrice
+        : item.price
+    const cartKey = chosenPortion ? `${item.id}__${chosenPortion}` : item.id
+    const displayName = chosenPortion
+      ? `${item.name} (${chosenPortion === "half" ? "Half" : "Full"})`
+      : item.name
+
     setCart((prev) => {
-      const exists = prev.find((i) => i.id === item.id)
+      const exists = prev.find((i) => i.id === cartKey)
       if (exists) {
         return prev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === cartKey ? { ...i, quantity: i.quantity + qty } : i
         )
       }
-      return [...prev, { ...item, quantity: 1 }]
+      return [
+        ...prev,
+        {
+          ...item,
+          id: cartKey,
+          baseItemId: item.id,
+          name: displayName,
+          price: effectivePrice,
+          portion: chosenPortion,
+          quantity: qty,
+        },
+      ]
     })
   }
 
@@ -258,7 +428,7 @@ function CustomerMenuContent() {
   // Check if any cart item is currently out of stock
   const cartOutOfStockItems = useMemo(() => {
     return cart.filter((c) => {
-      const latest = menuItems.find((m) => m.id === c.id)
+      const latest = menuItems.find((m) => m.id === (c.baseItemId || c.id))
       return latest && latest.isAvailable === false
     })
   }, [cart, menuItems])
@@ -266,6 +436,20 @@ function CustomerMenuContent() {
   // Handle Order Placement
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !selectedTable || isSubmitting) return
+
+    const trimmedName = customerName.trim()
+    const trimmedPhone = customerPhone.trim()
+    const phoneDigits = trimmedPhone.replace(/\D/g, "")
+
+    if (!trimmedName) {
+      setContactValidationError("Please enter your name before sending the order.")
+      return
+    }
+    if (phoneDigits.length < 7) {
+      setContactValidationError("Please enter a valid mobile number (at least 7 digits).")
+      return
+    }
+    setContactValidationError(null)
 
     if (cartOutOfStockItems.length > 0) {
       alert(`The following item(s) are currently Out of Stock and cannot be ordered:\n${cartOutOfStockItems.map((i) => `• ${i.name}`).join("\n")}\n\nPlease remove them from your order to proceed.`)
@@ -345,10 +529,12 @@ function CustomerMenuContent() {
         discount_amount: 0,
         payment_status: "PENDING",
         payment_method: "CASH",
+        customer_name: trimmedName,
+        customer_phone: trimmedPhone,
         notes: [
           orderNotes ? `Notes: ${orderNotes}` : "",
-          customerName ? `Guest: ${customerName}` : "",
-          customerPhone ? `Phone: ${customerPhone}` : "",
+          `Guest: ${trimmedName}`,
+          `Phone: ${trimmedPhone}`,
         ]
           .filter(Boolean)
           .join(" | ") || null,
@@ -369,7 +555,8 @@ function CustomerMenuContent() {
       })
 
       if (res.ok) {
-        const orderData = {
+        const resJson = await res.json().catch(() => null)
+        const orderData = resJson?.order || {
           ...payload,
           id: `ord_${Date.now()}`,
           kds_stage: "new",
@@ -421,14 +608,14 @@ function CustomerMenuContent() {
             </div>
           </div>
 
-          {/* Table Badge & Switcher */}
-          <button
-            onClick={() => setShowTablePicker(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] text-xs font-semibold hover:bg-[#DDD5C7] transition cursor-pointer"
+          {/* Fixed Read-Only Table Badge (Locked to Scanned QR Table) */}
+          <div
+            aria-label={`Current table: ${selectedTable}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] text-xs font-semibold select-none"
           >
-            <span className={`w-2 h-2 rounded-full ${isDemoMode ? "bg-amber-500 animate-pulse" : "bg-emerald-600"}`} />
-            <span>{selectedTable || "Choose Table"}</span>
-          </button>
+            <span className={`w-2 h-2 rounded-full ${isDemoMode ? "bg-amber-500 animate-pulse" : "bg-blue-600"}`} />
+            <span>{selectedTable}</span>
+          </div>
         </div>
       </header>
 
@@ -456,7 +643,7 @@ function CustomerMenuContent() {
                 <ChefHat className="w-4 h-4 text-[#C46B4E]" />
                 Active Order {activeOrder.order_number}
               </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-800 border border-blue-200 uppercase tracking-wider">
                 {activeOrder.kitchen_stage === "ready"
                   ? "Food Ready"
                   : activeOrder.kitchen_stage === "preparing"
@@ -470,18 +657,18 @@ function CustomerMenuContent() {
             {/* Progress Bar */}
             <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] pt-1">
               <div className="space-y-1">
-                <div className="h-1.5 rounded-full bg-emerald-600" />
-                <span className="text-emerald-800 font-semibold">Received</span>
+                <div className="h-1.5 rounded-full bg-blue-600" />
+                <span className="text-blue-800 font-semibold">Received</span>
               </div>
               <div className="space-y-1">
                 <div
                   className={`h-1.5 rounded-full ${
                     ["preparing", "ready", "completed"].includes(activeOrder.kitchen_stage)
-                      ? "bg-emerald-600"
+                      ? "bg-blue-600"
                       : "bg-[#E5E1D9]"
                   }`}
                 />
-                <span className={["preparing", "ready", "completed"].includes(activeOrder.kitchen_stage) ? "text-emerald-800 font-semibold" : "text-[#64748B]"}>
+                <span className={["preparing", "ready", "completed"].includes(activeOrder.kitchen_stage) ? "text-blue-800 font-semibold" : "text-[#64748B]"}>
                   Cooking
                 </span>
               </div>
@@ -489,21 +676,21 @@ function CustomerMenuContent() {
                 <div
                   className={`h-1.5 rounded-full ${
                     ["ready", "completed"].includes(activeOrder.kitchen_stage)
-                      ? "bg-emerald-600"
+                      ? "bg-blue-600"
                       : "bg-[#E5E1D9]"
                   }`}
                 />
-                <span className={["ready", "completed"].includes(activeOrder.kitchen_stage) ? "text-emerald-800 font-semibold" : "text-[#64748B]"}>
+                <span className={["ready", "completed"].includes(activeOrder.kitchen_stage) ? "text-blue-800 font-semibold" : "text-[#64748B]"}>
                   Ready
                 </span>
               </div>
               <div className="space-y-1">
                 <div
                   className={`h-1.5 rounded-full ${
-                    activeOrder.kitchen_stage === "completed" ? "bg-emerald-600" : "bg-[#E5E1D9]"
+                    activeOrder.kitchen_stage === "completed" ? "bg-blue-600" : "bg-[#E5E1D9]"
                   }`}
                 />
-                <span className={activeOrder.kitchen_stage === "completed" ? "text-emerald-800 font-semibold" : "text-[#64748B]"}>
+                <span className={activeOrder.kitchen_stage === "completed" ? "text-blue-800 font-semibold" : "text-[#64748B]"}>
                   Served
                 </span>
               </div>
@@ -530,7 +717,7 @@ function CustomerMenuContent() {
                 disabled={billRequested}
                 className="flex-1 py-1.5 rounded-lg bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#20252B] text-[11px] font-semibold border border-[#E5E1D9] transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Receipt className="w-3.5 h-3.5 text-emerald-700" />
+                <Receipt className="w-3.5 h-3.5 text-indigo-700" />
                 <span>{billRequested ? "Bill Requested!" : "Request Bill"}</span>
               </button>
             </div>
@@ -574,11 +761,11 @@ function CustomerMenuContent() {
               onClick={() => setDietaryFilter("veg")}
               className={`px-3 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer ${
                 dietaryFilter === "veg"
-                  ? "bg-emerald-700 text-white shadow-2xs"
-                  : "bg-white text-emerald-800 hover:text-emerald-950 border border-emerald-200"
+                  ? "bg-[#20252B] text-white shadow-2xs"
+                  : "bg-white text-[#20252B] hover:bg-[#F7F5F0] border border-[#E5E1D9]"
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-emerald-600" />
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
               Veg Only
             </button>
             <button
@@ -626,7 +813,10 @@ function CustomerMenuContent() {
             </div>
           ) : (
             filteredItems.map((item, index) => {
-              const inCart = cart.find((i) => i.id === item.id)
+              const matchingCartItems = cart.filter((i) => (i.baseItemId || i.id) === item.id)
+              const inCart = matchingCartItems[0]
+              const totalItemCartQty = matchingCartItems.reduce((s, c) => s + c.quantity, 0)
+              const hasHalfFull = Boolean(item.hasPortionOptions && item.halfPrice)
               const isOutOfStock = item.isAvailable === false
               const isFirstOutOfStock =
                 isOutOfStock && (index === 0 || filteredItems[index - 1]?.isAvailable !== false)
@@ -644,13 +834,28 @@ function CustomerMenuContent() {
                     </div>
                   )}
                   <div
-                    className={`p-3.5 rounded-xl bg-white border border-[#E5E1D9] flex gap-3.5 transition shadow-2xs ${
-                      isOutOfStock ? "opacity-75 bg-[#FAF9F6]" : "hover:border-[#C46B4E]"
+                    onClick={() => openItemDetails(item)}
+                    className={`p-3.5 rounded-xl bg-white border border-[#E5E1D9] flex gap-3.5 transition shadow-2xs cursor-pointer ${
+                      isOutOfStock ? "opacity-75 bg-[#FAF9F6]" : "hover:border-[#C46B4E] hover:shadow-sm"
                     }`}
                   >
-                  {/* Dish Icon / Visual */}
-                  <div className={`w-16 h-16 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-center text-3xl shrink-0 ${isOutOfStock ? "grayscale-50" : ""}`}>
-                    {item.icon}
+                  {/* Real Food Photo / Fallback */}
+                  <div className={`w-24 h-24 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] overflow-hidden flex items-center justify-center text-3xl shrink-0 relative ${isOutOfStock ? "grayscale-50" : ""}`}>
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span>{item.icon}</span>
+                    )}
+                    {hasHalfFull && (
+                      <span className="absolute bottom-1 inset-x-1 text-center py-0.5 rounded bg-black/70 text-white text-[9px] font-bold backdrop-blur-xs">
+                        Half / Full
+                      </span>
+                    )}
                   </div>
 
                   {/* Dish Details */}
@@ -661,14 +866,14 @@ function CustomerMenuContent() {
                         <span
                           className={`w-3.5 h-3.5 rounded-xs border flex items-center justify-center shrink-0 ${
                             item.isVeg
-                              ? "border-emerald-600 bg-emerald-50"
+                              ? "border-sky-600 bg-sky-50"
                               : "border-amber-700 bg-amber-50"
                           }`}
                           title={item.isVeg ? "Vegetarian" : "Non-Vegetarian"}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              item.isVeg ? "bg-emerald-600" : "bg-amber-700"
+                              item.isVeg ? "bg-sky-600" : "bg-amber-700"
                             }`}
                           />
                         </span>
@@ -694,22 +899,36 @@ function CustomerMenuContent() {
                           {item.description}
                         </p>
                       )}
+                      <span className="inline-block text-[10px] text-[#C46B4E] font-semibold mt-1">
+                        Tap for dish details →
+                      </span>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 mt-1 border-t border-[#E5E1D9]">
-                      <span className={`font-bold text-sm ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
-                        ₹{item.price.toFixed(2)}
-                      </span>
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center justify-between pt-2 mt-1 border-t border-[#E5E1D9]"
+                    >
+                      <div>
+                        {hasHalfFull ? (
+                          <div className={`text-xs font-bold ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
+                            Half ₹{item.halfPrice} <span className="text-[#64748B] font-normal">·</span> Full ₹{item.fullPrice || item.price}
+                          </div>
+                        ) : (
+                          <span className={`font-bold text-sm ${isOutOfStock ? "text-[#64748B]" : "text-[#C46B4E]"}`}>
+                            ₹{item.price.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Add Button or Out of Stock indicator */}
                       {isOutOfStock ? (
                         <div className="px-3 py-1.5 rounded-lg bg-[#E5E1D9] text-[#64748B] text-xs font-semibold select-none cursor-not-allowed">
                           Unavailable
                         </div>
-                      ) : inCart ? (
+                      ) : totalItemCartQty > 0 && !hasHalfFull && inCart ? (
                         <div className="flex items-center gap-2 bg-[#F7F5F0] border border-[#E5E1D9] rounded-lg px-1.5 py-1">
                           <button
-                            onClick={() => updateQuantity(item.id, -1)}
+                            onClick={() => updateQuantity(inCart.id, -1)}
                             className="w-5 h-5 rounded-md bg-white hover:bg-[#E9E3D8] text-[#20252B] border border-[#E5E1D9] flex items-center justify-center cursor-pointer transition"
                           >
                             <Minus className="w-2.5 h-2.5" />
@@ -718,12 +937,20 @@ function CustomerMenuContent() {
                             {inCart.quantity}
                           </span>
                           <button
-                            onClick={() => updateQuantity(item.id, 1)}
+                            onClick={() => updateQuantity(inCart.id, 1)}
                             className="w-5 h-5 rounded-md bg-[#C46B4E] hover:bg-[#B25C40] text-white flex items-center justify-center cursor-pointer transition"
                           >
                             <Plus className="w-2.5 h-2.5" />
                           </button>
                         </div>
+                      ) : hasHalfFull ? (
+                        <button
+                          onClick={() => openItemDetails(item)}
+                          className="px-3 py-1.5 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>{totalItemCartQty > 0 ? `Added (${totalItemCartQty})` : "Select Size"}</span>
+                        </button>
                       ) : (
                         <button
                           onClick={() => addToCart(item)}
@@ -737,8 +964,8 @@ function CustomerMenuContent() {
                   </div>
                 </div>
               </React.Fragment>
-            )
-          })
+              )
+            })
           )}
         </div>
       </main>
@@ -894,14 +1121,14 @@ function CustomerMenuContent() {
                 disabled={billRequested}
                 className="w-full p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
-                <div className="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
+                <div className="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
                   <Receipt className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-[#20252B] flex items-center justify-between">
                     <span>Ask for Bill</span>
                     {billRequested && (
-                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                         Requested
                       </span>
                     )}
@@ -966,8 +1193,14 @@ function CustomerMenuContent() {
 
       {/* Cart & Checkout Slide-Over Drawer */}
       {isCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-center items-end sm:items-center">
-          <div className="w-full max-w-xl bg-white border border-[#E5E1D9] rounded-t-2xl sm:rounded-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-xl animate-in slide-in-from-bottom-5 text-[#20252B]">
+        <div
+          onClick={() => setIsCartOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-center items-end sm:items-center overscroll-none"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl bg-white border border-[#E5E1D9] rounded-t-2xl sm:rounded-2xl max-h-[90dvh] flex flex-col overflow-hidden shadow-xl animate-in slide-in-from-bottom-5 text-[#20252B]"
+          >
             {/* Drawer Header */}
             <div className="p-4 border-b border-[#E5E1D9] flex items-center justify-between">
               <div>
@@ -1004,7 +1237,7 @@ function CustomerMenuContent() {
             )}
 
             {/* Drawer Body Items */}
-            <div className="p-4 overflow-y-auto space-y-4 flex-1">
+            <div className="p-4 overflow-y-auto overscroll-contain space-y-4 flex-1">
               <div className="space-y-2.5">
                 {cart.map((item) => {
                   const isItemOutOfStock = menuItems.find((m) => m.id === item.id)?.isAvailable === false
@@ -1068,32 +1301,56 @@ function CustomerMenuContent() {
                 />
               </div>
 
-              {/* Optional Guest Contact Details */}
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[11px] font-medium text-[#64748B] block mb-1">
-                    Your Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    placeholder="e.g. Rahul"
-                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder-[#64748B] focus:outline-none focus:border-[#C46B4E]"
-                  />
+              {/* Mandatory Guest Contact Details */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#20252B] block mb-1">
+                      Guest Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customerName}
+                      onChange={(e) => {
+                        setCustomerName(e.target.value)
+                        if (contactValidationError) setContactValidationError(null)
+                      }}
+                      placeholder="e.g. Rahul Sharma"
+                      className={`w-full px-3 py-2 rounded-lg bg-white border text-xs text-[#20252B] placeholder-[#64748B] focus:outline-none focus:border-[#C46B4E] ${
+                        contactValidationError && !customerName.trim()
+                          ? "border-red-400 bg-red-50/40"
+                          : "border-[#E5E1D9]"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#20252B] block mb-1">
+                      Mobile Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={customerPhone}
+                      onChange={(e) => {
+                        setCustomerPhone(e.target.value)
+                        if (contactValidationError) setContactValidationError(null)
+                      }}
+                      placeholder="+91 98765 43210"
+                      className={`w-full px-3 py-2 rounded-lg bg-white border text-xs text-[#20252B] placeholder-[#64748B] focus:outline-none focus:border-[#C46B4E] ${
+                        contactValidationError && customerPhone.replace(/\D/g, "").length < 7
+                          ? "border-red-400 bg-red-50/40"
+                          : "border-[#E5E1D9]"
+                      }`}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-[11px] font-medium text-[#64748B] block mb-1">
-                    Phone (For WhatsApp / SMS Bill)
-                  </label>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    className="w-full px-3 py-1.5 rounded-lg bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder-[#64748B] focus:outline-none focus:border-[#C46B4E]"
-                  />
-                </div>
+                {contactValidationError && (
+                  <p className="text-[11px] font-semibold text-red-600 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{contactValidationError}</span>
+                  </p>
+                )}
               </div>
 
               {/* Bill Summary */}
@@ -1136,56 +1393,213 @@ function CustomerMenuContent() {
         </div>
       )}
 
-      {/* Table Picker Modal */}
-      {showTablePicker && (
+      {/* Dish / Item Details Modal (Customer QR Menu) */}
+      {selectedDetailItem && (
         <div
-          onClick={() => setShowTablePicker(false)}
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setSelectedDetailItem(null)}
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 cursor-pointer animate-in fade-in overscroll-none"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm rounded-2xl bg-white border border-[#E5E1D9] p-5 space-y-4 shadow-lg text-[#20252B] cursor-default"
+            className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white border border-[#E5E1D9] overflow-hidden shadow-2xl text-[#20252B] cursor-default max-h-[90dvh] flex flex-col overscroll-contain"
           >
-            <div className="text-center space-y-1">
-              <h3 className="font-bold text-base text-[#20252B] flex items-center justify-center gap-1.5">
-                <Utensils className="w-4 h-4 text-[#C46B4E]" />
-                Select Your Table
-              </h3>
-              <p className="text-xs text-[#64748B]">
-                Please confirm the table number where you are seated
-              </p>
-            </div>
-
-            <div className="grid grid-cols-4 gap-2 pt-1">
-              {["Table 01", "Table 02", "Table 03", "Table 04", "Table 05", "Table 06", "Table 07", "Table 08"].map((tbl) => {
-                const targetTable = isDemoMode ? (tbl.toLowerCase().startsWith("demo") ? tbl : `Demo ${tbl}`) : tbl
-                return (
-                  <button
-                    key={tbl}
-                    onClick={() => {
-                      setSelectedTable(targetTable)
-                      setShowTablePicker(false)
-                    }}
-                    className={`py-2 rounded-lg text-xs font-semibold transition cursor-pointer text-center border ${
-                      selectedTable === targetTable || selectedTable === tbl
-                        ? "bg-[#C46B4E] text-white border-[#C46B4E] shadow-2xs"
-                        : "bg-white text-[#20252B] hover:bg-[#F7F5F0] border-[#E5E1D9]"
+            {/* Hero Food Image */}
+            <div className="relative h-56 w-full bg-[#F7F5F0] shrink-0 overflow-hidden flex items-center justify-center">
+              {selectedDetailItem.image ? (
+                <img
+                  src={selectedDetailItem.image}
+                  alt={selectedDetailItem.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-7xl">{selectedDetailItem.icon}</span>
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
+              <button
+                type="button"
+                onClick={() => setSelectedDetailItem(null)}
+                className="absolute top-3.5 right-3.5 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition cursor-pointer"
+                aria-label="Close item details"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="absolute bottom-3 left-4 right-4 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      selectedDetailItem.isVeg
+                        ? "bg-sky-50 text-sky-900 border-sky-200"
+                        : "bg-amber-50 text-amber-800 border-amber-200"
                     }`}
                   >
-                    {isDemoMode ? `Demo ${tbl.replace("Table ", "")}` : tbl}
-                  </button>
-                )
-              })}
+                    {selectedDetailItem.isVeg ? "● Pure Veg" : "● Non-Veg"}
+                  </span>
+                  {selectedDetailItem.tag && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C46B4E] text-white">
+                      {selectedDetailItem.tag}
+                    </span>
+                  )}
+                </div>
+                {selectedDetailItem.isAvailable === false && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white">
+                    Out of Stock
+                  </span>
+                )}
+              </div>
             </div>
 
-            {selectedTable && (
-              <button
-                onClick={() => setShowTablePicker(false)}
-                className="w-full py-2.5 rounded-lg bg-[#E9E3D8] hover:bg-[#DDD5C7] text-xs font-semibold text-[#20252B] border border-[#E5E1D9] transition cursor-pointer"
-              >
-                Continue with {selectedTable}
-              </button>
-            )}
+            {/* Dish Info & Portion Selector */}
+            <div className="p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
+              <div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#C46B4E]">
+                    {selectedDetailItem.category} · {selectedDetailItem.station === "bar" ? "Bar Station" : "Chef Kitchen"}
+                  </span>
+                  <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
+                    {selectedDetailItem.prepTime && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-[#C46B4E]" />
+                        {selectedDetailItem.prepTime}
+                      </span>
+                    )}
+                    {selectedDetailItem.calories && (
+                      <span className="flex items-center gap-1">
+                        <Flame className="w-3 h-3 text-amber-600" />
+                        {selectedDetailItem.calories}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <h2 className="text-xl font-bold text-[#20252B] mt-1">
+                  {selectedDetailItem.name}
+                </h2>
+                <p className="text-xs text-[#64748B] leading-relaxed mt-1.5">
+                  {selectedDetailItem.description || "Freshly prepared to order with curated kitchen ingredients."}
+                </p>
+              </div>
+
+              {selectedDetailItem.ingredients && selectedDetailItem.ingredients.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
+                    Key Ingredients
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {selectedDetailItem.ingredients.map((ing) => (
+                      <span
+                        key={ing}
+                        className="px-2.5 py-1 rounded-lg bg-[#F7F5F0] border border-[#E5E1D9] text-[11px] font-medium text-[#20252B]"
+                      >
+                        {ing}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Half / Full Portion Choice */}
+              {selectedDetailItem.hasPortionOptions && selectedDetailItem.halfPrice ? (
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[#64748B]">
+                    Choose Portion Size
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setDetailPortion("half")}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                        detailPortion === "half"
+                          ? "bg-[#C46B4E]/10 border-[#C46B4E] ring-1 ring-[#C46B4E]"
+                          : "bg-[#F7F5F0] border-[#E5E1D9] hover:border-[#C46B4E]/50"
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-[#20252B]">Half Portion</div>
+                      <div className="text-sm font-extrabold text-[#C46B4E] mt-0.5">
+                        ₹{selectedDetailItem.halfPrice.toFixed(2)}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDetailPortion("full")}
+                      className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                        detailPortion === "full"
+                          ? "bg-[#C46B4E]/10 border-[#C46B4E] ring-1 ring-[#C46B4E]"
+                          : "bg-[#F7F5F0] border-[#E5E1D9] hover:border-[#C46B4E]/50"
+                      }`}
+                    >
+                      <div className="text-xs font-bold text-[#20252B]">Full Portion</div>
+                      <div className="text-sm font-extrabold text-[#C46B4E] mt-0.5">
+                        ₹{(selectedDetailItem.fullPrice || selectedDetailItem.price).toFixed(2)}
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#64748B]">Standard Serving Price</span>
+                  <span className="text-base font-extrabold text-[#C46B4E]">
+                    ₹{selectedDetailItem.price.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer: Quantity + Add to Order */}
+            <div className="p-4 border-t border-[#E5E1D9] bg-[#FAF8F4] flex items-center gap-3">
+              {selectedDetailItem.isAvailable === false ? (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full py-3 rounded-xl bg-[#E5E1D9] text-[#64748B] text-xs font-bold cursor-not-allowed"
+                >
+                  Currently Out of Stock
+                </button>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 bg-white border border-[#E5E1D9] rounded-xl px-2.5 py-2">
+                    <button
+                      type="button"
+                      onClick={() => setDetailQty((q) => Math.max(1, q - 1))}
+                      className="w-6 h-6 rounded-lg bg-[#F7F5F0] hover:bg-[#E9E3D8] flex items-center justify-center cursor-pointer"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-bold w-5 text-center">{detailQty}</span>
+                    <button
+                      type="button"
+                      onClick={() => setDetailQty((q) => q + 1)}
+                      className="w-6 h-6 rounded-lg bg-[#C46B4E] text-white flex items-center justify-center cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const chosenPortion =
+                        selectedDetailItem.hasPortionOptions && selectedDetailItem.halfPrice
+                          ? detailPortion
+                          : undefined
+                      addToCart(selectedDetailItem, chosenPortion, detailQty)
+                      setSelectedDetailItem(null)
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>
+                      Add to Order · ₹
+                      {(
+                        (selectedDetailItem.hasPortionOptions && selectedDetailItem.halfPrice
+                          ? detailPortion === "half"
+                            ? selectedDetailItem.halfPrice
+                            : selectedDetailItem.fullPrice || selectedDetailItem.price
+                          : selectedDetailItem.price) * detailQty
+                      ).toFixed(2)}
+                    </span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

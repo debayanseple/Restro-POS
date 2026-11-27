@@ -320,8 +320,8 @@ export default function LandingPage() {
           <div className="bg-[#E9E3D8] border-b border-[#E5E1D9]/70 px-4 py-1.5 text-xs flex items-center justify-between text-[#20252B]">
             <div className="flex items-center gap-2 max-w-7xl mx-auto w-full">
               <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-600 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-600 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600"></span>
               </span>
               <span className="text-[#20252B]">
                 Active session: <strong className="font-semibold capitalize">{activeSessionRole.replace("pos-", "POS ")}</strong>
@@ -470,7 +470,7 @@ export default function LandingPage() {
               <div className="text-xs text-[#64748B] font-medium mt-0.5">Kitchen & Bar Separation</div>
             </div>
             <div className="p-4 rounded-xl bg-white border border-[#E5E1D9] text-center shadow-2xs">
-              <div className="text-2xl font-bold text-emerald-800 tracking-tight">Zero-Reset</div>
+              <div className="text-2xl font-bold text-blue-800 tracking-tight">Zero-Reset</div>
               <div className="text-xs text-[#64748B] font-medium mt-0.5">Admin-Controlled Tables</div>
             </div>
             <div className="p-4 rounded-xl bg-white border border-[#E5E1D9] text-center shadow-2xs">
@@ -570,11 +570,11 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     {posNotification && (
-                      <span className="px-3 py-1 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-800 text-xs font-semibold">
+                      <span className="px-3 py-1 rounded-md bg-blue-950/80 text-blue-300 border border-blue-800 text-xs font-semibold">
                         {posNotification}
                       </span>
                     )}
-                    <span className="px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-400 border border-emerald-800/80 text-xs font-medium">
+                    <span className="px-2.5 py-1 rounded-md bg-blue-950/60 text-blue-400 border border-blue-800/80 text-xs font-medium">
                       Register Active
                     </span>
                   </div>
@@ -655,7 +655,7 @@ export default function LandingPage() {
                           <div className="mt-3 flex items-center justify-between pt-2 border-t border-[#353D47]">
                             <span
                               className={`text-[10px] font-medium ${
-                                item.station === "bar" ? "text-amber-400" : "text-emerald-400"
+                                item.station === "bar" ? "text-amber-400" : "text-blue-400"
                               }`}
                             >
                               {item.station === "bar" ? "Bar Station" : "Kitchen Item"}
@@ -922,7 +922,7 @@ export default function LandingPage() {
                                 : ticket.stage === "preparing"
                                 ? "bg-amber-950/60 text-amber-300 border border-amber-700/50"
                                 : ticket.stage === "ready"
-                                ? "bg-emerald-950/60 text-emerald-300 border border-emerald-700/50"
+                                ? "bg-blue-950/60 text-blue-300 border border-blue-700/50"
                                 : "bg-slate-700 text-slate-300"
                             }`}
                           >
@@ -958,7 +958,7 @@ export default function LandingPage() {
                       Click any table to toggle occupancy. Tables remain occupied until manually cleared by restaurant admin.
                     </p>
                   </div>
-                  <span className="px-2.5 py-1 rounded-md bg-emerald-950/60 text-emerald-400 border border-emerald-800 text-xs font-medium">
+                  <span className="px-2.5 py-1 rounded-md bg-blue-950/60 text-blue-400 border border-blue-800 text-xs font-medium">
                     Floor Synchronization Active
                   </span>
                 </div>
@@ -970,7 +970,7 @@ export default function LandingPage() {
                       onClick={() => toggleTableStatus(tbl.id)}
                       className={`p-4 rounded-xl text-center cursor-pointer transition border ${
                         tbl.status === "available"
-                          ? "bg-[#1E2E25] border-emerald-700/50 hover:border-emerald-500"
+                          ? "bg-[#1D2433] border-blue-700/50 hover:border-blue-500"
                           : tbl.status === "occupied"
                           ? "bg-[#33221C] border-[#C46B4E]/50 hover:border-[#C46B4E]"
                           : "bg-[#2E281F] border-amber-700/50 hover:border-amber-500"
@@ -979,7 +979,7 @@ export default function LandingPage() {
                       <div
                         className={`text-xs font-bold ${
                           tbl.status === "available"
-                            ? "text-emerald-300"
+                            ? "text-blue-300"
                             : tbl.status === "occupied"
                             ? "text-[#E8C2B5]"
                             : "text-amber-300"
@@ -990,7 +990,7 @@ export default function LandingPage() {
                       <div
                         className={`text-[11px] font-medium mt-1 ${
                           tbl.status === "available"
-                            ? "text-emerald-400"
+                            ? "text-blue-400"
                             : tbl.status === "occupied"
                             ? "text-[#C46B4E]"
                             : "text-amber-400"
@@ -1083,8 +1083,8 @@ export default function LandingPage() {
                         >
                           {copiedDemoLink ? (
                             <>
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                              <span className="text-emerald-300">Link Copied to Clipboard!</span>
+                              <Check className="w-3.5 h-3.5 text-blue-400" />
+                              <span className="text-blue-300">Link Copied to Clipboard!</span>
                             </>
                           ) : (
                             <>
@@ -1110,7 +1110,7 @@ export default function LandingPage() {
                     <div className="w-full max-w-sm rounded-[36px] bg-[#121519] border-4 border-[#353D47] p-3 shadow-2xl relative overflow-hidden">
                       {/* Speaker / Dynamic Island notch */}
                       <div className="w-24 h-4 bg-[#262C34] rounded-full mx-auto mb-2 flex items-center justify-center">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500/80 mr-1.5" />
+                        <span className="w-2 h-2 rounded-full bg-blue-500/80 mr-1.5" />
                         <span className="w-1.5 h-1.5 rounded-full bg-black/60" />
                       </div>
 
@@ -1289,15 +1289,15 @@ export default function LandingPage() {
                 </div>
                 <ul className="space-y-2 text-xs text-[#20252B] pt-2">
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-700 shrink-0" />
                     <span>Mandatory table picker on Dine-In</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-700 shrink-0" />
                     <span>Instant automatic station routing</span>
                   </li>
                   <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-blue-700 shrink-0" />
                     <span>Clean empty ticket on new order</span>
                   </li>
                 </ul>
@@ -1390,7 +1390,7 @@ export default function LandingPage() {
             </div>
 
             <div className="p-6 rounded-2xl bg-white border border-[#E5E1D9] space-y-3 shadow-2xs">
-              <div className="w-10 h-10 rounded-lg bg-[#F7F5F0] text-emerald-800 flex items-center justify-center border border-[#E5E1D9]">
+              <div className="w-10 h-10 rounded-lg bg-[#F7F5F0] text-blue-800 flex items-center justify-center border border-[#E5E1D9]">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <h4 className="text-base font-bold text-[#20252B]">Strict Role Protection</h4>
@@ -1425,7 +1425,7 @@ export default function LandingPage() {
               {/* Benefits Checklist */}
               <div className="space-y-4 pt-2">
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center shrink-0 mt-0.5 border border-blue-200">
                     <Check className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -1435,7 +1435,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center shrink-0 mt-0.5 border border-blue-200">
                     <Check className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -1445,7 +1445,7 @@ export default function LandingPage() {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center shrink-0 mt-0.5 border border-blue-200">
                     <Check className="w-3.5 h-3.5" />
                   </div>
                   <div>
@@ -1491,20 +1491,20 @@ export default function LandingPage() {
                 </div>
 
                 {demoSubmitSuccess ? (
-                  <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 space-y-4 text-center">
-                    <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto border border-emerald-300">
+                  <div className="p-6 rounded-xl bg-blue-50 border border-blue-200 space-y-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center mx-auto border border-blue-300">
                       <CheckCircle2 className="w-6 h-6" />
                     </div>
                     <div className="space-y-1">
-                      <h4 className="text-sm font-bold text-emerald-900">Demo Request Confirmed!</h4>
-                      <p className="text-xs text-emerald-700 max-w-md mx-auto leading-relaxed">
+                      <h4 className="text-sm font-bold text-blue-900">Demo Request Confirmed!</h4>
+                      <p className="text-xs text-blue-700 max-w-md mx-auto leading-relaxed">
                         {demoSubmitSuccess}
                       </p>
                     </div>
                     <div className="pt-2 flex items-center justify-center gap-3 flex-wrap">
                       <button
                         onClick={() => setDemoSubmitSuccess(null)}
-                        className="px-4 py-2 rounded-lg bg-white border border-emerald-300 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+                        className="px-4 py-2 rounded-lg bg-white border border-blue-300 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition cursor-pointer"
                       >
                         Submit Another Request
                       </button>
@@ -1715,8 +1715,8 @@ export default function LandingPage() {
             <Link href="/pos/login" className="hover:text-[#20252B] transition">
               POS Staff Login
             </Link>
-            <span className="flex items-center gap-1.5 text-emerald-700 font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-600" />
+            <span className="flex items-center gap-1.5 text-blue-700 font-medium">
+              <span className="w-2 h-2 rounded-full bg-blue-600" />
               All Systems Operational
             </span>
           </div>

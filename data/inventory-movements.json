@@ -1,5 +1,18 @@
 [
   {
+    "id": "mov_1795768131428",
+    "itemId": "inv_2",
+    "itemName": "Fresh Chicken Breast (Boneless)",
+    "type": "RESTOCK",
+    "quantity": 5,
+    "previousStock": 18.5,
+    "newStock": 23.5,
+    "unit": "kg",
+    "reason": "Stock intake / replenishment",
+    "performedBy": "Manager Vikram",
+    "date": "2026-11-27T08:28:51.428Z"
+  },
+  {
     "id": "mov_1795429106503",
     "itemId": "inv_1795429106503",
     "itemName": "Fresh Greek Feta Cheese",

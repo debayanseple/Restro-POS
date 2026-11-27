@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       "bg-orange-600",
       "bg-blue-600",
       "bg-cyan-600",
-      "bg-emerald-600",
+      "bg-slate-700",
       "bg-purple-600",
       "bg-indigo-600",
       "bg-rose-600",

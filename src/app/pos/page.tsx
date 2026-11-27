@@ -2,6 +2,7 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { PortalShellSkeleton } from "@/components/ui/skeleton"
 
 export default function PosPage() {
   const router = useRouter()
@@ -10,9 +11,5 @@ export default function PosPage() {
     router.replace("/restaurant-admin?tab=pos")
   }, [router])
 
-  return (
-    <div className="min-h-screen bg-[#0e0f12] flex items-center justify-center text-slate-400 text-xs">
-      Loading POS Terminal...
-    </div>
-  )
+  return <PortalShellSkeleton variant="pos" isDarkMode={true} />
 }

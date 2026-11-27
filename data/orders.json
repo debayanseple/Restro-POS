@@ -1,5 +1,1263 @@
 [
   {
+    "id": "ord_1795781816981_xz77",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 786.45,
+    "tax_amount": 37.45,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-9343",
+    "customer_name": "Debayan",
+    "customer_phone": "8001316154",
+    "notes": "Guest: Debayan | Phone: 8001316154",
+    "created_at": "2026-11-27T12:16:56.981Z",
+    "updated_at": "2026-11-27T12:46:12.735Z",
+    "order_items": [
+      {
+        "id": "it_1795781816981_0",
+        "order_id": "ord_1795781816981_xz77",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      },
+      {
+        "id": "it_1795781816981_1",
+        "order_id": "ord_1795781816981_xz77",
+        "menu_item_id": "m_1",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795781816981",
+        "order_id": "ord_1795781816981_xz77",
+        "amount": 786.45,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T12:16:56.981Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-27T12:46:12.735Z"
+  },
+  {
+    "id": "ord_1795781729277_9kip",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-7819",
+    "customer_name": "Debayan",
+    "customer_phone": "8001316145",
+    "notes": "Guest: Debayan | Phone: 8001316145",
+    "created_at": "2026-11-27T12:15:29.277Z",
+    "updated_at": "2026-11-27T12:15:46.065Z",
+    "order_items": [
+      {
+        "id": "it_1795781729277_0",
+        "order_id": "ord_1795781729277_9kip",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795781729277",
+        "order_id": "ord_1795781729277_9kip",
+        "amount": 525,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T12:15:29.277Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795781671771_6a2l",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 1089.9,
+    "tax_amount": 51.900000000000006,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-7563",
+    "customer_name": "Debayan",
+    "customer_phone": "8001316145",
+    "notes": "Guest: Debayan | Phone: 8001316145",
+    "created_at": "2026-11-27T12:14:31.771Z",
+    "updated_at": "2026-11-27T12:15:08.173Z",
+    "order_items": [
+      {
+        "id": "it_1795781671771_0",
+        "order_id": "ord_1795781671771_6a2l",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      },
+      {
+        "id": "it_1795781671771_1",
+        "order_id": "ord_1795781671771_6a2l",
+        "menu_item_id": "m_1",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Grilled Chicken Wings (Full)",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Grilled Chicken Wings (Full)"
+        }
+      },
+      {
+        "id": "it_1795781671771_2",
+        "order_id": "ord_1795781671771_6a2l",
+        "menu_item_id": "m_2",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795781671771",
+        "order_id": "ord_1795781671771_6a2l",
+        "amount": 1089.9,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T12:14:31.771Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-27T12:15:08.173Z"
+  },
+  {
+    "id": "ord_1795780805889_ff3v",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-8466",
+    "notes": null,
+    "created_at": "2026-11-27T12:00:05.889Z",
+    "updated_at": "2026-11-27T12:15:48.643Z",
+    "order_items": [
+      {
+        "id": "it_1795780805889_0",
+        "order_id": "ord_1795780805889_ff3v",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 500,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795780805889",
+        "order_id": "ord_1795780805889_ff3v",
+        "amount": 525,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-27T12:00:05.889Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795775724652_vxxb",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-9522",
+    "notes": null,
+    "created_at": "2026-11-27T10:35:24.652Z",
+    "updated_at": "2026-11-27T10:35:34.263Z",
+    "order_items": [
+      {
+        "id": "it_1795775724652_0",
+        "order_id": "ord_1795775724652_vxxb",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795775724652",
+        "order_id": "ord_1795775724652_vxxb",
+        "amount": 525,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:35:24.652Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795775717253_47in",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-9209",
+    "notes": null,
+    "created_at": "2026-11-27T10:35:17.253Z",
+    "updated_at": "2026-11-27T10:35:35.194Z",
+    "order_items": [
+      {
+        "id": "it_1795775717253_0",
+        "order_id": "ord_1795775717253_47in",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795775717253",
+        "order_id": "ord_1795775717253_47in",
+        "amount": 525,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:35:17.253Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774954397_161z",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 6",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-4788",
+    "notes": null,
+    "created_at": "2026-11-27T10:22:34.397Z",
+    "updated_at": "2026-11-27T10:33:47.527Z",
+    "order_items": [
+      {
+        "id": "it_1795774954397_0",
+        "order_id": "ord_1795774954397_161z",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774954397",
+        "order_id": "ord_1795774954397_161z",
+        "amount": 525,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:22:34.397Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774922045_rxzv",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 261.45,
+    "tax_amount": 12.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-2565",
+    "notes": null,
+    "created_at": "2026-11-27T10:22:02.045Z",
+    "updated_at": "2026-11-27T10:33:48.056Z",
+    "order_items": [
+      {
+        "id": "it_1795774922045_0",
+        "order_id": "ord_1795774922045_rxzv",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774922045",
+        "order_id": "ord_1795774922045_rxzv",
+        "amount": 261.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:22:02.045Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774911431_do26",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 261.45,
+    "tax_amount": 12.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-8314",
+    "notes": null,
+    "created_at": "2026-11-27T10:21:51.431Z",
+    "updated_at": "2026-11-27T10:33:48.578Z",
+    "order_items": [
+      {
+        "id": "it_1795774911431_0",
+        "order_id": "ord_1795774911431_do26",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774911431",
+        "order_id": "ord_1795774911431_do26",
+        "amount": 261.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:21:51.431Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774899482_vn4f",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 261.45,
+    "tax_amount": 12.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-7911",
+    "notes": null,
+    "created_at": "2026-11-27T10:21:39.482Z",
+    "updated_at": "2026-11-27T10:33:47.787Z",
+    "order_items": [
+      {
+        "id": "it_1795774899482_0",
+        "order_id": "ord_1795774899482_vn4f",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774899482",
+        "order_id": "ord_1795774899482_vn4f",
+        "amount": 261.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:21:39.482Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774878016_dtzd",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 617.4,
+    "tax_amount": 29.400000000000002,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-5282",
+    "notes": null,
+    "created_at": "2026-11-27T10:21:18.016Z",
+    "updated_at": "2026-11-27T10:33:48.980Z",
+    "order_items": [
+      {
+        "id": "it_1795774878016_0",
+        "order_id": "ord_1795774878016_dtzd",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      },
+      {
+        "id": "it_1795774878016_1",
+        "order_id": "ord_1795774878016_dtzd",
+        "menu_item_id": "m_1",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Grilled Chicken Wings (Full)",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Grilled Chicken Wings (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774878016",
+        "order_id": "ord_1795774878016_dtzd",
+        "amount": 617.4,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:21:18.016Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774837143_r9mv",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 210,
+    "tax_amount": 10,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-2195",
+    "notes": null,
+    "created_at": "2026-11-27T10:20:37.143Z",
+    "updated_at": "2026-11-27T10:33:50.543Z",
+    "order_items": [
+      {
+        "id": "it_1795774837143_0",
+        "order_id": "ord_1795774837143_r9mv",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Crispy Truffle Fries",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Crispy Truffle Fries"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774837143",
+        "order_id": "ord_1795774837143_r9mv",
+        "amount": 210,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:20:37.143Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774822855_jvsf",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 210,
+    "tax_amount": 10,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-9059",
+    "notes": null,
+    "created_at": "2026-11-27T10:20:22.855Z",
+    "updated_at": "2026-11-27T10:33:51.073Z",
+    "order_items": [
+      {
+        "id": "it_1795774822855_0",
+        "order_id": "ord_1795774822855_jvsf",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Crispy Truffle Fries",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Crispy Truffle Fries"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774822855",
+        "order_id": "ord_1795774822855_jvsf",
+        "amount": 210,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:20:22.855Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774810776_d9sa",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-6746",
+    "notes": null,
+    "created_at": "2026-11-27T10:20:10.776Z",
+    "updated_at": "2026-11-27T10:33:51.597Z",
+    "order_items": [
+      {
+        "id": "it_1795774810776_0",
+        "order_id": "ord_1795774810776_d9sa",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774810776",
+        "order_id": "ord_1795774810776_d9sa",
+        "amount": 525,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:20:10.776Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774759528_mabp",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 177.45,
+    "tax_amount": 8.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-6282",
+    "notes": null,
+    "created_at": "2026-11-27T10:19:19.528Z",
+    "updated_at": "2026-11-27T10:33:51.015Z",
+    "order_items": [
+      {
+        "id": "it_1795774759528_0",
+        "order_id": "ord_1795774759528_mabp",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Grilled Chicken Wings (Half)",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Grilled Chicken Wings (Half)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774759528",
+        "order_id": "ord_1795774759528_mabp",
+        "amount": 177.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:19:19.528Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774727711_0cvb",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 177.45,
+    "tax_amount": 8.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-4802",
+    "notes": null,
+    "created_at": "2026-11-27T10:18:47.711Z",
+    "updated_at": "2026-11-27T10:33:51.156Z",
+    "order_items": [
+      {
+        "id": "it_1795774727711_0",
+        "order_id": "ord_1795774727711_0cvb",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Grilled Chicken Wings (Half)",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Grilled Chicken Wings (Half)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774727711",
+        "order_id": "ord_1795774727711_0cvb",
+        "amount": 177.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:18:47.711Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774710594_07yx",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-1009",
+    "notes": null,
+    "created_at": "2026-11-27T10:18:30.594Z",
+    "updated_at": "2026-11-27T10:33:51.631Z",
+    "order_items": [
+      {
+        "id": "it_1795774710594_0",
+        "order_id": "ord_1795774710594_07yx",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774710594",
+        "order_id": "ord_1795774710594_07yx",
+        "amount": 525,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:18:30.594Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774667947_vrdq",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 210,
+    "tax_amount": 10,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-1011",
+    "notes": null,
+    "created_at": "2026-11-27T10:17:47.947Z",
+    "updated_at": "2026-11-27T10:18:13.097Z",
+    "order_items": [
+      {
+        "id": "it_1795774667947_0",
+        "order_id": "ord_1795774667947_vrdq",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Crispy Truffle Fries",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Crispy Truffle Fries"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774667947",
+        "order_id": "ord_1795774667947_vrdq",
+        "amount": 210,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:17:47.947Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774655928_opop",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 313.95,
+    "tax_amount": 14.950000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-9211",
+    "notes": null,
+    "created_at": "2026-11-27T10:17:35.928Z",
+    "updated_at": "2026-11-27T10:18:14.557Z",
+    "order_items": [
+      {
+        "id": "it_1795774655928_0",
+        "order_id": "ord_1795774655928_opop",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774655928",
+        "order_id": "ord_1795774655928_opop",
+        "amount": 313.95,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:17:35.928Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774202405_qy92",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 261.45,
+    "tax_amount": 12.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-6528",
+    "notes": null,
+    "created_at": "2026-11-27T10:10:02.405Z",
+    "updated_at": "2026-11-27T10:10:51.446Z",
+    "order_items": [
+      {
+        "id": "it_1795774202405_0",
+        "order_id": "ord_1795774202405_qy92",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774202405",
+        "order_id": "ord_1795774202405_qy92",
+        "amount": 261.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:10:02.405Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774131064_ucrs",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 229.95,
+    "tax_amount": 10.950000000000001,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-6150",
+    "notes": null,
+    "created_at": "2026-11-27T10:08:51.064Z",
+    "updated_at": "2026-11-27T10:18:14.651Z",
+    "order_items": [
+      {
+        "id": "it_1795774131064_0",
+        "order_id": "ord_1795774131064_ucrs",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Caesar Salad Bowl (Full)",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Caesar Salad Bowl (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774131064",
+        "order_id": "ord_1795774131064_ucrs",
+        "amount": 229.95,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:08:51.064Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795774110172_lddr",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 670.95,
+    "tax_amount": 31.950000000000003,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-1572",
+    "notes": null,
+    "created_at": "2026-11-27T10:08:30.172Z",
+    "updated_at": "2026-11-27T10:18:15.846Z",
+    "order_items": [
+      {
+        "id": "it_1795774110172_0",
+        "order_id": "ord_1795774110172_lddr",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      },
+      {
+        "id": "it_1795774110172_1",
+        "order_id": "ord_1795774110172_lddr",
+        "menu_item_id": "m_1",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Caesar Salad Bowl (Half)",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Caesar Salad Bowl (Half)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795774110172",
+        "order_id": "ord_1795774110172_lddr",
+        "amount": 670.95,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T10:08:30.172Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795773076239_6g96",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 8",
+    "total_amount": 838.95,
+    "tax_amount": 39.95,
+    "discount_amount": 0,
+    "payment_status": "PENDING",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-3953",
+    "notes": "Notes: Non spicy  | Guest: Debayan ",
+    "created_at": "2026-11-27T09:51:16.239Z",
+    "updated_at": "2026-11-27T10:18:17.731Z",
+    "order_items": [
+      {
+        "id": "it_1795773076239_0",
+        "order_id": "ord_1795773076239_6g96",
+        "menu_item_id": "m_0",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      },
+      {
+        "id": "it_1795773076239_1",
+        "order_id": "ord_1795773076239_6g96",
+        "menu_item_id": "m_1",
+        "quantity": 1,
+        "unit_price": 0,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795773076239",
+        "order_id": "ord_1795773076239_6g96",
+        "amount": 838.95,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-27T09:51:16.239Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795763240953_jlrh",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "takeaway",
+    "table_id": "Table Takeaway",
+    "total_amount": 501.9,
+    "tax_amount": 23.900000000000002,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-6090",
+    "notes": null,
+    "created_at": "2026-11-27T07:07:20.953Z",
+    "updated_at": "2026-11-27T09:51:48.360Z",
+    "order_items": [
+      {
+        "id": "it_1795763240953_0",
+        "order_id": "ord_1795763240953_jlrh",
+        "menu_item_id": "m3",
+        "quantity": 1,
+        "unit_price": 299,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      },
+      {
+        "id": "it_1795763240953_1",
+        "order_id": "ord_1795763240953_jlrh",
+        "menu_item_id": "m4",
+        "quantity": 1,
+        "unit_price": 179,
+        "special_instructions": null,
+        "name": "Crispy Truffle Fries",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Crispy Truffle Fries"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795763240953",
+        "order_id": "ord_1795763240953_jlrh",
+        "amount": 501.9,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-27T07:07:20.953Z"
+      }
+    ]
+  },
+  {
     "id": "ord_1795753868561_8hwn",
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": "demo-outlet-1",

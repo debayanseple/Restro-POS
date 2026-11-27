@@ -42,7 +42,7 @@ export default function RestaurantAdminLogin() {
     if (role === "super-admin") {
       window.location.href = "/restaurant-admin?role=super-admin&tab=tenants"
     } else if (role === "restaurant-admin") {
-      window.location.href = "/restaurant-admin?role=restaurant-admin&tab=tables"
+      window.location.href = "/restaurant-admin?role=restaurant-admin&tab=dashboard"
     } else if (role === "pos-kitchen" || posRole === "kitchen") {
       window.location.href = "/restaurant-admin?role=pos-kitchen&tab=kds"
     } else if (role === "pos-reception" || posRole === "reception") {
@@ -50,7 +50,7 @@ export default function RestaurantAdminLogin() {
     } else if (role === "pos-orders" || posRole === "orders" || role === "pos-staff") {
       window.location.href = "/restaurant-admin?role=pos-orders&tab=pos"
     } else {
-      window.location.href = "/restaurant-admin?role=restaurant-admin&tab=tables"
+      window.location.href = "/restaurant-admin?role=restaurant-admin&tab=dashboard"
     }
   }
 
@@ -151,7 +151,7 @@ export default function RestaurantAdminLogin() {
           <span className="font-bold tracking-tight">Restro POS Enterprise</span>
         </div>
         <div className="flex items-center gap-2 text-[11px] text-[#64748B]">
-          <span className="w-2 h-2 rounded-full bg-emerald-600" />
+          <span className="w-2 h-2 rounded-full bg-[#C46B4E]" />
           <span>System Operational</span>
         </div>
       </div>
@@ -213,8 +213,8 @@ export default function RestaurantAdminLogin() {
           )}
 
           {success && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3 rounded-xl flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-blue-700" />
               <span>{success}</span>
             </div>
           )}
