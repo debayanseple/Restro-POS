@@ -346,7 +346,7 @@ export default function LandingPage() {
               href="/restaurant-admin/login"
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white font-semibold text-sm transition flex items-center justify-center gap-2 group shadow-xs"
             >
-              <span>Book Your Free Demo</span>
+              <span>Launch Restaurant Portal</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
             </Link>
             <Link
