@@ -36,6 +36,7 @@ import {
   Building2,
   Send,
   MessageSquare,
+  ArrowUp,
 } from "lucide-react"
 
 interface PreviewMenuItem {
@@ -65,6 +66,7 @@ export default function LandingPage() {
   const [activeSessionRole, setActiveSessionRole] = useState<string | null>(null)
   const [previewTab, setPreviewTab] = useState<"pos" | "kds" | "tables" | "qr-menu">("pos")
   const [isScrolled, setIsScrolled] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const [origin, setOrigin] = useState("")
   const [demoQrUrl, setDemoQrUrl] = useState("")
   const [copiedDemoLink, setCopiedDemoLink] = useState(false)
@@ -206,12 +208,43 @@ export default function LandingPage() {
     }
 
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10)
+      const scrollY = window.scrollY
+      setIsScrolled(scrollY > 10)
+      setShowScrollTop(scrollY > 350)
     }
     window.addEventListener("scroll", handleScroll, { passive: true })
     handleScroll()
 
-    return () => window.removeEventListener("scroll", handleScroll)
+    // IntersectionObserver for smooth section entrance reveal as user scrolls down
+    let observer: IntersectionObserver | null = null
+    try {
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible")
+            }
+          })
+        },
+        {
+          root: null,
+          threshold: 0.08,
+          rootMargin: "0px 0px -40px 0px",
+        }
+      )
+
+      const elements = document.querySelectorAll(".scroll-reveal")
+      elements.forEach((el) => observer?.observe(el))
+    } catch {
+      document.querySelectorAll(".scroll-reveal").forEach((el) => {
+        el.classList.add("is-visible")
+      })
+    }
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll)
+      observer?.disconnect()
+    }
   }, [])
 
   // POS Cart operations
@@ -449,7 +482,7 @@ export default function LandingPage() {
       </section>
 
       {/* Interactive Live Station Showcase (Secondary Background Pure White) */}
-      <section id="stations" className="py-20 bg-white border-y border-[#E5E1D9]">
+      <section id="stations" className="py-20 bg-white border-y border-[#E5E1D9] scroll-mt-20 scroll-reveal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <span className="text-xs font-bold tracking-wider uppercase text-[#C46B4E]">
@@ -1188,7 +1221,7 @@ export default function LandingPage() {
       </section>
 
       {/* Role-Based Portals Section (Primary Background Warm Ivory) */}
-      <section id="portals" className="py-20 bg-[#F7F5F0]">
+      <section id="portals" className="py-20 bg-[#F7F5F0] scroll-mt-20 scroll-reveal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <span className="text-xs font-bold tracking-wider uppercase text-[#C46B4E]">
@@ -1324,7 +1357,7 @@ export default function LandingPage() {
       </section>
 
       {/* Core Platform Architecture (Secondary Background Soft Sand) */}
-      <section id="features" className="py-20 bg-[#E9E3D8] border-t border-[#E5E1D9]">
+      <section id="features" className="py-20 bg-[#E9E3D8] border-t border-[#E5E1D9] scroll-mt-20 scroll-reveal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center max-w-2xl mx-auto space-y-2">
             <span className="text-xs font-bold tracking-wider uppercase text-[#C46B4E]">
@@ -1370,7 +1403,7 @@ export default function LandingPage() {
       </section>
 
       {/* Book a Demo & Contact Form Section */}
-      <section id="book-demo" className="py-20 bg-white border-t border-[#E5E1D9] relative overflow-hidden scroll-mt-16">
+      <section id="book-demo" className="py-20 bg-white border-t border-[#E5E1D9] relative overflow-hidden scroll-mt-20 scroll-reveal">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
             {/* Left Column: Context & Contact Details */}
@@ -1630,7 +1663,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Dark Banner */}
-      <section className="py-20 bg-[#F7F5F0]">
+      <section className="py-20 bg-[#F7F5F0] scroll-reveal">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="p-10 sm:p-14 rounded-2xl bg-[#20252B] border border-[#2D333B] text-center space-y-6 shadow-sm">
             <h2 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
@@ -1689,6 +1722,19 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Floating Smooth Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-6 right-6 z-40 p-3 rounded-full bg-white/95 hover:bg-white text-[#20252B] hover:text-[#C46B4E] border border-[#E5E1D9] shadow-lg hover:shadow-xl backdrop-blur-xs transition-all duration-300 animate-in fade-in zoom-in-75 cursor-pointer group"
+          title="Scroll to top"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="w-4 h-4 group-hover:-translate-y-0.5 transition" />
+        </button>
+      )}
     </div>
   )
 }

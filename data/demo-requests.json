@@ -1,0 +1,24 @@
+[
+  {
+    "id": "demo_req_1795756513337_tx4l",
+    "name": "Debayan Chakraborty",
+    "restaurantName": "abc",
+    "phone": "+918001316145",
+    "email": "deepchakraborty431@gmail.com",
+    "restaurantType": "Casual Dining / Cafe",
+    "preferredSlot": "Custom Time via WhatsApp",
+    "createdAt": "2026-11-27T05:15:13.337Z",
+    "status": "new"
+  },
+  {
+    "id": "demo_req_1795756268490_58sk",
+    "name": "Rahul Test",
+    "restaurantName": "Spice Bistro",
+    "phone": "+91 98200 11223",
+    "email": "rahul@test.in",
+    "restaurantType": "Fine Dining",
+    "preferredSlot": "Today",
+    "createdAt": "2026-11-27T05:11:08.491Z",
+    "status": "new"
+  }
+]
