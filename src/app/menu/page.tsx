@@ -73,21 +73,15 @@ function CustomerMenuContent() {
     let msg = ""
     if (type === "clean") {
       setCleaningRequested(true)
-      msg = isDemoMode
-        ? `[Demo Sandbox] Cleaning requested for ${selectedTable}. (Simulated)`
-        : `Cleaning request sent for ${selectedTable}. A team member is on the way!`
+      msg = `Cleaning request sent for ${selectedTable}. A team member is on the way!`
       setTimeout(() => setCleaningRequested(false), 5000)
     } else if (type === "waiter") {
       setWaiterCalled(true)
-      msg = isDemoMode
-        ? `[Demo Sandbox] Waiter called for ${selectedTable}. (Simulated)`
-        : `Waiter called for ${selectedTable}. Someone will be with you shortly!`
+      msg = `Waiter called for ${selectedTable}. Someone will be with you shortly!`
       setTimeout(() => setWaiterCalled(false), 5000)
     } else if (type === "bill") {
       setBillRequested(true)
-      msg = isDemoMode
-        ? `[Demo Sandbox] Bill requested for ${selectedTable}. (Simulated)`
-        : `Bill requested for ${selectedTable}. Your invoice is being brought to your table!`
+      msg = `Bill requested for ${selectedTable}. Your invoice is being brought to your table!`
       setTimeout(() => setBillRequested(false), 5000)
     }
 
@@ -417,7 +411,7 @@ function CustomerMenuContent() {
                 </h1>
                 {isDemoMode && (
                   <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-200">
-                    Demo Sandbox
+                    Demo
                   </span>
                 )}
               </div>
@@ -440,17 +434,17 @@ function CustomerMenuContent() {
 
       {/* Main Container */}
       <main className="max-w-xl mx-auto px-4 pt-4 space-y-4">
-        {/* Isolated Demo Sandbox Banner */}
+        {/* Demo Menu Banner */}
         {isDemoMode && (
           <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-2xs">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse shrink-0" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
               <p className="text-[11px] font-medium leading-relaxed">
-                <strong>Interactive Demo Sandbox:</strong> Orders & assistance requests are simulated for evaluation. They will <strong>NOT</strong> dispatch to Nodedr Bistro or any live kitchen.
+                This is a demo menu. Once you join us, you will be able to completely customise this.
               </p>
             </div>
             <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 text-[10px] font-bold shrink-0">
-              Safe to Test
+              Demo
             </span>
           </div>
         )}
@@ -930,7 +924,7 @@ function CustomerMenuContent() {
               </button>
               <p className="text-[11px] text-[#64748B] text-center font-medium">
                 {isDemoMode
-                  ? "⚡ Sandbox Demo Mode: Staff alerts are simulated."
+                  ? "This is a demo menu. Once you join us, you will be able to completely customise this."
                   : "Staff will be notified at the service station queue"}
               </p>
             </div>

@@ -1022,7 +1022,7 @@ export default function LandingPage() {
                   </div>
                   <span className="px-2.5 py-1 rounded-md bg-amber-950/60 text-amber-300 border border-amber-800 text-xs font-medium flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    <span>Sandbox Mode · 0% Kitchen Impact</span>
+                    <span>Demo Menu · 100% Customizable</span>
                   </span>
                 </div>
 
@@ -1096,11 +1096,11 @@ export default function LandingPage() {
                       </div>
                     </div>
 
-                    {/* Isolation Reassurance Banner */}
+                    {/* Demo Notice Banner */}
                     <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs flex items-start gap-2.5">
-                      <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                      <Sparkles className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                       <p className="text-[11px] leading-relaxed">
-                        <strong>100% Isolated Demo Sandbox:</strong> Orders placed from this menu run safely in test sandbox memory. They will <strong>NOT</strong> dispatch to Nodedr Bistro's kitchen KDS, will <strong>NOT</strong> occupy live dining tables, and will <strong>NOT</strong> alert the staff desk.
+                        This is a demo menu. Once you join us, you will be able to completely customise this.
                       </p>
                     </div>
                   </div>
@@ -1133,10 +1133,10 @@ export default function LandingPage() {
                           </span>
                         </div>
 
-                        {/* Sandbox Notice inside mockup */}
+                        {/* Demo Notice inside mockup */}
                         <div className="p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[10px] flex items-center gap-1.5">
-                          <Zap className="w-3 h-3 text-amber-600 shrink-0" />
-                          <span>Sandbox Mode: Safe to test ordering without affecting kitchen.</span>
+                          <Sparkles className="w-3 h-3 text-amber-600 shrink-0" />
+                          <span>This is a demo menu. Once you join us, you will be able to completely customise this.</span>
                         </div>
 
                         {/* Dietary Tags */}
