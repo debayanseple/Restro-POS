@@ -15,7 +15,8 @@
     "status": "available",
     "isOpen": false,
     "floorNumber": 1,
-    "floorName": "Ground Floor"
+    "floorName": "Ground Floor",
+    "clearedAt": "2026-11-27T19:20:24.059Z"
   },
   {
     "id": 3,

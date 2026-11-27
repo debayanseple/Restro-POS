@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import QRCode from "qrcode"
+import Lenis from "lenis"
 import {
   Utensils,
   ShoppingCart,
@@ -67,6 +68,7 @@ export default function LandingPage() {
   const [previewTab, setPreviewTab] = useState<"pos" | "kds" | "tables" | "qr-menu">("pos")
   const [isScrolled, setIsScrolled] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const lenisRef = useRef<Lenis | null>(null)
   const [origin, setOrigin] = useState("")
   const [demoQrUrl, setDemoQrUrl] = useState("")
   const [copiedDemoLink, setCopiedDemoLink] = useState(false)
@@ -207,6 +209,47 @@ export default function LandingPage() {
       setActiveSessionRole(roleCookie)
     }
 
+    // Smooth inertial wheel/trackpad scrolling via Lenis (skipped for reduced-motion users)
+    let rafId = 0
+    let destroyLenis: (() => void) | null = null
+    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      const lenis = new Lenis({
+        lerp: 0.1,
+        smoothWheel: true,
+        wheelMultiplier: 1,
+        touchMultiplier: 1.5,
+      })
+      lenisRef.current = lenis
+
+      const raf = (time: number) => {
+        lenis.raf(time)
+        rafId = requestAnimationFrame(raf)
+      }
+      rafId = requestAnimationFrame(raf)
+
+      // Route anchor links (#stations, #features, ...) through Lenis with header offset
+      const handleAnchorClick = (event: MouseEvent) => {
+        const anchor = (event.target as HTMLElement | null)?.closest?.(
+          'a[href^="#"]'
+        ) as HTMLAnchorElement | null
+        if (!anchor) return
+        const hash = anchor.getAttribute("href")
+        if (!hash || hash === "#") return
+        const target = document.querySelector(hash)
+        if (!target) return
+        event.preventDefault()
+        lenis.scrollTo(target as HTMLElement, { offset: -80 })
+      }
+      document.addEventListener("click", handleAnchorClick)
+
+      destroyLenis = () => {
+        document.removeEventListener("click", handleAnchorClick)
+        cancelAnimationFrame(rafId)
+        lenis.destroy()
+        lenisRef.current = null
+      }
+    }
+
     const handleScroll = () => {
       const scrollY = window.scrollY
       setIsScrolled(scrollY > 10)
@@ -243,6 +286,7 @@ export default function LandingPage() {
 
     return () => {
       window.removeEventListener("scroll", handleScroll)
+      destroyLenis?.()
       observer?.disconnect()
     }
   }, [])
@@ -371,10 +415,6 @@ export default function LandingPage() {
             </a>
             <a href="#features" className="hover:text-[#20252B] transition">
               Architecture
-            </a>
-            <a href="#book-demo" className="text-[#C46B4E] hover:text-[#B25C40] font-semibold transition flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Book a Demo</span>
             </a>
           </nav>
 
@@ -1727,7 +1767,11 @@ export default function LandingPage() {
       {showScrollTop && (
         <button
           type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          onClick={() =>
+            lenisRef.current
+              ? lenisRef.current.scrollTo(0)
+              : window.scrollTo({ top: 0, behavior: "smooth" })
+          }
           className="fixed bottom-6 right-6 z-40 p-3 rounded-full bg-white/95 hover:bg-white text-[#20252B] hover:text-[#C46B4E] border border-[#E5E1D9] shadow-lg hover:shadow-xl backdrop-blur-xs transition-all duration-300 animate-in fade-in zoom-in-75 cursor-pointer group"
           title="Scroll to top"
           aria-label="Scroll to top"
