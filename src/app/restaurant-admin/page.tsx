@@ -55,7 +55,9 @@ import {
   Moon,
   Sun,
   ChevronDown,
-  PanelLeft,
+  ChevronsLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
   QrCode,
   Plus,
   X,
@@ -371,6 +373,10 @@ function RestaurantAdminContent() {
   const handleSelectTab = (nextTab: string) => {
     if (nextTab === activeTab) return
     setActiveTab(nextTab)
+    // On small screens the menu is an overlay: dismiss it after choosing a page
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
     setIsTabLoading(true)
     if (tabSwitchTimerRef.current) clearTimeout(tabSwitchTimerRef.current)
     tabSwitchTimerRef.current = setTimeout(() => {
@@ -402,6 +408,12 @@ function RestaurantAdminContent() {
 
   useEffect(() => {
     setIsMounted(true)
+
+    // Restore the user's sidebar preference (menu visible/hidden)
+    try {
+      const savedSidebar = localStorage.getItem("restro_sidebar_open")
+      if (savedSidebar === "false") setSidebarOpen(false)
+    } catch {}
 
     // Check saved theme or system preference
     const savedTheme = localStorage.getItem("orderrestro_theme")
@@ -535,6 +547,28 @@ function RestaurantAdminContent() {
       setActiveTab("tenants")
     }
   }, [userType, posRole])
+
+  // Persist sidebar visibility so it stays the way the user left it
+  useEffect(() => {
+    if (!isMounted) return
+    try {
+      localStorage.setItem("restro_sidebar_open", String(sidebarOpen))
+    } catch {}
+  }, [sidebarOpen, isMounted])
+
+  // Ctrl/Cmd + B toggles the navigation sidebar, Esc closes it on small screens
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "b") {
+        event.preventDefault()
+        setSidebarOpen((prev) => !prev)
+      } else if (event.key === "Escape" && window.innerWidth < 768) {
+        setSidebarOpen(false)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
 
   // Toggle Night Mode function
   const toggleTheme = () => {
@@ -3004,16 +3038,27 @@ function RestaurantAdminContent() {
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile drawer backdrop */}
+        {sidebarOpen && (
+          <div
+            className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-[1px] z-20"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* 2. Left Sidebar Navigation */}
         <aside
+          id="main-navigation"
+          aria-label="Main navigation"
           className={`${
-            sidebarOpen ? "w-[240px]" : "w-0 -translate-x-full md:w-[68px] md:translate-x-0"
-          } ${
+            sidebarOpen ? "w-[240px] border-r" : "w-0"
+          } max-md:absolute max-md:inset-y-0 max-md:left-0 max-md:z-40 ${
             isDarkMode
               ? "bg-[#111217] border-[#1e2029]"
               : "bg-white border-slate-200 shadow-xs"
-          } border-r flex flex-col shrink-0 transition-all duration-200 overflow-hidden z-30`}
+          } flex flex-col shrink-0 transition-all duration-200 overflow-hidden z-30`}
         >
           {/* Logo & Brand Header */}
           <div
@@ -3045,6 +3090,19 @@ function RestaurantAdminContent() {
                   : "Nodedr Bistro"}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              title="Hide menu (Ctrl+B)"
+              aria-label="Hide menu"
+              className={`ml-auto shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                isDarkMode
+                  ? "text-slate-400 hover:text-white hover:bg-[#1d202b]"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Branch / Workspace selector */}
@@ -3180,13 +3238,21 @@ function RestaurantAdminContent() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center transition ${
+                title={sidebarOpen ? "Hide menu (Ctrl+B)" : "Show menu (Ctrl+B)"}
+                aria-label={sidebarOpen ? "Hide menu" : "Show menu"}
+                aria-expanded={sidebarOpen}
+                aria-controls="main-navigation"
+                className={`w-8 h-8 rounded-lg flex items-center justify-center transition cursor-pointer ${
                   isDarkMode
                     ? "text-slate-400 hover:text-white hover:bg-[#1a1c24]"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                 }`}
               >
-                <PanelLeft className="w-4 h-4" />
+                {sidebarOpen ? (
+                  <PanelLeftClose className="w-4 h-4" />
+                ) : (
+                  <PanelLeftOpen className="w-4 h-4" />
+                )}
               </button>
               <h2
                 className={`font-semibold text-sm hidden md:block ${

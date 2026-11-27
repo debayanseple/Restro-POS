@@ -163,6 +163,24 @@ html {
   }
 }
 
+/* Lenis smooth scrolling (landing page) — required companion styles */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
 /* Smooth section entrance reveal on scroll */
 .scroll-reveal {
   opacity: 0;
