@@ -3108,7 +3108,7 @@ function RestaurantAdminContent() {
                       <span>Print Table QR Stands</span>
                     </button>
                     <a
-                      href="/menu"
+                      href="/menu?demo=true&table=Demo%20Table%2001"
                       target="_blank"
                       rel="noreferrer"
                       className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-medium transition cursor-pointer ${

@@ -32,7 +32,8 @@ function CustomerMenuContent() {
     searchParams.get("demo") === "true" ||
     searchParams.get("demo") === "1" ||
     searchParams.get("mode") === "demo" ||
-    rawTableParam.toLowerCase().includes("demo")
+    rawTableParam.toLowerCase().includes("demo") ||
+    !rawTableParam
 
   // Format table identifier (e.g. "1" -> "Table 01", "Table 02" -> "Table 02")
   const normalizedTable = useMemo(() => {
@@ -1162,22 +1163,25 @@ function CustomerMenuContent() {
             </div>
 
             <div className="grid grid-cols-4 gap-2 pt-1">
-              {["Table 01", "Table 02", "Table 03", "Table 04", "Table 05", "Table 06", "Table 07", "Table 08"].map((tbl) => (
-                <button
-                  key={tbl}
-                  onClick={() => {
-                    setSelectedTable(tbl)
-                    setShowTablePicker(false)
-                  }}
-                  className={`py-2 rounded-lg text-xs font-semibold transition cursor-pointer text-center border ${
-                    selectedTable === tbl
-                      ? "bg-[#C46B4E] text-white border-[#C46B4E] shadow-2xs"
-                      : "bg-white text-[#20252B] hover:bg-[#F7F5F0] border-[#E5E1D9]"
-                  }`}
-                >
-                  {tbl}
-                </button>
-              ))}
+              {["Table 01", "Table 02", "Table 03", "Table 04", "Table 05", "Table 06", "Table 07", "Table 08"].map((tbl) => {
+                const targetTable = isDemoMode ? (tbl.toLowerCase().startsWith("demo") ? tbl : `Demo ${tbl}`) : tbl
+                return (
+                  <button
+                    key={tbl}
+                    onClick={() => {
+                      setSelectedTable(targetTable)
+                      setShowTablePicker(false)
+                    }}
+                    className={`py-2 rounded-lg text-xs font-semibold transition cursor-pointer text-center border ${
+                      selectedTable === targetTable || selectedTable === tbl
+                        ? "bg-[#C46B4E] text-white border-[#C46B4E] shadow-2xs"
+                        : "bg-white text-[#20252B] hover:bg-[#F7F5F0] border-[#E5E1D9]"
+                    }`}
+                  >
+                    {isDemoMode ? `Demo ${tbl.replace("Table ", "")}` : tbl}
+                  </button>
+                )
+              })}
             </div>
 
             {selectedTable && (

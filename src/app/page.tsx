@@ -281,11 +281,14 @@ export default function LandingPage() {
           {/* Action CTAs */}
           <div className="flex items-center gap-2.5">
             <Link
-              href="/menu?table=Table%2001"
-              className="px-3.5 py-2 rounded-lg text-xs font-medium text-[#20252B] bg-white hover:bg-[#F7F5F0] border border-[#E5E1D9] transition flex items-center gap-1.5 shadow-2xs"
+              href="/menu?demo=true&table=Demo%20Table%2001"
+              className="px-3.5 py-2 rounded-lg text-xs font-medium text-[#20252B] bg-white hover:bg-[#F7F5F0] border border-[#E5E1D9] transition flex items-center gap-1.5 shadow-2xs group"
             >
               <QrCode className="w-3.5 h-3.5 text-[#C46B4E]" />
-              <span>QR Menu</span>
+              <span>Demo QR Menu</span>
+              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[10px] font-bold border border-amber-200">
+                Demo
+              </span>
             </Link>
             <Link
               href="/pos/login"
