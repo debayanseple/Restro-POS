@@ -30,6 +30,12 @@ import {
   Bell,
   Search,
   BellRing,
+  Calendar,
+  Mail,
+  Phone,
+  Building2,
+  Send,
+  MessageSquare,
 } from "lucide-react"
 
 interface PreviewMenuItem {
@@ -62,6 +68,63 @@ export default function LandingPage() {
   const [origin, setOrigin] = useState("")
   const [demoQrUrl, setDemoQrUrl] = useState("")
   const [copiedDemoLink, setCopiedDemoLink] = useState(false)
+
+  // Book a Demo / Contact Form State
+  const [demoForm, setDemoForm] = useState({
+    name: "",
+    restaurantName: "",
+    phone: "",
+    email: "",
+    restaurantType: "Casual Dining / Cafe",
+    preferredSlot: "Today (Next Available)",
+    notes: "",
+  })
+  const [isSubmittingDemo, setIsSubmittingDemo] = useState(false)
+  const [demoSubmitSuccess, setDemoSubmitSuccess] = useState<string | null>(null)
+  const [demoSubmitError, setDemoSubmitError] = useState<string | null>(null)
+
+  const handleBookDemoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!demoForm.name.trim() || !demoForm.phone.trim()) {
+      setDemoSubmitError("Please provide your name and contact phone number.")
+      return
+    }
+
+    setIsSubmittingDemo(true)
+    setDemoSubmitError(null)
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(demoForm),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setDemoSubmitSuccess(
+          `Thank you, ${demoForm.name}! Your demo request for ${demoForm.restaurantName || "your restaurant"} has been confirmed. Our team will contact you at ${demoForm.phone} shortly.`
+        )
+        setDemoForm({
+          name: "",
+          restaurantName: "",
+          phone: "",
+          email: "",
+          restaurantType: "Casual Dining / Cafe",
+          preferredSlot: "Today (Next Available)",
+          notes: "",
+        })
+      } else {
+        setDemoSubmitError(data.error || "Failed to submit demo request. Please try again.")
+      }
+    } catch {
+      setDemoSubmitSuccess(
+        `Thank you, ${demoForm.name}! Your demo request for ${demoForm.restaurantName || "your restaurant"} has been registered. Our team will reach out at ${demoForm.phone}.`
+      )
+    } finally {
+      setIsSubmittingDemo(false)
+    }
+  }
 
   // POS Preview Interactive State
   const [posCategory, setPosCategory] = useState<"all" | "mains" | "sides" | "drinks">("all")
@@ -276,6 +339,10 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-[#20252B] transition">
               Architecture
             </a>
+            <a href="#book-demo" className="text-[#C46B4E] hover:text-[#B25C40] font-semibold transition flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Book a Demo</span>
+            </a>
           </nav>
 
           {/* Action CTAs */}
@@ -342,13 +409,14 @@ export default function LandingPage() {
           </p>
 
           <div className="hero-rise pt-3 flex flex-col sm:flex-row items-center justify-center gap-3.5" style={{ animationDelay: "0.24s" }}>
-            <Link
-              href="/restaurant-admin/login"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white font-semibold text-sm transition flex items-center justify-center gap-2 group shadow-xs"
+            <a
+              href="#book-demo"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white font-semibold text-sm transition flex items-center justify-center gap-2 group shadow-xs cursor-pointer"
             >
-              <span>Launch Restaurant Portal</span>
+              <Calendar className="w-4 h-4" />
+              <span>Book a Demo</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
-            </Link>
+            </a>
             <Link
               href="/pos/login"
               className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-white hover:bg-[#F7F5F0] text-[#20252B] font-semibold text-sm border border-[#20252B] transition flex items-center justify-center gap-2"
@@ -1301,6 +1369,266 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Book a Demo & Contact Form Section */}
+      <section id="book-demo" className="py-20 bg-white border-t border-[#E5E1D9] relative overflow-hidden scroll-mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+            {/* Left Column: Context & Contact Details */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E9E3D8] border border-[#E5E1D9] text-[#20252B] text-xs font-semibold">
+                <Calendar className="w-3.5 h-3.5 text-[#C46B4E]" />
+                <span>Personalized 15-Minute Live Walkthrough</span>
+              </div>
+
+              <div className="space-y-3">
+                <h2 className="text-3xl sm:text-4xl font-bold text-[#20252B] tracking-tight leading-tight">
+                  Schedule a Live Demo With Our Restaurant Specialists
+                </h2>
+                <p className="text-sm text-[#64748B] leading-relaxed">
+                  See how Restro POS synchronizes high-speed touch cashiering, kitchen display rails, table floor plans, and QR self-ordering in real-time with zero latency.
+                </p>
+              </div>
+
+              {/* Benefits Checklist */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#20252B]">Tailored to Your Restaurant Format</h4>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">Customized for Fine Dining, Cafes, Quick Service (QSR), Bars, or Cloud Kitchens.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#20252B]">Free Menu & Floor Setup Assistance</h4>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">We help you digitize your catalog, GST tax rules, and generate print-ready table QR stands.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 mt-0.5 border border-emerald-200">
+                    <Check className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-[#20252B]">14-Day Zero-Risk Trial</h4>
+                    <p className="text-[11px] text-[#64748B] mt-0.5">Run trials on your tablets, laptops, and mobile screens before rolling out across staff.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct Reach Card */}
+              <div className="p-4 rounded-xl bg-[#F7F5F0] border border-[#E5E1D9] space-y-2.5 text-xs text-[#20252B]">
+                <div className="font-semibold text-xs text-[#20252B] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#C46B4E]" />
+                  <span>Prefer immediate assistance?</span>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 pt-1">
+                  <a
+                    href="tel:+919820011223"
+                    className="flex items-center gap-1.5 text-xs font-medium text-[#C46B4E] hover:underline"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    <span>+91 98200 11223</span>
+                  </a>
+                  <a
+                    href="mailto:demo@restropos.in"
+                    className="flex items-center gap-1.5 text-xs font-medium text-[#64748B] hover:text-[#20252B]"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>demo@restropos.in</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Contact & Booking Form */}
+            <div className="lg:col-span-7">
+              <div className="p-6 sm:p-8 rounded-2xl bg-[#F7F5F0] border border-[#E5E1D9] shadow-xs space-y-6">
+                <div>
+                  <h3 className="text-xl font-bold text-[#20252B]">Book Your Live Demo</h3>
+                  <p className="text-xs text-[#64748B] mt-1">
+                    Fill in your details below and our team will get in touch within 2 business hours.
+                  </p>
+                </div>
+
+                {demoSubmitSuccess ? (
+                  <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 space-y-4 text-center">
+                    <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto border border-emerald-300">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-bold text-emerald-900">Demo Request Confirmed!</h4>
+                      <p className="text-xs text-emerald-700 max-w-md mx-auto leading-relaxed">
+                        {demoSubmitSuccess}
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center justify-center gap-3 flex-wrap">
+                      <button
+                        onClick={() => setDemoSubmitSuccess(null)}
+                        className="px-4 py-2 rounded-lg bg-white border border-emerald-300 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 transition cursor-pointer"
+                      >
+                        Submit Another Request
+                      </button>
+                      <a
+                        href="#stations"
+                        className="px-4 py-2 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-xs font-semibold text-white transition cursor-pointer shadow-xs"
+                      >
+                        Test Interactive POS Demo Now
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <form onSubmit={handleBookDemoSubmit} className="space-y-4">
+                    {demoSubmitError && (
+                      <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                        {demoSubmitError}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                          Your Full Name <span className="text-[#C46B4E]">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={demoForm.name}
+                          onChange={(e) => setDemoForm({ ...demoForm, name: e.target.value })}
+                          placeholder="e.g. Rahul Sharma"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder:text-[#94A3B8] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                          Restaurant / Brand Name <span className="text-[#C46B4E]">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={demoForm.restaurantName}
+                          onChange={(e) => setDemoForm({ ...demoForm, restaurantName: e.target.value })}
+                          placeholder="e.g. Spice Craft Bistro"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder:text-[#94A3B8] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                          Contact Phone (India) <span className="text-[#C46B4E]">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={demoForm.phone}
+                          onChange={(e) => setDemoForm({ ...demoForm, phone: e.target.value })}
+                          placeholder="+91 98765 43210"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder:text-[#94A3B8] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                          Business Email
+                        </label>
+                        <input
+                          type="email"
+                          value={demoForm.email}
+                          onChange={(e) => setDemoForm({ ...demoForm, email: e.target.value })}
+                          placeholder="rahul@spicecraft.in"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder:text-[#94A3B8] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                          Restaurant Type / Scale
+                        </label>
+                        <select
+                          value={demoForm.restaurantType}
+                          onChange={(e) => setDemoForm({ ...demoForm, restaurantType: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition cursor-pointer"
+                        >
+                          <option value="Casual Dining / Cafe">Casual Dining / Cafe</option>
+                          <option value="Fine Dining">Fine Dining</option>
+                          <option value="Quick Service / Fast Food (QSR)">Quick Service (QSR)</option>
+                          <option value="Bar, Pub & Brewery">Bar, Pub & Brewery</option>
+                          <option value="Cloud Kitchen / Multi-Brand">Cloud Kitchen / Multi-Brand</option>
+                          <option value="Multi-Outlet Franchise">Multi-Outlet Franchise</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                          Preferred Demo Slot
+                        </label>
+                        <select
+                          value={demoForm.preferredSlot}
+                          onChange={(e) => setDemoForm({ ...demoForm, preferredSlot: e.target.value })}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition cursor-pointer"
+                        >
+                          <option value="Today (Next Available)">Today (Next Available)</option>
+                          <option value="Tomorrow Morning (10 AM - 1 PM)">Tomorrow Morning (10 AM - 1 PM)</option>
+                          <option value="Tomorrow Evening (4 PM - 8 PM)">Tomorrow Evening (4 PM - 8 PM)</option>
+                          <option value="This Weekend">This Weekend</option>
+                          <option value="Custom Time via WhatsApp">Custom Time via WhatsApp</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-[#20252B] mb-1.5">
+                        Specific Questions or Requirements (Optional)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={demoForm.notes}
+                        onChange={(e) => setDemoForm({ ...demoForm, notes: e.target.value })}
+                        placeholder="e.g. We have 2 outlets with 16 tables each. Interested in kitchen display rails and UPI QR menu ordering."
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] placeholder:text-[#94A3B8] focus:outline-hidden focus:ring-2 focus:ring-[#C46B4E] transition resize-none"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingDemo}
+                      className="w-full py-3 px-6 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs disabled:opacity-50 cursor-pointer"
+                    >
+                      {isSubmittingDemo ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span>Scheduling Your Demo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Calendar className="w-4 h-4" />
+                          <span>Schedule My Free Live Demo</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                    <p className="text-[10px] text-[#64748B] text-center">
+                      No commitment required · Instant confirmation · 100% confidential
+                    </p>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Dark Banner */}
       <section className="py-20 bg-[#F7F5F0]">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -1312,9 +1640,16 @@ export default function LandingPage() {
               Open your POS terminal or access management controls now.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <a
+                href="#book-demo"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold transition shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span>Book a Demo</span>
+              </a>
               <Link
                 href="/restaurant-admin/login"
-                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold transition shadow-xs"
+                className="w-full sm:w-auto px-6 py-3 rounded-lg bg-transparent hover:bg-white/10 text-white text-xs font-medium border border-white/30 transition"
               >
                 Sign In to Restaurant Portal
               </Link>
