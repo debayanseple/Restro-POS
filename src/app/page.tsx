@@ -25,6 +25,7 @@ import {
   Trash2,
   QrCode,
   Check,
+  X,
   Smartphone,
   ExternalLink,
   Copy,
@@ -415,6 +416,9 @@ export default function LandingPage() {
             </a>
             <a href="#features" className="hover:text-[#20252B] transition">
               Architecture
+            </a>
+            <a href="#plans" className="hover:text-[#20252B] transition">
+              Plans
             </a>
           </nav>
 
@@ -1437,6 +1441,176 @@ export default function LandingPage() {
               <p className="text-xs text-[#64748B] leading-relaxed">
                 No unauthenticated access via direct URL manipulation. Cookie-anchored middleware blocks unauthorized entry and protects administrative settings.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Plans Section: Starter, Pro, Enterprise */}
+      <section id="plans" className="py-20 bg-[#FAF8F4] border-t border-[#E5E1D9] scroll-mt-20 scroll-reveal">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#E9E3D8] border border-[#E5E1D9] text-[#20252B] text-xs font-semibold">
+              <Layers className="w-3.5 h-3.5 text-[#C46B4E]" />
+              <span>Flexible Plans for Every Restaurant</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#20252B] tracking-tight">
+              Choose the Right Plan for Your Operation
+            </h2>
+            <p className="text-sm text-[#64748B]">
+              Start with essential counter billing and QR ordering, or scale up to multi-outlet operations with full kitchen, bar, and floor orchestration.
+            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-[#E5E1D9] text-xs text-[#20252B] shadow-2xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#C46B4E] shrink-0" />
+              <span>
+                <strong>100% Cloud Software-Only Solution:</strong> We do not provide or sell any hardware — simply open Restro POS in any browser on your own devices.
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+            {/* Starter Plan */}
+            <div className="p-7 rounded-2xl bg-white border border-[#E5E1D9] shadow-2xs flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#F7F5F0] text-[#20252B] border border-[#E5E1D9]">
+                    Starter
+                  </span>
+                  <span className="text-[11px] font-medium text-[#64748B]">1 Outlet · Software Only</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#20252B]">Starter Plan</h3>
+                  <p className="text-xs text-[#64748B] mt-1 leading-relaxed">
+                    Built for cafés, QSR counters, and single-outlet kitchens getting started with cloud billing and QR ordering.
+                  </p>
+                </div>
+                <ul className="space-y-2.5 pt-2 text-xs">
+                  {[
+                    { label: "Cloud POS & GST Billing Software", included: true },
+                    { label: "Customer QR Menu & Self-Ordering", included: true },
+                    { label: "Digital GST Invoices & PDF Bills", included: true },
+                    { label: "Single-Station Kitchen Display (KDS)", included: true },
+                    { label: "Split Kitchen + Bar KDS Routing", included: false },
+                    { label: "Visual Floor Plan & Service Queue", included: false },
+                    { label: "Live Inventory & Staff RBAC", included: false },
+                    { label: "Multi-Outlet Sync & Super Admin", included: false },
+                  ].map((item) => (
+                    <li
+                      key={item.label}
+                      className={`flex items-start gap-2 ${
+                        item.included ? "text-[#20252B]" : "text-slate-400 line-through"
+                      }`}
+                    >
+                      {item.included ? (
+                        <Check className="w-4 h-4 text-[#C46B4E] shrink-0 mt-0.5" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      )}
+                      <span>{item.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <a
+                href="#book-demo"
+                className="w-full py-2.5 px-4 rounded-xl border border-[#20252B] text-[#20252B] hover:bg-[#F7F5F0] text-xs font-semibold text-center transition"
+              >
+                Get Started with Starter
+              </a>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="p-7 rounded-2xl bg-white border-2 border-[#C46B4E] shadow-md flex flex-col justify-between space-y-6 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-[#C46B4E] text-white text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                Most Popular
+              </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-[#C46B4E]/10 text-[#C46B4E] border border-[#C46B4E]/30">
+                    Pro
+                  </span>
+                  <span className="text-[11px] font-medium text-[#64748B]">Up to 3 Outlets · Software Only</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-[#20252B]">Pro Plan</h3>
+                  <p className="text-xs text-[#64748B] mt-1 leading-relaxed">
+                    Complete dine-in, bar, and delivery workflow software for busy full-service restaurants and growing brands.
+                  </p>
+                </div>
+                <ul className="space-y-2.5 pt-2 text-xs">
+                  {[
+                    { label: "Cloud POS & GST Billing Software", included: true },
+                    { label: "Customer QR Menu & Self-Ordering", included: true },
+                    { label: "Digital GST Invoices & PDF Bills", included: true },
+                    { label: "Split Kitchen + Bar KDS Routing", included: true },
+                    { label: "Visual Floor Plan & Service Queue", included: true },
+                    { label: "Live Inventory & Stock Alerts", included: true },
+                    { label: "Staff RBAC & Detailed Analytics", included: true },
+                    { label: "Multi-Outlet Sync & Super Admin", included: false },
+                  ].map((item) => (
+                    <li
+                      key={item.label}
+                      className={`flex items-start gap-2 ${
+                        item.included ? "text-[#20252B]" : "text-slate-400 line-through"
+                      }`}
+                    >
+                      {item.included ? (
+                        <Check className="w-4 h-4 text-[#C46B4E] shrink-0 mt-0.5" />
+                      ) : (
+                        <X className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                      )}
+                      <span>{item.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <a
+                href="#book-demo"
+                className="w-full py-2.5 px-4 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-semibold text-center transition shadow-xs"
+              >
+                Book Pro Demo
+              </a>
+            </div>
+
+            {/* Enterprise Plan */}
+            <div className="p-7 rounded-2xl bg-[#20252B] text-white border border-[#2F363F] shadow-sm flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md bg-white/10 text-white border border-white/15">
+                    Enterprise
+                  </span>
+                  <span className="text-[11px] font-medium text-slate-300">Unlimited Outlets · Software Only</span>
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Enterprise Plan</h3>
+                  <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    Tailored for multi-branch restaurant chains, franchises, and cloud kitchen networks needing centralized governance.
+                  </p>
+                </div>
+                <ul className="space-y-2.5 pt-2 text-xs text-slate-200">
+                  {[
+                    "Cloud POS & GST Billing Software",
+                    "Customer QR Menu & Self-Ordering",
+                    "Digital GST Invoices & PDF Bills",
+                    "Split Kitchen + Bar KDS Routing",
+                    "Visual Floor Plan & Service Queue",
+                    "Live Inventory & Stock Alerts",
+                    "Custom Staff RBAC & Group Analytics",
+                    "Multi-Outlet Sync & Super Admin Portal",
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-[#E88A6B] shrink-0 mt-0.5" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <a
+                href="#book-demo"
+                className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-[#F7F5F0] text-[#20252B] text-xs font-bold text-center transition"
+              >
+                Contact for Enterprise
+              </a>
             </div>
           </div>
         </div>

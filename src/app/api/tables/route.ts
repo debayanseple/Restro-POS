@@ -46,10 +46,32 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { table_id, status, isOpen } = body
+    const { table_id, status, isOpen, action, sentBill } = body
     const nowIso = new Date().toISOString()
 
     let tables = getTables()
+
+    if (action === "send_bill") {
+      tables = tables.map((t) => {
+        const matches =
+          t.id === Number(table_id) ||
+          t.name.toLowerCase() === String(table_id).toLowerCase() ||
+          `table ${t.id}` === String(table_id).toLowerCase() ||
+          `table 0${t.id}` === String(table_id).toLowerCase()
+
+        if (matches) {
+          return {
+            ...t,
+            sentBill: sentBill || null,
+          }
+        }
+        return t
+      })
+
+      saveTables(tables)
+      return NextResponse.json({ success: true, tables })
+    }
+
     const clearedTargets: Array<{ id: number; name: string }> = []
 
     tables = tables.map((t) => {
@@ -68,7 +90,7 @@ export async function POST(request: Request) {
           ...t,
           status: nextStatus,
           isOpen: nextStatus === "available" ? false : typeof isOpen === "boolean" ? isOpen : t.isOpen,
-          ...(nextStatus === "available" ? { clearedAt: nowIso } : {}),
+          ...(nextStatus === "available" ? { clearedAt: nowIso, sentBill: null } : {}),
         }
       }
       return t
@@ -84,7 +106,10 @@ export async function POST(request: Request) {
         if (Array.isArray(savedOrders) && savedOrders.length > 0) {
           let ordersModified = false
           const updatedOrders = savedOrders.map((o) => {
-            if (!o || o.status === "CANCELLED" || o.status === "CLOSED" || !o.table_id) {
+            if (!o || o.status === "CANCELLED" || o.billed_closed_at || !o.table_id) {
+              return o
+            }
+            if (o.status === "CLOSED" && o.payment_status === "PAID") {
               return o
             }
             const cleanOrderTable = String(o.table_id).toLowerCase().trim()

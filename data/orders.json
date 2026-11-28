@@ -1,5 +1,691 @@
 [
   {
+    "id": "ord_1795855527177_5rlo",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 14",
+    "total_amount": 177.45,
+    "tax_amount": 8.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-3406",
+    "customer_name": "Whaj",
+    "customer_phone": "1234697850",
+    "notes": "Guest: Whaj | Phone: 1234697850",
+    "created_at": "2026-11-28T08:45:27.177Z",
+    "updated_at": "2026-11-28T08:48:09.256Z",
+    "order_items": [
+      {
+        "id": "it_1795855527177_0",
+        "order_id": "ord_1795855527177_5rlo",
+        "menu_item_id": "m8",
+        "quantity": 1,
+        "unit_price": 169,
+        "special_instructions": null,
+        "name": "Iced Caramel Macchiato",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Iced Caramel Macchiato"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795855527177",
+        "order_id": "ord_1795855527177_5rlo",
+        "amount": 177.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T08:45:27.177Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795855468138_fr88",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 14",
+    "total_amount": 261.45,
+    "tax_amount": 12.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-9039",
+    "customer_name": "Whaj",
+    "customer_phone": "1234697850",
+    "notes": "Guest: Whaj | Phone: 1234697850",
+    "created_at": "2026-11-28T08:44:28.138Z",
+    "updated_at": "2026-11-28T08:48:09.262Z",
+    "order_items": [
+      {
+        "id": "it_1795855468138_0",
+        "order_id": "ord_1795855468138_fr88",
+        "menu_item_id": "m7__full",
+        "quantity": 1,
+        "unit_price": 249,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795855468138",
+        "order_id": "ord_1795855468138_fr88",
+        "amount": 261.45,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T08:44:28.138Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795854029767_yxo4",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 312.9,
+    "tax_amount": 14.9,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-8172",
+    "customer_name": "Xv bmb",
+    "customer_phone": "1236547890",
+    "notes": "Guest: Xv bmb | Phone: 1236547890",
+    "created_at": "2026-11-28T08:20:29.767Z",
+    "updated_at": "2026-11-28T08:27:50.156Z",
+    "order_items": [
+      {
+        "id": "it_1795854029767_0",
+        "order_id": "ord_1795854029767_yxo4",
+        "menu_item_id": "m9",
+        "quantity": 2,
+        "unit_price": 149,
+        "special_instructions": null,
+        "name": "Sparkling Berry Fizz",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Sparkling Berry Fizz"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795854029767",
+        "order_id": "ord_1795854029767_yxo4",
+        "amount": 312.9,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T08:20:29.767Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795850889293_n2b7",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "new",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 354.9,
+    "tax_amount": 16.900000000000002,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-8093",
+    "customer_name": "Fo",
+    "customer_phone": "3123654789",
+    "notes": "Guest: Fo | Phone: 3123654789",
+    "created_at": "2026-11-28T07:28:09.294Z",
+    "updated_at": "2026-11-28T07:34:13.676Z",
+    "order_items": [
+      {
+        "id": "it_1795850889293_0",
+        "order_id": "ord_1795850889293_n2b7",
+        "menu_item_id": "m8",
+        "quantity": 2,
+        "unit_price": 169,
+        "special_instructions": null,
+        "name": "Iced Caramel Macchiato",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Iced Caramel Macchiato"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795850889294",
+        "order_id": "ord_1795850889293_n2b7",
+        "amount": 354.9,
+        "status": "PENDING",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T07:28:09.294Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795850796664_f1lp",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "new",
+    "kitchen_stage": "completed",
+    "bar_stage": "new",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-9892",
+    "customer_name": "asdfghjkl",
+    "customer_phone": "7896541230",
+    "notes": "Guest: asdfghjkl | Phone: 7896541230",
+    "created_at": "2026-11-28T07:26:36.665Z",
+    "updated_at": "2026-11-28T07:28:31.069Z",
+    "order_items": [
+      {
+        "id": "it_1795850796665_0",
+        "order_id": "ord_1795850796664_f1lp",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 500,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795850796665",
+        "order_id": "ord_1795850796664_f1lp",
+        "amount": 525,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-28T07:26:36.666Z"
+      }
+    ]
+  },
+  {
+    "id": "ord_1795850168556_tutt",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 366.45,
+    "tax_amount": 17.45,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-1330",
+    "customer_name": "Thbbn",
+    "customer_phone": "1236547890",
+    "notes": "Guest: Thbbn | Phone: 1236547890",
+    "created_at": "2026-11-28T07:16:08.556Z",
+    "updated_at": "2026-11-28T07:16:38.126Z",
+    "order_items": [
+      {
+        "id": "it_1795850168556_0",
+        "order_id": "ord_1795850168556_tutt",
+        "menu_item_id": "m9",
+        "quantity": 1,
+        "unit_price": 149,
+        "special_instructions": null,
+        "name": "Sparkling Berry Fizz",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Sparkling Berry Fizz"
+        }
+      },
+      {
+        "id": "it_1795850168556_1",
+        "order_id": "ord_1795850168556_tutt",
+        "menu_item_id": "m_1795424037400",
+        "quantity": 1,
+        "unit_price": 200,
+        "special_instructions": null,
+        "name": "Black Coffee",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Black Coffee"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795850168556",
+        "order_id": "ord_1795850168556_tutt",
+        "amount": 366.45,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T07:16:08.556Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:16:38.126Z"
+  },
+  {
+    "id": "ord_1795850108552_6tmk",
+    "restaurant_id": "1",
+    "outlet_id": "1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "pos",
+    "order_number": "ORD-8937",
+    "customer_name": "dfz",
+    "customer_phone": "1236547890",
+    "notes": "Guest: dfz | Phone: 1236547890",
+    "created_at": "2026-11-28T07:15:08.552Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
+    "order_items": [
+      {
+        "id": "it_1795850108552_0",
+        "order_id": "ord_1795850108552_6tmk",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 500,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795850108552",
+        "order_id": "ord_1795850108552_6tmk",
+        "amount": 525,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-28T07:15:08.552Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
+  },
+  {
+    "id": "ord_1795849337693_tbdx",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 177.45,
+    "tax_amount": 8.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-5663",
+    "customer_name": "So",
+    "customer_phone": "1239865470",
+    "notes": "Guest: So | Phone: 1239865470",
+    "created_at": "2026-11-28T07:02:17.694Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
+    "order_items": [
+      {
+        "id": "it_1795849337694_0",
+        "order_id": "ord_1795849337693_tbdx",
+        "menu_item_id": "m8",
+        "quantity": 1,
+        "unit_price": 169,
+        "special_instructions": null,
+        "name": "Iced Caramel Macchiato",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Iced Caramel Macchiato"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795849337694",
+        "order_id": "ord_1795849337693_tbdx",
+        "amount": 177.45,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T07:02:17.694Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
+  },
+  {
+    "id": "ord_1795849277220_0ktn",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 261.45,
+    "tax_amount": 12.450000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-6833",
+    "customer_name": "So",
+    "customer_phone": "1239865470",
+    "notes": "Guest: So | Phone: 1239865470",
+    "created_at": "2026-11-28T07:01:17.220Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
+    "order_items": [
+      {
+        "id": "it_1795849277220_0",
+        "order_id": "ord_1795849277220_0ktn",
+        "menu_item_id": "m7__full",
+        "quantity": 1,
+        "unit_price": 249,
+        "special_instructions": null,
+        "name": "Craft IPA Beer (Full)",
+        "station": "bar",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Craft IPA Beer (Full)"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795849277220",
+        "order_id": "ord_1795849277220_0ktn",
+        "amount": 261.45,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T07:01:17.220Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
+  },
+  {
+    "id": "ord_1795848767603_ddm3",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "user-default",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 100,
+    "tax_amount": 0,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "MANUAL",
+    "source": "qr",
+    "order_number": "ORD-6061",
+    "customer_name": null,
+    "customer_phone": null,
+    "notes": null,
+    "created_at": "2026-11-28T06:52:47.603Z",
+    "updated_at": "2026-11-28T06:59:45.180Z",
+    "order_items": [
+      {
+        "id": "it_1795848767603_0",
+        "order_id": "ord_1795848767603_ddm3",
+        "menu_item_id": "test",
+        "quantity": 1,
+        "unit_price": 100,
+        "special_instructions": null,
+        "name": "Test Dish",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Test Dish"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795848767604",
+        "order_id": "ord_1795848767603_ddm3",
+        "amount": 100,
+        "status": "PAID",
+        "payment_method": "MANUAL",
+        "recorded_at": "2026-11-28T06:52:47.604Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T06:59:45.180Z"
+  },
+  {
+    "id": "ord_1795848551307_my2b",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 1839.6,
+    "tax_amount": 87.60000000000001,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-4293",
+    "customer_name": "Go",
+    "customer_phone": "55900786654",
+    "notes": "Guest: Go | Phone: 55900786654",
+    "created_at": "2026-11-28T06:49:11.307Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
+    "order_items": [
+      {
+        "id": "it_1795848551307_0",
+        "order_id": "ord_1795848551307_my2b",
+        "menu_item_id": "m11",
+        "quantity": 8,
+        "unit_price": 219,
+        "special_instructions": null,
+        "name": "Artisan Tiramisu",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Artisan Tiramisu"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795848551307",
+        "order_id": "ord_1795848551307_my2b",
+        "amount": 1839.6,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T06:49:11.307Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
+  },
+  {
+    "id": "ord_1795848458696_2bnl",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 838.95,
+    "tax_amount": 39.95,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-8469",
+    "customer_name": "To",
+    "customer_phone": "1234657908",
+    "notes": "Guest: To | Phone: 1234657908",
+    "created_at": "2026-11-28T06:47:38.696Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
+    "order_items": [
+      {
+        "id": "it_1795848458696_0",
+        "order_id": "ord_1795848458696_2bnl",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 500,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      },
+      {
+        "id": "it_1795848458696_1",
+        "order_id": "ord_1795848458696_2bnl",
+        "menu_item_id": "m3",
+        "quantity": 1,
+        "unit_price": 299,
+        "special_instructions": null,
+        "name": "Margherita Artisan Pizza",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Margherita Artisan Pizza"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795848458696",
+        "order_id": "ord_1795848458696_2bnl",
+        "amount": 838.95,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T06:47:38.696Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
+  },
+  {
+    "id": "ord_1795843746452_wgnm",
+    "restaurant_id": "demo-restaurant-1",
+    "outlet_id": "demo-outlet-1",
+    "user_id": "customer_qr",
+    "status": "CLOSED",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
+    "bar_stage": "completed",
+    "order_type": "dine-in",
+    "table_id": "Table 1",
+    "total_amount": 525,
+    "tax_amount": 25,
+    "discount_amount": 0,
+    "payment_status": "PAID",
+    "payment_method": "CASH",
+    "source": "QR_MENU",
+    "order_number": "ORD-4509",
+    "customer_name": "Thn",
+    "customer_phone": "8001316145",
+    "notes": "Guest: Thn | Phone: 8001316145",
+    "created_at": "2026-11-28T05:29:06.452Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
+    "order_items": [
+      {
+        "id": "it_1795843746452_0",
+        "order_id": "ord_1795843746452_wgnm",
+        "menu_item_id": "m2",
+        "quantity": 1,
+        "unit_price": 500,
+        "special_instructions": null,
+        "name": "Truffle Mushroom Pasta",
+        "station": "kitchen",
+        "status": "completed",
+        "MenuItem": {
+          "name": "Truffle Mushroom Pasta"
+        }
+      }
+    ],
+    "Payment": [
+      {
+        "id": "pay_1795843746452",
+        "order_id": "ord_1795843746452_wgnm",
+        "amount": 525,
+        "status": "PAID",
+        "payment_method": "CASH",
+        "recorded_at": "2026-11-28T05:29:06.452Z"
+      }
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
+  },
+  {
     "id": "ord_1795781816981_xz77",
     "restaurant_id": "demo-restaurant-1",
     "outlet_id": "demo-outlet-1",
@@ -70,15 +756,15 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 525,
     "tax_amount": 25,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-7819",
@@ -86,7 +772,7 @@
     "customer_phone": "8001316145",
     "notes": "Guest: Debayan | Phone: 8001316145",
     "created_at": "2026-11-27T12:15:29.277Z",
-    "updated_at": "2026-11-27T12:15:46.065Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795781729277_0",
@@ -108,11 +794,12 @@
         "id": "pay_1795781729277",
         "order_id": "ord_1795781729277_9kip",
         "amount": 525,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T12:15:29.277Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795781671771_6a2l",
@@ -247,21 +934,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 525,
     "tax_amount": 25,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-9522",
     "notes": null,
     "created_at": "2026-11-27T10:35:24.652Z",
-    "updated_at": "2026-11-27T10:35:34.263Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795775724652_0",
@@ -283,11 +970,12 @@
         "id": "pay_1795775724652",
         "order_id": "ord_1795775724652_vxxb",
         "amount": 525,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:35:24.652Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795775717253_47in",
@@ -295,21 +983,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 525,
     "tax_amount": 25,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-9209",
     "notes": null,
     "created_at": "2026-11-27T10:35:17.253Z",
-    "updated_at": "2026-11-27T10:35:35.194Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795775717253_0",
@@ -331,11 +1019,12 @@
         "id": "pay_1795775717253",
         "order_id": "ord_1795775717253_47in",
         "amount": 525,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:35:17.253Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774954397_161z",
@@ -343,21 +1032,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 6",
     "total_amount": 525,
     "tax_amount": 25,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-4788",
     "notes": null,
     "created_at": "2026-11-27T10:22:34.397Z",
-    "updated_at": "2026-11-27T10:33:47.527Z",
+    "updated_at": "2026-11-28T09:06:22.304Z",
     "order_items": [
       {
         "id": "it_1795774954397_0",
@@ -379,11 +1068,12 @@
         "id": "pay_1795774954397",
         "order_id": "ord_1795774954397_161z",
         "amount": 525,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:22:34.397Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:22.304Z"
   },
   {
     "id": "ord_1795774922045_rxzv",
@@ -391,21 +1081,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
-    "kitchen_stage": "new",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
     "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 261.45,
     "tax_amount": 12.450000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-2565",
     "notes": null,
     "created_at": "2026-11-27T10:22:02.045Z",
-    "updated_at": "2026-11-27T10:33:48.056Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774922045_0",
@@ -427,11 +1117,12 @@
         "id": "pay_1795774922045",
         "order_id": "ord_1795774922045_rxzv",
         "amount": 261.45,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:22:02.045Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774911431_do26",
@@ -439,21 +1130,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
-    "kitchen_stage": "new",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
     "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 261.45,
     "tax_amount": 12.450000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-8314",
     "notes": null,
     "created_at": "2026-11-27T10:21:51.431Z",
-    "updated_at": "2026-11-27T10:33:48.578Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774911431_0",
@@ -475,11 +1166,12 @@
         "id": "pay_1795774911431",
         "order_id": "ord_1795774911431_do26",
         "amount": 261.45,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:21:51.431Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774899482_vn4f",
@@ -487,21 +1179,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
-    "kitchen_stage": "new",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
     "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 261.45,
     "tax_amount": 12.450000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-7911",
     "notes": null,
     "created_at": "2026-11-27T10:21:39.482Z",
-    "updated_at": "2026-11-27T10:33:47.787Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774899482_0",
@@ -523,11 +1215,12 @@
         "id": "pay_1795774899482",
         "order_id": "ord_1795774899482_vn4f",
         "amount": 261.45,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:21:39.482Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774878016_dtzd",
@@ -535,21 +1228,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 617.4,
     "tax_amount": 29.400000000000002,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-5282",
     "notes": null,
     "created_at": "2026-11-27T10:21:18.016Z",
-    "updated_at": "2026-11-27T10:33:48.980Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774878016_0",
@@ -585,11 +1278,12 @@
         "id": "pay_1795774878016",
         "order_id": "ord_1795774878016_dtzd",
         "amount": 617.4,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:21:18.016Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774837143_r9mv",
@@ -597,21 +1291,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 210,
     "tax_amount": 10,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-2195",
     "notes": null,
     "created_at": "2026-11-27T10:20:37.143Z",
-    "updated_at": "2026-11-27T10:33:50.543Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774837143_0",
@@ -633,11 +1327,12 @@
         "id": "pay_1795774837143",
         "order_id": "ord_1795774837143_r9mv",
         "amount": 210,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:20:37.143Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774822855_jvsf",
@@ -645,21 +1340,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 210,
     "tax_amount": 10,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-9059",
     "notes": null,
     "created_at": "2026-11-27T10:20:22.855Z",
-    "updated_at": "2026-11-27T10:33:51.073Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774822855_0",
@@ -681,11 +1376,12 @@
         "id": "pay_1795774822855",
         "order_id": "ord_1795774822855_jvsf",
         "amount": 210,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:20:22.855Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774810776_d9sa",
@@ -693,21 +1389,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 525,
     "tax_amount": 25,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-6746",
     "notes": null,
     "created_at": "2026-11-27T10:20:10.776Z",
-    "updated_at": "2026-11-27T10:33:51.597Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774810776_0",
@@ -729,11 +1425,12 @@
         "id": "pay_1795774810776",
         "order_id": "ord_1795774810776_d9sa",
         "amount": 525,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:20:10.776Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774759528_mabp",
@@ -741,21 +1438,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 177.45,
     "tax_amount": 8.450000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-6282",
     "notes": null,
     "created_at": "2026-11-27T10:19:19.528Z",
-    "updated_at": "2026-11-27T10:33:51.015Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774759528_0",
@@ -777,11 +1474,12 @@
         "id": "pay_1795774759528",
         "order_id": "ord_1795774759528_mabp",
         "amount": 177.45,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:19:19.528Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774727711_0cvb",
@@ -789,21 +1487,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 177.45,
     "tax_amount": 8.450000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-4802",
     "notes": null,
     "created_at": "2026-11-27T10:18:47.711Z",
-    "updated_at": "2026-11-27T10:33:51.156Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774727711_0",
@@ -825,11 +1523,12 @@
         "id": "pay_1795774727711",
         "order_id": "ord_1795774727711_0cvb",
         "amount": 177.45,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:18:47.711Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774710594_07yx",
@@ -837,21 +1536,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 525,
     "tax_amount": 25,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-1009",
     "notes": null,
     "created_at": "2026-11-27T10:18:30.594Z",
-    "updated_at": "2026-11-27T10:33:51.631Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774710594_0",
@@ -873,11 +1572,12 @@
         "id": "pay_1795774710594",
         "order_id": "ord_1795774710594_07yx",
         "amount": 525,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:18:30.594Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774667947_vrdq",
@@ -885,21 +1585,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 210,
     "tax_amount": 10,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-1011",
     "notes": null,
     "created_at": "2026-11-27T10:17:47.947Z",
-    "updated_at": "2026-11-27T10:18:13.097Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774667947_0",
@@ -921,11 +1621,12 @@
         "id": "pay_1795774667947",
         "order_id": "ord_1795774667947_vrdq",
         "amount": 210,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:17:47.947Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774655928_opop",
@@ -933,21 +1634,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 313.95,
     "tax_amount": 14.950000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-9211",
     "notes": null,
     "created_at": "2026-11-27T10:17:35.928Z",
-    "updated_at": "2026-11-27T10:18:14.557Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774655928_0",
@@ -969,11 +1670,12 @@
         "id": "pay_1795774655928",
         "order_id": "ord_1795774655928_opop",
         "amount": 313.95,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:17:35.928Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774202405_qy92",
@@ -981,21 +1683,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
-    "kitchen_stage": "new",
+    "kds_stage": "completed",
+    "kitchen_stage": "completed",
     "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 261.45,
     "tax_amount": 12.450000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-6528",
     "notes": null,
     "created_at": "2026-11-27T10:10:02.405Z",
-    "updated_at": "2026-11-27T10:10:51.446Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774202405_0",
@@ -1017,11 +1719,12 @@
         "id": "pay_1795774202405",
         "order_id": "ord_1795774202405_qy92",
         "amount": 261.45,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:10:02.405Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774131064_ucrs",
@@ -1029,21 +1732,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 229.95,
     "tax_amount": 10.950000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-6150",
     "notes": null,
     "created_at": "2026-11-27T10:08:51.064Z",
-    "updated_at": "2026-11-27T10:18:14.651Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774131064_0",
@@ -1065,11 +1768,12 @@
         "id": "pay_1795774131064",
         "order_id": "ord_1795774131064_ucrs",
         "amount": 229.95,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:08:51.064Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795774110172_lddr",
@@ -1077,21 +1781,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 670.95,
     "tax_amount": 31.950000000000003,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-1572",
     "notes": null,
     "created_at": "2026-11-27T10:08:30.172Z",
-    "updated_at": "2026-11-27T10:18:15.846Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795774110172_0",
@@ -1127,11 +1831,12 @@
         "id": "pay_1795774110172",
         "order_id": "ord_1795774110172_lddr",
         "amount": 670.95,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T10:08:30.172Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795773076239_6g96",
@@ -1139,21 +1844,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 8",
     "total_amount": 838.95,
     "tax_amount": 39.95,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-3953",
     "notes": "Notes: Non spicy  | Guest: Debayan ",
     "created_at": "2026-11-27T09:51:16.239Z",
-    "updated_at": "2026-11-27T10:18:17.731Z",
+    "updated_at": "2026-11-28T09:06:26.745Z",
     "order_items": [
       {
         "id": "it_1795773076239_0",
@@ -1189,11 +1894,12 @@
         "id": "pay_1795773076239",
         "order_id": "ord_1795773076239_6g96",
         "amount": 838.95,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T09:51:16.239Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:26.745Z"
   },
   {
     "id": "ord_1795763240953_jlrh",
@@ -1263,21 +1969,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 01",
     "total_amount": 187.95,
     "tax_amount": 8.950000000000001,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-5589",
     "notes": null,
     "created_at": "2026-11-27T04:31:08.561Z",
-    "updated_at": "2026-11-27T04:47:11.929Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795753868561_0",
@@ -1299,11 +2005,12 @@
         "id": "pay_1795753868561",
         "order_id": "ord_1795753868561_8hwn",
         "amount": 187.95,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-27T04:31:08.561Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795585201879_4gr3",
@@ -1311,21 +2018,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 01",
     "total_amount": 795.9,
     "tax_amount": 37.9,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-3910",
     "notes": null,
     "created_at": "2026-11-25T05:40:01.880Z",
-    "updated_at": "2026-11-25T05:44:23.002Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795585201880_0",
@@ -1347,11 +2054,12 @@
         "id": "pay_1795585201880",
         "order_id": "ord_1795585201879_4gr3",
         "amount": 795.9,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-25T05:40:01.880Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795584544372_r9yi",
@@ -1359,21 +2067,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "customer_qr",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 01",
     "total_amount": 397.95,
     "tax_amount": 18.95,
     "discount_amount": 0,
-    "payment_status": "PENDING",
+    "payment_status": "PAID",
     "payment_method": "CASH",
     "source": "QR_MENU",
     "order_number": "ORD-5244",
     "notes": null,
     "created_at": "2026-11-25T05:29:04.372Z",
-    "updated_at": "2026-11-25T05:35:56.318Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795584544372_0",
@@ -1395,11 +2103,12 @@
         "id": "pay_1795584544372",
         "order_id": "ord_1795584544372_r9yi",
         "amount": 397.95,
-        "status": "PENDING",
+        "status": "PAID",
         "payment_method": "CASH",
         "recorded_at": "2026-11-25T05:29:04.372Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795423937050_ondp",
@@ -1455,7 +2164,7 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "user-default",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
     "bar_stage": "completed",
     "order_type": "dine-in",
@@ -1463,13 +2172,13 @@
     "total_amount": 784.35,
     "tax_amount": 37.35,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "MANUAL",
     "source": "qr_menu",
     "order_number": "ORD-3440",
     "notes": null,
     "created_at": "2026-11-23T07:11:43.570Z",
-    "updated_at": "2026-11-23T07:24:45.449Z",
+    "updated_at": "2026-11-28T09:06:20.153Z",
     "order_items": [
       {
         "id": "it_1795417903570_0",
@@ -1519,11 +2228,12 @@
         "id": "pay_1795417903570",
         "order_id": "ord_1795417903569_oy7r",
         "amount": 784.35,
-        "status": "UNPAID",
+        "status": "PAID",
         "payment_method": "MANUAL",
         "recorded_at": "2026-11-23T07:11:43.570Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:20.153Z"
   },
   {
     "id": "ord_1795417655928_eu1g",
@@ -1531,21 +2241,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "user-default",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 1",
     "total_amount": 366.45,
     "tax_amount": 17.45,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "MANUAL",
     "source": "qr_menu",
     "order_number": "ORD-5718",
     "notes": null,
     "created_at": "2026-11-23T07:07:35.928Z",
-    "updated_at": "2026-11-23T07:07:54.671Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795417655928_0",
@@ -1567,11 +2277,12 @@
         "id": "pay_1795417655928",
         "order_id": "ord_1795417655928_eu1g",
         "amount": 366.45,
-        "status": "UNPAID",
+        "status": "PAID",
         "payment_method": "MANUAL",
         "recorded_at": "2026-11-23T07:07:35.928Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795417559868_arvm",
@@ -1579,21 +2290,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "user-default",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 1",
     "total_amount": 764.4,
     "tax_amount": 36.4,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "MANUAL",
     "source": "qr_menu",
     "order_number": "ORD-3760",
     "notes": null,
     "created_at": "2026-11-23T07:05:59.868Z",
-    "updated_at": "2026-11-23T07:06:50.245Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795417559868_0",
@@ -1629,11 +2340,12 @@
         "id": "pay_1795417559868",
         "order_id": "ord_1795417559868_arvm",
         "amount": 764.4,
-        "status": "UNPAID",
+        "status": "PAID",
         "payment_method": "MANUAL",
         "recorded_at": "2026-11-23T07:05:59.868Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795417439386_ymk2",
@@ -1641,21 +2353,21 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "user-default",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 1",
     "total_amount": 764.4,
     "tax_amount": 36.4,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "MANUAL",
     "source": "qr_menu",
     "order_number": "ORD-4858",
     "notes": null,
     "created_at": "2026-11-23T07:03:59.386Z",
-    "updated_at": "2026-11-23T07:05:43.153Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795417439386_0",
@@ -1691,11 +2403,12 @@
         "id": "pay_1795417439386",
         "order_id": "ord_1795417439386_ymk2",
         "amount": 764.4,
-        "status": "UNPAID",
+        "status": "PAID",
         "payment_method": "MANUAL",
         "recorded_at": "2026-11-23T07:03:59.386Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795417366276_5vmf",
@@ -1703,7 +2416,7 @@
     "outlet_id": "demo-outlet-1",
     "user_id": "user-default",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
     "bar_stage": "completed",
     "order_type": "dine-in",
@@ -1711,13 +2424,13 @@
     "total_amount": 972.3,
     "tax_amount": 46.300000000000004,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "MANUAL",
     "source": "qr_menu",
     "order_number": "ORD-1357",
     "notes": null,
     "created_at": "2026-11-23T07:02:46.276Z",
-    "updated_at": "2026-11-23T07:07:20.580Z",
+    "updated_at": "2026-11-28T07:15:47.880Z",
     "order_items": [
       {
         "id": "it_1795417366276_0",
@@ -1781,11 +2494,12 @@
         "id": "pay_1795417366276",
         "order_id": "ord_1795417366276_5vmf",
         "amount": 972.3,
-        "status": "UNPAID",
+        "status": "PAID",
         "payment_method": "MANUAL",
         "recorded_at": "2026-11-23T07:02:46.276Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T07:15:47.880Z"
   },
   {
     "id": "ord_1795416960205_lehf",
@@ -1793,21 +2507,21 @@
     "outlet_id": null,
     "user_id": "user-default",
     "status": "CLOSED",
-    "kds_stage": "new",
+    "kds_stage": "completed",
     "kitchen_stage": "completed",
-    "bar_stage": "new",
+    "bar_stage": "completed",
     "order_type": "dine-in",
     "table_id": "Table 03",
     "total_amount": 648,
     "tax_amount": 30.86,
     "discount_amount": 0,
-    "payment_status": "UNPAID",
+    "payment_status": "PAID",
     "payment_method": "MANUAL",
     "source": "qr_menu",
     "order_number": "ORD-5193",
     "notes": "Less spicy please, customer scanned QR",
     "created_at": "2026-11-23T06:56:00.205Z",
-    "updated_at": "2026-11-23T07:05:44.157Z",
+    "updated_at": "2026-11-28T09:06:21.032Z",
     "order_items": [
       {
         "id": "it_1795416960205_0",
@@ -1843,11 +2557,12 @@
         "id": "pay_1795416960205",
         "order_id": "ord_1795416960205_lehf",
         "amount": 648,
-        "status": "UNPAID",
+        "status": "PAID",
         "payment_method": "MANUAL",
         "recorded_at": "2026-11-23T06:56:00.205Z"
       }
-    ]
+    ],
+    "billed_closed_at": "2026-11-28T09:06:21.032Z"
   },
   {
     "id": "ord_1795151728545_xqp7",

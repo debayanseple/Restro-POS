@@ -1,0 +1,66 @@
+[
+  {
+    "id": "aud_1795862954829_lsi1",
+    "actor": "Super Admin",
+    "action": "Updated Status to Suspended",
+    "target": "Bella Italia Trattoria",
+    "category": "tenant",
+    "timestamp": "2026-11-28T10:49:14.829Z"
+  },
+  {
+    "id": "aud_1795862953133_20qa",
+    "actor": "Super Admin",
+    "action": "Updated Status to Suspended",
+    "target": "Tokyo Ramen Bar",
+    "category": "tenant",
+    "timestamp": "2026-11-28T10:49:13.133Z"
+  },
+  {
+    "id": "aud_1795862950569_zlsz",
+    "actor": "Super Admin",
+    "action": "Updated Status to Suspended",
+    "target": "Downtown Smokehouse",
+    "category": "tenant",
+    "timestamp": "2026-11-28T10:49:10.569Z"
+  },
+  {
+    "id": "aud_1795862949457_bm7s",
+    "actor": "Super Admin",
+    "action": "Removed Tenant",
+    "target": "Green Leaf Organics",
+    "category": "tenant",
+    "timestamp": "2026-11-28T10:49:09.457Z"
+  },
+  {
+    "id": "aud_1795862890171_9pln",
+    "actor": "Super Admin",
+    "action": "Updated Status to Suspended",
+    "target": "Green Leaf Organics",
+    "category": "tenant",
+    "timestamp": "2026-11-28T10:48:10.171Z"
+  },
+  {
+    "id": "aud_1795862889141_oqn7",
+    "actor": "Super Admin",
+    "action": "Updated Status to Active",
+    "target": "Green Leaf Organics",
+    "category": "tenant",
+    "timestamp": "2026-11-28T10:48:09.141Z"
+  },
+  {
+    "id": "aud_1",
+    "actor": "Super Admin",
+    "action": "Provisioned Trial Tenant",
+    "target": "Green Leaf Organics (Starter)",
+    "category": "tenant",
+    "timestamp": "2026-11-22T14:20:00.000Z"
+  },
+  {
+    "id": "aud_2",
+    "actor": "System Auth",
+    "action": "Verified RBAC Middleware",
+    "target": "All Tenant Portals",
+    "category": "security",
+    "timestamp": "2026-11-27T09:00:00.000Z"
+  }
+]

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, Suspense } from "react"
+import React, { useState, useEffect, useMemo, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import {
   Utensils,
@@ -19,8 +19,11 @@ import {
   CheckCircle2,
   Clock,
   Flame,
+  Download,
 } from "lucide-react"
 import { MASTER_MENU_CATALOG, MenuItem } from "@/lib/menu-catalog"
+import { buildBillPdfBlob } from "@/lib/pdf-bill"
+import { DEFAULT_RESTAURANT_SETTINGS, RestaurantSettings } from "@/lib/restaurant-settings"
 
 interface CartItem extends MenuItem {
   quantity: number
@@ -38,6 +41,31 @@ function CustomerMenuContent() {
     searchParams.get("mode") === "demo" ||
     rawTableParam.toLowerCase().includes("demo") ||
     !rawTableParam
+
+  // Fetch isAcceptingOrders & restaurant settings
+  const [restaurantSettings, setRestaurantSettings] = useState<RestaurantSettings>(DEFAULT_RESTAURANT_SETTINGS)
+  const [isAcceptingOrders, setIsAcceptingOrders] = useState<boolean | null>(null)
+  const [orderPausedPopupShown, setOrderPausedPopupShown] = useState(false)
+  const [showCustomAlert, setShowCustomAlert] = useState(false)
+  const [customAlertMessage, setCustomAlertMessage] = useState<string>("")
+  useEffect(() => {
+    let active = true
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d?.settings) {
+          setRestaurantSettings(d.settings)
+          setIsAcceptingOrders(d.settings.isAcceptingOrders ?? true)
+          if (!orderPausedPopupShown && d.settings.isAcceptingOrders === false) {
+            setOrderPausedPopupShown(true)
+          }
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [orderPausedPopupShown])
 
   // Format table identifier (e.g. "1" -> "Table 01", "Table 02" -> "Table 02")
   const normalizedTable = useMemo(() => {
@@ -65,6 +93,9 @@ function CustomerMenuContent() {
   const [orderNotes, setOrderNotes] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [activeOrder, setActiveOrder] = useState<any | null>(null)
+  const [receivedBill, setReceivedBill] = useState<any | null>(null)
+  const [isBillModalOpen, setIsBillModalOpen] = useState(false)
+  const lastSeenBillSentAtRef = useRef<string | null>(null)
   const [waiterCalled, setWaiterCalled] = useState(false)
   const [billRequested, setBillRequested] = useState(false)
   const [cleaningRequested, setCleaningRequested] = useState(false)
@@ -82,7 +113,7 @@ function CustomerMenuContent() {
 
   // Lock background page scroll (including iOS Safari & Android Chrome) while any modal/sheet is open
   const isAnyModalOpen = Boolean(
-    selectedDetailItem || isCartOpen || isServiceBellOpen
+    selectedDetailItem || isCartOpen || isServiceBellOpen || isBillModalOpen
   )
 
   useEffect(() => {
@@ -131,7 +162,36 @@ function CustomerMenuContent() {
     }
   }, [isAnyModalOpen])
 
+  const isBillPaid = Boolean(receivedBill && !receivedBill.hasUnpaid)
+
+  const handleDownloadBill = () => {
+    if (!receivedBill || typeof window === "undefined") return
+    const blob = buildBillPdfBlob({
+      tableName: receivedBill.tableName || selectedTable,
+      sentAt: receivedBill.sentAt,
+      hasUnpaid: receivedBill.hasUnpaid,
+      subtotal: Number(receivedBill.subtotal || 0),
+      tax: Number(receivedBill.tax || 0),
+      discount: Number(receivedBill.discount || 0),
+      grandTotal: Number(receivedBill.grandTotal || 0),
+      settings: restaurantSettings,
+      orders: receivedBill.orders || [],
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const slug = String(receivedBill.tableName || selectedTable || "table")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+    a.href = url
+    a.download = `${slug}-bill.pdf`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   const handleServiceRequest = (type: "clean" | "waiter" | "bill") => {
+    if (type === "bill" && isBillPaid) return
     let msg = ""
     if (type === "clean") {
       setCleaningRequested(true)
@@ -237,6 +297,9 @@ function CustomerMenuContent() {
 
   const clearTableSession = () => {
     setActiveOrder(null)
+    setReceivedBill(null)
+    setIsBillModalOpen(false)
+    lastSeenBillSentAtRef.current = null
     setCart([])
     setCustomerName("")
     setCustomerPhone("")
@@ -279,10 +342,11 @@ function CustomerMenuContent() {
         ])
 
         let tableCleared = false
+        let matchedTable: any = null
         if (tablesRes.ok) {
           const tData = await tablesRes.json()
           if (Array.isArray(tData.tables)) {
-            const matchedTable = tData.tables.find((t: any) =>
+            matchedTable = tData.tables.find((t: any) =>
               matchesTableIdentifier(t.name || `Table ${t.id}`, selectedTable)
             )
             if (matchedTable && matchedTable.status === "available") {
@@ -294,10 +358,28 @@ function CustomerMenuContent() {
         if (tableCleared) {
           if (activeOrder && !activeOrder.isDemo) {
             clearTableSession()
-          } else if (typeof window !== "undefined") {
-            localStorage.removeItem(`restro_qr_order_${selectedTable}`)
+          } else {
+            setReceivedBill(null)
+            setIsBillModalOpen(false)
+            lastSeenBillSentAtRef.current = null
+            if (typeof window !== "undefined") {
+              localStorage.removeItem(`restro_qr_order_${selectedTable}`)
+            }
           }
           return
+        }
+
+        if (matchedTable?.sentBill) {
+          setReceivedBill(matchedTable.sentBill)
+          if (
+            matchedTable.sentBill.sentAt &&
+            matchedTable.sentBill.sentAt !== lastSeenBillSentAtRef.current
+          ) {
+            lastSeenBillSentAtRef.current = matchedTable.sentBill.sentAt
+            setIsBillModalOpen(true)
+          }
+        } else {
+          setReceivedBill(null)
         }
 
         if (activeOrder?.id && ordersRes.ok) {
@@ -328,6 +410,16 @@ function CustomerMenuContent() {
       bc.onmessage = (event) => {
         if (!event.data) return
         if (
+          event.data.type === "bill_sent" &&
+          event.data.sentBill &&
+          matchesTableIdentifier(event.data.table_name || `Table ${event.data.table_id}`, selectedTable)
+        ) {
+          setReceivedBill(event.data.sentBill)
+          if (event.data.sentBill.sentAt) {
+            lastSeenBillSentAtRef.current = event.data.sentBill.sentAt
+          }
+          setIsBillModalOpen(true)
+        } else if (
           event.data.type === "table_cleared" &&
           matchesTableIdentifier(event.data.table_name || `Table ${event.data.table_id}`, selectedTable)
         ) {
@@ -351,7 +443,8 @@ function CustomerMenuContent() {
   // Cart operations
   const addToCart = (item: MenuItem, portion?: "half" | "full", qty = 1) => {
     if (item.isAvailable === false) {
-      alert(`Sorry, ${item.name} is currently Out of Stock and cannot be ordered.`)
+      setCustomAlertMessage(`Sorry, ${item.name} is currently Out of Stock and cannot be ordered.`)
+      setShowCustomAlert(true)
       return
     }
 
@@ -436,6 +529,14 @@ function CustomerMenuContent() {
   // Handle Order Placement
   const handlePlaceOrder = async () => {
     if (cart.length === 0 || !selectedTable || isSubmitting) return
+    if (isAcceptingOrders === false && !isDemoMode) {
+      setCustomAlertMessage("Live orders are currently paused. Please ask staff for assistance or try again later.")
+      setShowCustomAlert(true)
+      return
+    }
+    if (isAcceptingOrders === null) {
+      // Still loading settings; proceed with demo flow for now
+    }
 
     const trimmedName = customerName.trim()
     const trimmedPhone = customerPhone.trim()
@@ -452,7 +553,8 @@ function CustomerMenuContent() {
     setContactValidationError(null)
 
     if (cartOutOfStockItems.length > 0) {
-      alert(`The following item(s) are currently Out of Stock and cannot be ordered:\n${cartOutOfStockItems.map((i) => `• ${i.name}`).join("\n")}\n\nPlease remove them from your order to proceed.`)
+      setCustomAlertMessage(`The following item(s) are currently Out of Stock and cannot be ordered:\n${cartOutOfStockItems.map((i) => `• ${i.name}`).join("\n")}\n\nPlease remove them from your order to proceed.`)
+      setShowCustomAlert(true)
       return
     }
 
@@ -572,11 +674,13 @@ function CustomerMenuContent() {
         setIsCartOpen(false)
         setOrderNotes("")
       } else {
-        alert("Failed to send order to the kitchen. Please ask staff for assistance.")
+        setCustomAlertMessage("Failed to send order to the kitchen. Please ask staff for assistance.")
+        setShowCustomAlert(true)
       }
     } catch (err) {
       console.error("Order submission error:", err)
-      alert("Network error. Please try again or inform your waiter.")
+      setCustomAlertMessage("Network error. Please try again or inform your waiter.")
+      setShowCustomAlert(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -608,6 +712,12 @@ function CustomerMenuContent() {
             </div>
           </div>
 
+          {isDemoMode && isAcceptingOrders === false && (
+            <span className="px-2 py-0.5 rounded-md text-xs font-medium text-rose-600 border border-rose-200 hover:bg-rose-50 transition">
+              Paused
+            </span>
+          )}
+
           {/* Fixed Read-Only Table Badge (Locked to Scanned QR Table) */}
           <div
             aria-label={`Current table: ${selectedTable}`}
@@ -618,6 +728,50 @@ function CustomerMenuContent() {
           </div>
         </div>
       </header>
+
+      {orderPausedPopupShown && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm"
+        >
+          <div
+            className="bg-white rounded-xl p-8 max-w-sm w-full border border-slate-200 shadow-2xl text-center"
+          >
+            <div className="text-rose-500 text-4xl mb-4">⚠</div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">
+              We are sorry
+            </h3>
+            <p className="text-slate-600 text-sm mb-6">
+              We are not accepting orders now. We will be back soon.
+            </p>
+            <button
+              onClick={() => setOrderPausedPopupShown(false)}
+              className="px-6 py-2 rounded-xl bg-[#C46B4E] text-white font-semibold text-sm transition hover:bg-[#B25C40]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showCustomAlert && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md"
+        >
+          <div
+            className="bg-white rounded-xl p-8 max-w-sm w-full border border-slate-200 shadow-2xl text-center"
+          >
+            <div className="text-slate-500 text-4xl mb-4">ℹ</div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Information</h3>
+            <p className="text-slate-600 text-sm mb-6">{customAlertMessage}</p>
+            <button
+              onClick={() => setShowCustomAlert(false)}
+              className="px-6 py-2 rounded-xl bg-[#C46B4E] text-white font-semibold text-sm transition hover:bg-[#B25C40]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Container */}
       <main className="max-w-xl mx-auto px-4 pt-4 space-y-4">
@@ -633,6 +787,48 @@ function CustomerMenuContent() {
             <span className="px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 text-[10px] font-bold shrink-0">
               Demo
             </span>
+          </div>
+        )}
+        {/* Bill Ready Banner (Sent by Restaurant) */}
+        {receivedBill && (
+          <div
+            className={`p-4 rounded-xl border shadow-2xs flex items-center justify-between gap-3 ${
+              isBillPaid
+                ? "bg-emerald-50 border-emerald-200"
+                : "bg-indigo-50 border-indigo-200"
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className={`w-9 h-9 rounded-xl text-white flex items-center justify-center shrink-0 ${
+                  isBillPaid ? "bg-emerald-600" : "bg-indigo-600"
+                }`}
+              >
+                {isBillPaid ? <CheckCircle2 className="w-4 h-4" /> : <Receipt className="w-4 h-4" />}
+              </div>
+              <div className="min-w-0">
+                <div
+                  className={`text-xs font-bold truncate ${
+                    isBillPaid ? "text-emerald-950" : "text-indigo-950"
+                  }`}
+                >
+                  {isBillPaid ? "Bill Paid — Thank You!" : "Your Table Bill is Ready"}
+                </div>
+                <div className={`text-[11px] ${isBillPaid ? "text-emerald-800" : "text-indigo-800"}`}>
+                  Total: <span className="font-extrabold">₹{Number(receivedBill.grandTotal || 0).toFixed(2)}</span> ·{" "}
+                  {isBillPaid ? "Paid" : "Payment Due"}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsBillModalOpen(true)}
+              className={`px-3.5 py-2 rounded-xl text-white text-xs font-bold shrink-0 cursor-pointer transition ${
+                isBillPaid ? "bg-emerald-600 hover:bg-emerald-700" : "bg-indigo-600 hover:bg-indigo-700"
+              }`}
+            >
+              View Bill
+            </button>
           </div>
         )}
         {/* Active Order Banner (If customer has an ongoing order) */}
@@ -699,10 +895,7 @@ function CustomerMenuContent() {
             {/* Waiter Assistance Buttons */}
             <div className="pt-2 border-t border-[#E5E1D9] flex items-center justify-between gap-2">
               <button
-                onClick={() => {
-                  setWaiterCalled(true)
-                  setTimeout(() => setWaiterCalled(false), 4000)
-                }}
+                onClick={() => handleServiceRequest("waiter")}
                 disabled={waiterCalled}
                 className="flex-1 py-1.5 rounded-lg bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#20252B] text-[11px] font-semibold border border-[#E5E1D9] transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
@@ -710,15 +903,12 @@ function CustomerMenuContent() {
                 <span>{waiterCalled ? "Staff Notified!" : "Call Waiter"}</span>
               </button>
               <button
-                onClick={() => {
-                  setBillRequested(true)
-                  setTimeout(() => setBillRequested(false), 4000)
-                }}
-                disabled={billRequested}
-                className="flex-1 py-1.5 rounded-lg bg-[#F7F5F0] hover:bg-[#E9E3D8] text-[#20252B] text-[11px] font-semibold border border-[#E5E1D9] transition flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => handleServiceRequest("bill")}
+                disabled={billRequested || isBillPaid}
+                className="flex-1 py-1.5 rounded-lg bg-[#F7F5F0] hover:bg-[#E9E3D8] disabled:opacity-60 text-[#20252B] text-[11px] font-semibold border border-[#E5E1D9] transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Receipt className="w-3.5 h-3.5 text-indigo-700" />
-                <span>{billRequested ? "Bill Requested!" : "Request Bill"}</span>
+                <span>{isBillPaid ? "Bill Paid" : billRequested ? "Bill Requested!" : "Request Bill"}</span>
               </button>
             </div>
           </div>
@@ -1118,7 +1308,7 @@ function CustomerMenuContent() {
               <button
                 type="button"
                 onClick={() => handleServiceRequest("bill")}
-                disabled={billRequested}
+                disabled={billRequested || isBillPaid}
                 className="w-full p-3.5 rounded-2xl bg-[#F7F5F0] hover:bg-[#E9E3D8] active:bg-[#E0D9CD] border border-[#E5E1D9] transition flex items-center gap-3.5 text-left group cursor-pointer disabled:opacity-60 active:scale-[0.98]"
               >
                 <div className="w-11 h-11 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-xs">
@@ -1127,11 +1317,15 @@ function CustomerMenuContent() {
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold text-[#20252B] flex items-center justify-between">
                     <span>Ask for Bill</span>
-                    {billRequested && (
+                    {isBillPaid ? (
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Paid
+                      </span>
+                    ) : billRequested ? (
                       <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
                         Requested
                       </span>
-                    )}
+                    ) : null}
                   </div>
                   <p className="text-xs text-[#64748B] truncate mt-0.5">
                     Ready to pay via UPI, Card, or Cash
@@ -1598,6 +1792,159 @@ function CustomerMenuContent() {
                     </span>
                   </button>
                 </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Bill Modal (Sent from Restaurant Tables) */}
+      {isBillModalOpen && receivedBill && (
+        <div
+          onClick={() => setIsBillModalOpen(false)}
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-2xl border border-[#E5E1D9] shadow-2xl overflow-hidden flex flex-col max-h-[88dvh]"
+          >
+            <div className="px-5 py-4 border-b border-[#E5E1D9] bg-[#FAF8F4] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/15 text-indigo-700 flex items-center justify-center border border-indigo-500/25">
+                  <Receipt className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-[#20252B]">
+                      {receivedBill.tableName || selectedTable} · Bill
+                    </h3>
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${
+                        receivedBill.hasUnpaid
+                          ? "bg-amber-500/15 text-amber-700 border-amber-500/30"
+                          : "bg-blue-500/15 text-blue-700 border-blue-500/30"
+                      }`}
+                    >
+                      {receivedBill.hasUnpaid ? "Payment Due" : "Paid"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#64748B]">
+                    Sent from front desk
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBillModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center cursor-pointer transition"
+                aria-label="Close bill"
+              >
+                <X className="w-4 h-4 text-[#20252B]" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto overscroll-contain flex-1">
+              <div className="space-y-3">
+                {(receivedBill.orders || []).map((ord: any) => (
+                  <div
+                    key={ord.id}
+                    className="rounded-xl border border-[#E5E1D9] bg-[#FAF8F4] p-3.5 space-y-2"
+                  >
+                    <div className="flex items-center justify-between text-[11px] pb-1.5 border-b border-dashed border-[#E5E1D9]">
+                      <span className="font-bold text-[#20252B]">{ord.order_number}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-md font-bold uppercase text-[10px] ${
+                          ord.payment_status === "PAID"
+                            ? "bg-blue-500/15 text-blue-700"
+                            : "bg-amber-500/15 text-amber-700"
+                        }`}
+                      >
+                        {ord.payment_status === "PAID" ? "Paid" : "Unpaid"}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5 text-xs">
+                      {(ord.items || []).map((it: any, idx: number) => {
+                        const qty = Number(it.quantity) || 1
+                        const rate = Number(it.unit_price) || 0
+                        return (
+                          <div key={`${ord.id}_${idx}`} className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="font-medium text-[#20252B] truncate">
+                                <span className="font-bold text-[#C46B4E]">{qty}×</span> {it.name}
+                              </div>
+                              {it.special_instructions && (
+                                <div className="text-[10px] text-[#64748B] italic">
+                                  Note: {it.special_instructions}
+                                </div>
+                              )}
+                            </div>
+                            <span className="font-semibold text-[#20252B] shrink-0">
+                              ₹{(rate * qty).toFixed(2)}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl border border-[#E5E1D9] bg-[#FAF8F4] p-3.5 space-y-1.5 text-xs">
+                <div className="flex justify-between text-[#64748B]">
+                  <span>Subtotal</span>
+                  <span>₹{Number(receivedBill.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-[#64748B]">
+                  <span>GST / Taxes</span>
+                  <span>₹{Number(receivedBill.tax || 0).toFixed(2)}</span>
+                </div>
+                {Number(receivedBill.discount || 0) > 0 && (
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Discount</span>
+                    <span>-₹{Number(receivedBill.discount || 0).toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-extrabold text-sm pt-2 border-t border-[#E5E1D9] text-[#20252B]">
+                  <span>Total Amount</span>
+                  <span className="text-[#C46B4E]">
+                    ₹{Number(receivedBill.grandTotal || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-center text-[#64748B]">
+                Please pay at the counter or ask your waiter for UPI, Card, or Cash.
+              </p>
+            </div>
+
+            <div className="p-4 border-t border-[#E5E1D9] bg-[#FAF8F4] flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleDownloadBill}
+                className="px-4 py-3 rounded-xl border border-[#E5E1D9] bg-white hover:bg-[#F7F5F0] text-[#20252B] text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <Download className="w-4 h-4 text-[#C46B4E]" />
+                <span>Download Bill</span>
+              </button>
+              {isBillPaid ? (
+                <button
+                  type="button"
+                  onClick={() => setIsBillModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Bill Paid · Close</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleServiceRequest("waiter")}
+                  disabled={waiterCalled}
+                  className="flex-1 py-3 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] disabled:opacity-70 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                >
+                  <BellRing className="w-4 h-4" />
+                  <span>{waiterCalled ? "Waiter Called!" : "Call Waiter to Pay"}</span>
+                </button>
               )}
             </div>
           </div>

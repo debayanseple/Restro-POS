@@ -1,7 +1,7 @@
 {
   "restaurantName": "SEPLE Bistro",
   "legalName": "Nodedr Hospitality Pvt. Ltd.",
-  "outletName": "Downtown Main Outlet",
+  "outletName": "Chetla",
   "cuisineType": "Modern European, Artisan Wood-Fired & Indian Fusion",
   "fssaiNumber": "11526035000482",
   "phone": "+91 22 4890 1122",
@@ -92,5 +92,5 @@
   "dailyDigestEmail": true,
   "whatsappAlertsEnabled": true,
   "whatsappAlertNumber": "+91 98201 23456",
-  "updatedAt": "2026-11-27T12:45:21.151Z"
+  "updatedAt": "2026-11-28T06:47:02.417Z"
 }

@@ -1,0 +1,54 @@
+[
+  {
+    "id": "ten_nodedr_1",
+    "name": "Nodedr Bistro",
+    "ownerName": "Aarav Mehta",
+    "email": "aarav@nodedrbistro.in",
+    "phone": "+91 98201 23456",
+    "city": "Mumbai",
+    "outlets": 1,
+    "plan": "Enterprise",
+    "monthlyPrice": 14999,
+    "status": "Active",
+    "createdAt": "2026-09-10T08:00:00.000Z"
+  },
+  {
+    "id": "ten_bella_2",
+    "name": "Bella Italia Trattoria",
+    "ownerName": "Rohan Kapoor",
+    "email": "rohan@bellaitalia.in",
+    "phone": "+91 98112 44556",
+    "city": "Delhi NCR",
+    "outlets": 3,
+    "plan": "Pro",
+    "monthlyPrice": 7999,
+    "status": "Suspended",
+    "createdAt": "2026-10-02T10:30:00.000Z"
+  },
+  {
+    "id": "ten_tokyo_3",
+    "name": "Tokyo Ramen Bar",
+    "ownerName": "Kenji Takahashi",
+    "email": "ops@tokyoramen.in",
+    "phone": "+91 99001 77889",
+    "city": "Bengaluru",
+    "outlets": 2,
+    "plan": "Enterprise",
+    "monthlyPrice": 14999,
+    "status": "Suspended",
+    "createdAt": "2026-10-18T12:15:00.000Z"
+  },
+  {
+    "id": "ten_smoke_4",
+    "name": "Downtown Smokehouse",
+    "ownerName": "Vikram Nair",
+    "email": "vikram@smokehouse.in",
+    "phone": "+91 97400 33221",
+    "city": "Pune",
+    "outlets": 1,
+    "plan": "Starter",
+    "monthlyPrice": 3999,
+    "status": "Suspended",
+    "createdAt": "2026-11-05T09:00:00.000Z"
+  }
+]

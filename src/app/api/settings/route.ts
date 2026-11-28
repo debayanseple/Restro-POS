@@ -23,6 +23,28 @@ function getSettings(): RestaurantSettings {
 
 function saveSettings(settings: RestaurantSettings) {
   writeStore("settings.json", settings)
+  try {
+    const tenants = readStore<any[]>("tenants.json", [])
+    if (Array.isArray(tenants) && tenants.length > 0) {
+      let modified = false
+      const updatedTenants = tenants.map((t) => {
+        if (t?.id === "ten_nodedr_1") {
+          modified = true
+          return {
+            ...t,
+            name: settings.restaurantName || t.name,
+            email: settings.email || t.email,
+            phone: settings.phone || t.phone,
+            city: settings.cityState || t.city,
+          }
+        }
+        return t
+      })
+      if (modified) {
+        writeStore("tenants.json", updatedTenants)
+      }
+    }
+  } catch {}
 }
 
 export async function GET() {

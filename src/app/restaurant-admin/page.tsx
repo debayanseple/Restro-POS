@@ -11,6 +11,7 @@ import { MyDeliveriesModule } from "@/components/MyDeliveriesModule"
 import { SettingsModule, SettingsSection } from "@/components/SettingsModule"
 import { WaiterAlertOverlay } from "@/components/WaiterAlertOverlay"
 import { BillReceiptModal, BillReceiptOrder, BillReceiptOrderItem } from "@/components/BillReceiptModal"
+import { SuperAdminPortal } from "@/components/SuperAdminPortal"
 import {
   buildTablesFromFloors,
   DEFAULT_RESTAURANT_SETTINGS,
@@ -326,6 +327,28 @@ function buildKdsTicketsFromOrders(ordersList: SupabaseOrder[]): KdsTicket[] {
 type UserType = "restaurant-admin" | "pos-staff" | "super-admin"
 type PosRole = "orders" | "reception" | "kitchen"
 
+interface SentTableBill {
+  sentAt: string
+  tableName: string
+  orders: Array<{
+    id: string
+    order_number: string
+    created_at: string
+    payment_status: string
+    items: Array<{
+      name: string
+      quantity: number
+      unit_price: number
+      special_instructions?: string | null
+    }>
+  }>
+  subtotal: number
+  tax: number
+  discount: number
+  grandTotal: number
+  hasUnpaid: boolean
+}
+
 interface TableItem {
   id: number
   name: string
@@ -333,6 +356,8 @@ interface TableItem {
   status: "available" | "occupied" | "reserved" | "cleaning" | "out_of_service"
   orderCode?: string
   isOpen: boolean
+  clearedAt?: string
+  sentBill?: SentTableBill | null
   floorNumber?: number
   floorName?: string
 }
@@ -390,6 +415,23 @@ function RestaurantAdminContent() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+
+  // Restaurant Settings (for dynamic brand name)
+  const [restaurantSettings, setRestaurantSettings] = useState<{
+    restaurantName: string
+    outletName: string
+  }>({ restaurantName: "Nodedr Bistro", outletName: "Main Branch" })
+
+  // Live orders acceptance setting
+  const [isAcceptingOrders, setIsAcceptingOrders] = useState<boolean | null>(null)
+
+  // Custom alert modal state (replaces native JS alert)
+  const [showCustomAlert, setShowCustomAlert] = useState(false)
+  const [customAlertMessage, setCustomAlertMessage] = useState<string>("")
+  const showAlert = (msg: string) => {
+    setCustomAlertMessage(msg)
+    setShowCustomAlert(true)
+  }
 
   // 2. Dark / Night Mode State
   const [isDarkMode, setIsDarkMode] = useState(true)
@@ -533,6 +575,41 @@ function RestaurantAdminContent() {
     }
   }, [searchParams])
 
+  // Fetch restaurant settings for dynamic brand name
+  useEffect(() => {
+    let active = true
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d?.settings) {
+          setRestaurantSettings({
+            restaurantName: d.settings.restaurantName || "Nodedr Bistro",
+            outletName: d.settings.outletName || "Main Branch",
+          })
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
+
+  // Fetch isAcceptingOrders from settings
+  useEffect(() => {
+    let active = true
+    fetch("/api/settings")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (active && d?.settings) {
+          setIsAcceptingOrders(d.settings.isAcceptingOrders ?? true)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
+
   // Safety guard: ensure active tab matches allowed menus for the current role
   useEffect(() => {
     if (userType === "pos-staff") {
@@ -626,6 +703,8 @@ function RestaurantAdminContent() {
   const [tableValidationError, setTableValidationError] = useState(false)
   const [showQrModal, setShowQrModal] = useState<TableItem | null>(null)
   const [viewBillTable, setViewBillTable] = useState<TableItem | null>(null)
+  const [sendingBillTableId, setSendingBillTableId] = useState<number | null>(null)
+  const [billSentSuccessTableId, setBillSentSuccessTableId] = useState<number | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<{ title: string; orders: BillReceiptOrder[] } | null>(null)
   const [showAllQrModal, setShowAllQrModal] = useState(false)
   const [showWaitlistModal, setShowWaitlistModal] = useState(false)
@@ -680,7 +759,8 @@ function RestaurantAdminContent() {
     setOrders((prev) => {
       let modified = false
       const updated = prev.map((o) => {
-        if (o.status === "CANCELLED" || o.status === "CLOSED" || !o.table_id) return o
+        if (o.status === "CANCELLED" || o.billed_closed_at || !o.table_id) return o
+        if (o.status === "CLOSED" && o.payment_status === "PAID") return o
         const matches = targetTable
           ? matchesTableOrder(targetTable, o.table_id)
           : (() => {
@@ -724,11 +804,118 @@ function RestaurantAdminContent() {
     })
   }
 
+  const sendBillToCustomerQr = async (
+    table: TableItem,
+    billOrders: SupabaseOrder[],
+    totals: {
+      subtotal: number
+      totalTax: number
+      totalDiscount: number
+      grandTotal: number
+      hasUnpaid: boolean
+    }
+  ) => {
+    if (billOrders.length === 0) return
+    setSendingBillTableId(table.id)
+    const sentAt = new Date().toISOString()
+    const sentBill: SentTableBill = {
+      sentAt,
+      tableName: table.name,
+      orders: billOrders.map((ord) => ({
+        id: ord.id,
+        order_number: ord.order_number || `#${ord.id.slice(-4)}`,
+        order_type: ord.order_type || "dine-in",
+        customer_name: ord.customer_name || null,
+        customer_phone: ord.customer_phone || null,
+        created_at: ord.created_at,
+        payment_status: ord.payment_status,
+        payment_method: ord.payment_method || "CASH",
+        items: (ord.order_items || []).map((it) => ({
+          name: it.MenuItem?.name || it.name || "Menu Item",
+          quantity: Number(it.quantity) || 1,
+          unit_price: resolveBillItemRate(it),
+          special_instructions: it.special_instructions || null,
+        })),
+      })),
+      subtotal: totals.subtotal,
+      tax: totals.totalTax,
+      discount: totals.totalDiscount,
+      grandTotal: totals.grandTotal,
+      hasUnpaid: totals.hasUnpaid,
+    }
+
+    setTables((prev) =>
+      prev.map((t) => (t.id === table.id ? { ...t, sentBill } : t))
+    )
+    setViewBillTable((prev) => (prev && prev.id === table.id ? { ...prev, sentBill } : prev))
+
+    // Resolve any pending bill service requests for this table
+    const pendingBillReqs = (tableRequestsMap[table.id] || []).filter((r) => r.type === "bill")
+    if (pendingBillReqs.length > 0) {
+      setServiceRequests((prev) =>
+        prev.map((r) =>
+          pendingBillReqs.some((pr) => pr.id === r.id)
+            ? { ...r, status: "resolved", clearedAt: sentAt }
+            : r
+        )
+      )
+      Promise.all(
+        pendingBillReqs.map((r) =>
+          fetch("/api/service-requests", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: r.id, status: "resolved", clearedBy: "Bill Sent" }),
+          })
+        )
+      ).catch(() => {})
+    }
+
+    try {
+      await fetch("/api/tables", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          table_id: table.id,
+          action: "send_bill",
+          sentBill,
+        }),
+      })
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("restro_sync_channel")
+        bc.postMessage({
+          type: "bill_sent",
+          table_id: table.id,
+          table_name: table.name,
+          sentBill,
+        })
+        bc.close()
+      }
+      setBillSentSuccessTableId(table.id)
+      setTimeout(() => {
+        setBillSentSuccessTableId((prev) => (prev === table.id ? null : prev))
+      }, 3000)
+    } catch (err) {
+      console.error("Failed to send bill to QR menu:", err)
+    } finally {
+      setSendingBillTableId(null)
+    }
+  }
+
   const updateSpecificTableStatus = async (targetId: number, status: TableItem["status"]) => {
     const nextIsOpen = status === "occupied"
     const targetTable = tables.find((t) => t.id === targetId)
+    const nowIso = status === "available" ? new Date().toISOString() : undefined
     setTables((prev) =>
-      prev.map((t) => (t.id === targetId ? { ...t, status, isOpen: nextIsOpen } : t))
+      prev.map((t) =>
+        t.id === targetId
+          ? {
+              ...t,
+              status,
+              isOpen: nextIsOpen,
+              ...(nowIso ? { clearedAt: nowIso, sentBill: null } : {}),
+            }
+          : t
+      )
     )
     setSelectedTableId(null)
 
@@ -980,11 +1167,11 @@ function RestaurantAdminContent() {
     const parsedHalfPrice = newItemHasPortions ? parseFloat(newItemHalfPrice) || 0 : 0
 
     if (!newItemName.trim() || baseFullPrice <= 0) {
-      alert("Please enter a dish name and valid price.")
+      showAlert("Please enter a dish name and valid price.")
       return
     }
     if (newItemHasPortions && parsedHalfPrice <= 0) {
-      alert("Please enter a valid Half portion price or uncheck Half & Full options.")
+      showAlert("Please enter a valid Half portion price or uncheck Half & Full options.")
       return
     }
 
@@ -1076,7 +1263,7 @@ function RestaurantAdminContent() {
       setTimeout(() => setMenuToast(null), 3500)
     } catch (err) {
       console.error("Failed to save menu item:", err)
-      alert("Could not save menu item. Please try again.")
+      showAlert("Could not save menu item. Please try again.")
     } finally {
       setIsSavingMenuItem(false)
     }
@@ -1427,7 +1614,7 @@ function RestaurantAdminContent() {
   const handleSaveMaterial = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!matName.trim()) {
-      alert("Please enter a raw material name.")
+      showAlert("Please enter a raw material name.")
       return
     }
 
@@ -1489,7 +1676,7 @@ function RestaurantAdminContent() {
       setTimeout(() => setInventoryToast(null), 3500)
     } catch (err) {
       console.error("Error saving material:", err)
-      alert("Failed to save raw material. Please try again.")
+      showAlert("Failed to save raw material. Please try again.")
     } finally {
       setIsSavingInventory(false)
     }
@@ -1510,20 +1697,20 @@ function RestaurantAdminContent() {
   const handleExecuteAdjustment = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!adjItemId) {
-      alert("Please select an item to adjust.")
+      showAlert("Please select an item to adjust.")
       return
     }
     const target = inventoryItems.find((i) => i.id === adjItemId)
     if (!target) return
 
     if (adjType === "USAGE" && isItemExpired(target.expiryDate)) {
-      alert(`Cannot log kitchen usage for expired stock! "${target.name}" expired on ${target.expiryDate} and is marked as Out of Stock / Unusable. Please record as Spoilage / Waste instead.`)
+      showAlert(`Cannot log kitchen usage for expired stock! "${target.name}" expired on ${target.expiryDate} and is marked as Out of Stock / Unusable. Please record as Spoilage / Waste instead.`)
       return
     }
 
     const qty = Number(adjQty)
     if (isNaN(qty) || qty <= 0) {
-      alert("Please enter a valid positive quantity.")
+      showAlert("Please enter a valid positive quantity.")
       return
     }
 
@@ -1564,7 +1751,7 @@ function RestaurantAdminContent() {
       }
     } catch (err) {
       console.error("Error adjusting stock:", err)
-      alert("Failed to adjust stock. Please try again.")
+      showAlert("Failed to adjust stock. Please try again.")
     } finally {
       setIsSavingInventory(false)
     }
@@ -1588,7 +1775,7 @@ function RestaurantAdminContent() {
       }
     } catch (err) {
       console.error("Error deleting material:", err)
-      alert("Could not remove material.")
+      showAlert("Could not remove material.")
     }
   }
 
@@ -1731,7 +1918,7 @@ function RestaurantAdminContent() {
   const handleSaveStaff = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!staffName.trim()) {
-      alert("Staff member name is required.")
+      showAlert("Staff member name is required.")
       return
     }
 
@@ -1831,7 +2018,7 @@ function RestaurantAdminContent() {
       }
     } catch (err) {
       console.error("Error saving staff member:", err)
-      alert("Failed to save team member details.")
+      showAlert("Failed to save team member details.")
     } finally {
       setIsSavingStaff(false)
     }
@@ -1868,7 +2055,7 @@ function RestaurantAdminContent() {
   // Delete Staff Member
   const handleDeleteStaff = async (member: TeamMember) => {
     if (member.role === "admin") {
-      alert("The primary restaurant administrator cannot be removed.")
+      showAlert("The primary restaurant administrator cannot be removed.")
       return
     }
     if (!confirm(`Are you sure you want to remove "${member.name}" from the restaurant roster?`)) return
@@ -1889,11 +2076,11 @@ function RestaurantAdminContent() {
         setTimeout(() => setTeamToast(null), 3500)
       } else {
         const errData = await res.json()
-        alert(errData.error || "Could not delete staff member.")
+        showAlert(errData.error || "Could not delete staff member.")
       }
     } catch (err) {
       console.error("Error deleting staff member:", err)
-      alert("Failed to delete staff member.")
+      showAlert("Failed to delete staff member.")
     }
   }
 
@@ -1962,7 +2149,7 @@ function RestaurantAdminContent() {
 
   const addToCart = (item: MenuItem, portion?: "half" | "full") => {
     if (item.isAvailable === false) {
-      alert(`${item.name} is currently Out of Stock and cannot be added.`)
+      showAlert(`${item.name} is currently Out of Stock and cannot be added.`)
       return
     }
 
@@ -2984,6 +3171,23 @@ function RestaurantAdminContent() {
         isDarkMode ? "bg-[#20252B] text-[#F7F5F0]" : "bg-[#F7F5F0] text-[#20252B]"
       }`}
     >
+      {/* Custom Alert Modal (replaces native JS alert) */}
+      {showCustomAlert && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm">
+          <div className="bg-white rounded-xl p-8 max-w-sm w-full border border-slate-200 shadow-2xl text-center">
+            <div className="text-slate-500 text-4xl mb-4">ℹ</div>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Information</h3>
+            <p className="text-slate-600 text-sm mb-6 whitespace-pre-line">{customAlertMessage}</p>
+            <button
+              onClick={() => setShowCustomAlert(false)}
+              className="px-6 py-2 rounded-xl bg-[#C46B4E] text-white font-semibold text-sm transition hover:bg-[#B25C40]"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Top Production Status Bar */}
       <div
         className={`sticky top-0 z-40 px-4 py-1.5 text-xs font-medium flex items-center justify-between border-b shrink-0 ${
@@ -3087,7 +3291,7 @@ function RestaurantAdminContent() {
               >
                 {userType === "super-admin"
                   ? "Restro Platform"
-                  : "Nodedr Bistro"}
+                  : restaurantSettings.restaurantName}
               </span>
             )}
             <button
@@ -3118,7 +3322,7 @@ function RestaurantAdminContent() {
                 <div className="flex items-center gap-2 truncate">
                   <Store className="w-3.5 h-3.5 text-slate-400" />
                   <span className="truncate">
-                    {userType === "super-admin" ? "All Tenants (Global)" : "Main Branch"}
+                    {userType === "super-admin" ? "All Tenants (Global)" : restaurantSettings.outletName}
                   </span>
                 </div>
                 <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -3200,7 +3404,7 @@ function RestaurantAdminContent() {
               }`}
             >
               <button
-                onClick={() => alert("Enterprise Support: support@restropos.com")}
+                onClick={() => showAlert("Enterprise Support: support@restropos.com")}
                 className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition ${
                   isDarkMode
                     ? "border-[#222533] text-slate-400 hover:text-white hover:bg-[#191b24]"
@@ -3263,11 +3467,11 @@ function RestaurantAdminContent() {
                   ? "Platform Administration"
                   : userType === "pos-staff"
                   ? posRole === "orders"
-                    ? "Nodedr Bistro · Orders Station"
+                    ? `${restaurantSettings.restaurantName} · Orders Station`
                     : posRole === "reception"
-                    ? "Nodedr Bistro · Reception & Floor"
-                    : "Nodedr Bistro · Kitchen/Bar Queue"
-                  : "Nodedr Bistro"}
+                    ? `${restaurantSettings.restaurantName} · Reception & Floor`
+                    : `${restaurantSettings.restaurantName} · Kitchen/Bar Queue`
+                  : restaurantSettings.restaurantName}
               </h2>
             </div>
 
@@ -3909,22 +4113,36 @@ function RestaurantAdminContent() {
                                       isDarkMode ? "border-[#242735]" : "border-slate-100"
                                     }`}
                                   >
-                                    {isOccupied && (
-                                      <button
-                                        onClick={() => {
-                                          setViewBillTable(table)
-                                          setSelectedTableId(null)
-                                        }}
-                                        className={`w-full text-left px-3 py-1.5 flex items-center gap-2 font-semibold transition cursor-pointer ${
-                                          isDarkMode
-                                            ? "text-indigo-300 hover:bg-[#222533]"
-                                            : "text-indigo-700 hover:bg-indigo-50"
-                                        }`}
-                                      >
-                                        <Receipt className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                                        <span>View bill</span>
-                                      </button>
-                                    )}
+                                    {(isOccupied || activeTableRequests.some((r) => r.type === "bill")) && (() => {
+                                      const hasBillReq = activeTableRequests.some((r) => r.type === "bill")
+                                      return (
+                                        <button
+                                          onClick={() => {
+                                            setViewBillTable(table)
+                                            setSelectedTableId(null)
+                                          }}
+                                          className={`w-full text-left px-3 py-1.5 flex items-center justify-between gap-2 font-semibold transition cursor-pointer ${
+                                            hasBillReq
+                                              ? isDarkMode
+                                                ? "bg-[#C46B4E]/15 text-[#E88A6B] hover:bg-[#C46B4E]/25"
+                                                : "bg-amber-50 text-[#C46B4E] hover:bg-amber-100/80"
+                                              : isDarkMode
+                                              ? "text-indigo-300 hover:bg-[#222533]"
+                                              : "text-indigo-700 hover:bg-indigo-50"
+                                          }`}
+                                        >
+                                          <span className="flex items-center gap-2">
+                                            <Receipt className={`w-3.5 h-3.5 ${hasBillReq ? "text-[#C46B4E]" : "text-indigo-600 dark:text-indigo-400"}`} />
+                                            <span>{hasBillReq ? "View & Send Bill" : "View bill"}</span>
+                                          </span>
+                                          {hasBillReq && (
+                                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-[#C46B4E] text-white">
+                                              Req
+                                            </span>
+                                          )}
+                                        </button>
+                                      )
+                                    })()}
                                     <button
                                       onClick={() => {
                                         setShowQrModal(table)
@@ -3985,7 +4203,7 @@ function RestaurantAdminContent() {
                     </div>
                   </div>
 
-                  {/* Right Column: Waitlist & Guest ordering codes */}
+                  {/* Right Column: Service Queue & Waitlist */}
                   <div className="space-y-6">
                     {/* Front Desk Live Service Queue Card */}
                     <div
@@ -4088,7 +4306,7 @@ function RestaurantAdminContent() {
                       {/* Requests List */}
                       {filteredQueueRequests.length === 0 ? (
                         <div
-                          className={`p-6 rounded-xl border border-dashed text-center flex flex-col items-center justify-center gap-2 ${
+                          className={`p-8 min-h-[220px] rounded-xl border border-dashed text-center flex flex-col items-center justify-center gap-2 ${
                             isDarkMode
                               ? "border-[#262938] bg-[#1a1c26]/50 text-slate-400"
                               : "border-slate-200 bg-slate-50/50 text-slate-500"
@@ -4101,7 +4319,7 @@ function RestaurantAdminContent() {
                           </p>
                         </div>
                       ) : (
-                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        <div className="space-y-2.5 max-h-[560px] overflow-y-auto pr-1">
                           {filteredQueueRequests.map((req) => {
                             const isWaiter = req.type === "waiter"
                             const isClean = req.type === "clean"
@@ -4171,15 +4389,38 @@ function RestaurantAdminContent() {
                                   </div>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleClearServiceRequest(req.id, e)}
-                                  title="Mark as resolved / cleared"
-                                  className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>Clear</span>
-                                </button>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isBill && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const matched =
+                                          tables.find(
+                                            (t) =>
+                                              t.id === req.tableNumber ||
+                                              t.name.toLowerCase().trim() === req.table.toLowerCase().trim()
+                                          ) || null
+                                        if (matched) {
+                                          setViewBillTable(matched)
+                                        }
+                                      }}
+                                      title="View and send bill to customer QR menu"
+                                      className="px-2.5 py-1.5 rounded-lg bg-[#C46B4E] hover:bg-[#B25C40] text-white font-semibold text-xs transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                    >
+                                      <Receipt className="w-3.5 h-3.5" />
+                                      <span>View & Send</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleClearServiceRequest(req.id, e)}
+                                    title="Mark as resolved / cleared"
+                                    className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Clear</span>
+                                  </button>
+                                </div>
                               </div>
                             )
                           })}
@@ -4262,85 +4503,6 @@ function RestaurantAdminContent() {
                           ))}
                         </div>
                       )}
-                    </div>
-
-                    {/* Guest Ordering Codes Card */}
-                    <div
-                      className={`rounded-2xl p-5 space-y-4 border ${
-                        isDarkMode
-                          ? "bg-[#14161f] border-[#202330]"
-                          : "bg-white border-slate-200 shadow-xs"
-                      }`}
-                    >
-                      <h3
-                        className={`font-bold text-sm ${
-                          isDarkMode ? "text-white" : "text-slate-900"
-                        }`}
-                      >
-                        Guest ordering codes
-                      </h3>
-                      <p
-                        className={`text-xs leading-relaxed ${
-                          isDarkMode ? "text-slate-400" : "text-slate-600"
-                        }`}
-                      >
-                        Guests can look at the menu from the table QR or NFC card, but they can only order after you open the table and give them its code. Paying the bill closes it.
-                      </p>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-0.5">
-                        {tables
-                          .filter(
-                            (t) =>
-                              selectedFloorFilter === "all" ||
-                              (t.floorNumber || 1) === selectedFloorFilter
-                          )
-                          .map((t) => {
-                          const tableObj = t
-                          const isOpen = tableObj?.isOpen || false
-                          const code = tableObj?.orderCode
-
-                          return (
-                            <div
-                              key={t.id}
-                              className={`rounded-xl p-2.5 flex items-center justify-between gap-1.5 border ${
-                                isDarkMode
-                                  ? "bg-[#181a26] border-[#242738]"
-                                  : "bg-slate-50 border-slate-200"
-                              }`}
-                            >
-                              <div className="min-w-0">
-                                <div
-                                  className={`font-semibold text-xs truncate ${
-                                    isDarkMode ? "text-white" : "text-slate-900"
-                                  }`}
-                                >
-                                  {t.name}
-                                </div>
-                                <span
-                                  className={`text-[10px] ${
-                                    isDarkMode ? "text-slate-500" : "text-slate-400"
-                                  }`}
-                                >
-                                  {isOpen ? code : "Closed"}
-                                </span>
-                              </div>
-
-                              <button
-                                onClick={() => toggleTableCode(t.id)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0 ${
-                                  isOpen
-                                    ? isDarkMode
-                                      ? "bg-slate-700 text-slate-300 hover:bg-slate-600"
-                                      : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                                    : "bg-[#C46B4E] hover:bg-[#C46B4E] text-white shadow-xs"
-                                }`}
-                              >
-                                {isOpen ? "Close" : "Open"}
-                              </button>
-                            </div>
-                          )
-                        })}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -4952,6 +5114,14 @@ function RestaurantAdminContent() {
                           setPosCustomerName("")
                           setPosCustomerPhone("")
                           setPosGuestValidationError(null)
+
+                          // Check if live orders are accepting
+                          if (isAcceptingOrders === false) {
+                            showAlert("Live orders are currently paused. Please ask staff for assistance or try again later.")
+                            setCart([])
+                            setActiveTab("orders")
+                            return
+                          }
                           setCart([])
                           setActiveTab("orders")
 
@@ -5138,6 +5308,14 @@ function RestaurantAdminContent() {
                           setPosCustomerName("")
                           setPosCustomerPhone("")
                           setPosGuestValidationError(null)
+
+                          // Check if live orders are accepting
+                          if (isAcceptingOrders === false) {
+                            showAlert("Live orders are currently paused. Please ask staff for assistance or try again later.")
+                            setCart([])
+                            setActiveTab("orders")
+                            return
+                          }
                           setCart([])
                           setActiveTab("orders")
 
@@ -6641,143 +6819,12 @@ function RestaurantAdminContent() {
                   </div>
                 )}
               </div>
-            ) : activeTab === "tenants" ? (
-              /* --- SUPER ADMIN: TENANT RESTAURANTS --- */
-              <div className="space-y-6 max-w-[1440px] mx-auto">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1
-                      className={`text-3xl font-bold tracking-tight ${
-                        isDarkMode ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      Tenant Restaurants
-                    </h1>
-                    <p
-                      className={`text-sm mt-1 ${
-                        isDarkMode ? "text-slate-400" : "text-slate-500"
-                      }`}
-                    >
-                      Multi-tenant accounts, subscription statuses, and branch limits
-                    </p>
-                  </div>
-                  <button className="px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-semibold text-xs transition flex items-center gap-1.5 shadow-xs">
-                    <Plus className="w-3.5 h-3.5" /> Provision Tenant
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Total Restaurants</span>
-                    <div
-                      className={`text-3xl font-bold mt-2 ${
-                        isDarkMode ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      14
-                    </div>
-                    <span className="text-xs text-blue-500 mt-1 block">12 Active, 2 Trial</span>
-                  </div>
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Connected Outlets</span>
-                    <div
-                      className={`text-3xl font-bold mt-2 ${
-                        isDarkMode ? "text-white" : "text-slate-900"
-                      }`}
-                    >
-                      29
-                    </div>
-                    <span className="text-xs text-slate-400 mt-1 block">Across 8 regions</span>
-                  </div>
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">Platform MRR</span>
-                    <div className="text-3xl font-bold text-blue-500 mt-2">₹3,95,000</div>
-                    <span className="text-xs text-blue-500 mt-1 block">+18.4% MoM</span>
-                  </div>
-                  <div
-                    className={`p-5 rounded-2xl border ${
-                      isDarkMode
-                        ? "bg-[#14161f] border-[#202330]"
-                        : "bg-white border-slate-200 shadow-xs"
-                    }`}
-                  >
-                    <span className="text-xs font-semibold uppercase text-slate-400">System Health</span>
-                    <div className="text-3xl font-bold text-blue-500 mt-2">99.98%</div>
-                    <span className="text-xs text-blue-500 mt-1 block">Operational</span>
-                  </div>
-                </div>
-
-                <div
-                  className={`rounded-2xl p-5 space-y-3 border ${
-                    isDarkMode
-                      ? "bg-[#14161f] border-[#202330]"
-                      : "bg-white border-slate-200 shadow-xs"
-                  }`}
-                >
-                  <h3
-                    className={`font-bold text-sm ${
-                      isDarkMode ? "text-white" : "text-slate-900"
-                    }`}
-                  >
-                    Active Tenants Directory
-                  </h3>
-                  <div className="space-y-2">
-                    {[
-                      { name: "Nodedr Bistro", outlets: 1, plan: "Enterprise (₹14,999/mo)", status: "Active" },
-                      { name: "Bella Italia Trattoria", outlets: 3, plan: "Pro (₹7,999/mo)", status: "Active" },
-                      { name: "Tokyo Ramen Bar", outlets: 2, plan: "Enterprise (₹14,999/mo)", status: "Active" },
-                      { name: "Downtown Smokehouse", outlets: 1, plan: "Starter (₹3,999/mo)", status: "Active" },
-                      { name: "Green Leaf Organics", outlets: 1, plan: "Starter (₹3,999/mo)", status: "Trial" },
-                    ].map((r, i) => (
-                      <div
-                        key={i}
-                        className={`p-3.5 rounded-xl border flex items-center justify-between text-xs ${
-                          isDarkMode
-                            ? "bg-[#1a1c26] border-[#262938]"
-                            : "bg-slate-50 border-slate-200"
-                        }`}
-                      >
-                        <div>
-                          <span
-                            className={`font-semibold block ${
-                              isDarkMode ? "text-white" : "text-slate-900"
-                            }`}
-                          >
-                            {r.name}
-                          </span>
-                          <span className="text-[11px] text-slate-400">
-                            {r.outlets} Outlets Connected
-                          </span>
-                        </div>
-                        <span className="text-[#C46B4E] font-semibold">
-                          {r.plan}
-                        </span>
-                        <span className="text-blue-700 bg-blue-100 dark:text-blue-400 dark:bg-blue-950/80 px-2 py-0.5 rounded border border-blue-300 dark:border-blue-800 font-bold">
-                          {r.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            ) : userType === "super-admin" && ["tenants", "subscriptions", "analytics", "audit", "platform-settings"].includes(activeTab) ? (
+              <SuperAdminPortal
+                activeTab={activeTab}
+                isDarkMode={isDarkMode}
+                onTabChange={setActiveTab}
+              />
             ) : activeTab === "reservations" ? (
               /* --- RESERVATION & WAITLIST (Reception Role & Admin) --- */
               <div className="space-y-6 max-w-[1440px] mx-auto">
@@ -10658,12 +10705,18 @@ function RestaurantAdminContent() {
 
       {/* Occupied Table Bill Modal */}
       {viewBillTable && (() => {
-        const billOrders = orders.filter(
-          (o) =>
-            o.status !== "CANCELLED" &&
-            o.status !== "CLOSED" &&
-            matchesTableOrder(viewBillTable, o.table_id)
-        )
+        const clearedAtMs = viewBillTable.clearedAt ? new Date(viewBillTable.clearedAt).getTime() : 0
+        const billOrders = orders.filter((o) => {
+          if (o.status === "CANCELLED" || o.billed_closed_at) return false
+          if (!matchesTableOrder(viewBillTable, o.table_id)) return false
+          if (clearedAtMs > 0) {
+            const createdMs = new Date(o.created_at).getTime()
+            if (!Number.isNaN(createdMs) && createdMs <= clearedAtMs) return false
+          } else if (o.status === "CLOSED" && o.payment_status === "PAID") {
+            return false
+          }
+          return true
+        })
 
         const subtotal = billOrders.reduce((acc, ord) => {
           const itemsSum = (ord.order_items || []).reduce(
@@ -10678,6 +10731,15 @@ function RestaurantAdminContent() {
         const totalDiscount = billOrders.reduce((acc, ord) => acc + (Number(ord.discount_amount) || 0), 0)
         const grandTotal = billOrders.reduce((acc, ord) => acc + (Number(ord.total_amount) || 0), 0)
         const hasUnpaid = billOrders.some((o) => o.payment_status !== "PAID")
+        const allItemsServed =
+          billOrders.length > 0 &&
+          billOrders.every((ord) => {
+            const items = ord.order_items || []
+            if (items.length > 0) {
+              return items.every((it) => String(it.status || "").toLowerCase() === "completed")
+            }
+            return ord.status === "CLOSED"
+          })
 
         return (
           <div
@@ -10900,6 +10962,35 @@ function RestaurantAdminContent() {
                       </button>
                       <button
                         type="button"
+                        onClick={() =>
+                          sendBillToCustomerQr(viewBillTable, billOrders, {
+                            subtotal,
+                            totalTax,
+                            totalDiscount,
+                            grandTotal,
+                            hasUnpaid,
+                          })
+                        }
+                        disabled={sendingBillTableId === viewBillTable.id}
+                        className={`px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                          billSentSuccessTableId === viewBillTable.id
+                            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                            : "border-indigo-500/35 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20"
+                        }`}
+                      >
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>
+                          {sendingBillTableId === viewBillTable.id
+                            ? "Sending..."
+                            : billSentSuccessTableId === viewBillTable.id
+                            ? "Sent to QR ✓"
+                            : viewBillTable.sentBill
+                            ? "Resend to QR"
+                            : "Send Bill to QR"}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => {
                           updateSpecificTableStatus(viewBillTable.id, "available")
                           setViewBillTable(null)
@@ -10916,17 +11007,32 @@ function RestaurantAdminContent() {
                     {hasUnpaid ? (
                       <button
                         type="button"
+                        disabled={!allItemsServed}
+                        title={
+                          allItemsServed
+                            ? "Mark all orders on this table as paid"
+                            : "All items must be served before marking paid"
+                        }
                         onClick={async () => {
+                          if (!allItemsServed) return
                           await Promise.all(
                             billOrders
                               .filter((o) => o.payment_status !== "PAID")
                               .map((o) => updatePaymentStatus(o.id, "PAID"))
                           )
+                          const paidOrders = billOrders.map((o) => ({ ...o, payment_status: "PAID" }))
+                          await sendBillToCustomerQr(viewBillTable, paidOrders, {
+                            subtotal,
+                            totalTax,
+                            totalDiscount,
+                            grandTotal,
+                            hasUnpaid: false,
+                          })
                         }}
-                        className="px-4 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                        className="px-4 py-2 rounded-xl bg-[#C46B4E] hover:bg-[#B25C40] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#C46B4E] text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>Mark Paid</span>
+                        <span>{allItemsServed ? "Mark Paid" : "Serve All Items First"}</span>
                       </button>
                     ) : (
                       <button
